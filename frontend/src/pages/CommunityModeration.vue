@@ -131,7 +131,16 @@ import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
 import { useRoute, useRouter } from 'vue-router'
 import ModerationHistory from '@/components/ModerationHistory.vue'
-import { Button, Combobox, Select, TabButtons, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
+import {
+  Button,
+  Combobox,
+  Select,
+  TabButtons,
+  ErrorMessage,
+  call,
+  dialog,
+  useDoctype,
+} from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
 import { users, useSessionUser, useUser } from '@/data/users'
