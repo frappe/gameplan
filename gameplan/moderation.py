@@ -7,6 +7,7 @@ from gameplan.permissions import can_moderate_space
 
 @frappe.whitelist(methods=["GET", "POST"])
 def removed_content(community: str, doctype: str = "GP Discussion", start: int = 0):
+	"""List removed content in Spaces the moderator can access."""
 	if not can_moderate_community(community):
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
 	if doctype not in {"GP Discussion", "GP Comment"}:
@@ -66,6 +67,7 @@ def removed_content(community: str, doctype: str = "GP Discussion", start: int =
 
 @frappe.whitelist(methods=["GET", "POST"])
 def community_bans(community: str):
+	"""List active participation bans for an authorized Community moderator."""
 	if not can_moderate_community(community):
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
 	logs = frappe.get_all(
