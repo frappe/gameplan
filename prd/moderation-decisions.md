@@ -98,3 +98,13 @@ Plan these when their implementation slice is next. Roadmap recommendations do n
 Add confirmed decisions after each planning round.
 Record later changes against the original decision ID with the date and replacement decision.
 Keep unresolved questions and implementation choices distinct from confirmed product decisions.
+
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.

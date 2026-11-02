@@ -13,3 +13,7 @@ class GPModerationLog(Document):
 
 def on_doctype_update():
 	frappe.db.add_index("GP Moderation Log", ["community", "user", "creation"], "community_user_history")
+
+	frappe.db.add_index("GP Moderation Log", ["user", "community", "creation"], "user_community_history")
+	frappe.db.add_index("GP Moderation Log", ["discussion", "creation"], "discussion_history")
+	frappe.db.add_index("GP Moderation Log", ["comment", "creation"], "comment_history")

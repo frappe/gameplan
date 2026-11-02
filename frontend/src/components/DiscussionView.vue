@@ -180,7 +180,10 @@
             <Reactions
               doctype="GP Discussion"
               :name="discussion.doc.name"
-              :read-only-mode="readOnlyMode"
+              :read-only-mode="
+                readOnlyMode ||
+                Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+              "
             />
           </div>
         </div>
@@ -189,7 +192,9 @@
           :name="discussion.doc.name"
           :space="space"
           :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
-          :read-only-mode="readOnlyMode"
+          :read-only-mode="
+            readOnlyMode || Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+          "
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
