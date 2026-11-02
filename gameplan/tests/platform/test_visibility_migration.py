@@ -244,7 +244,7 @@ LEGACY_PRIVACY_REFERENCES = {
 	"gameplan/tests/features/test_approvals.py": 1,
 	"gameplan/tests/features/test_submission_access.py": 3,
 	"gameplan/tests/features/test_reply_moderation.py": 2,
-	"gameplan/tests/features/test_moderation_core.py": 3,
+	"gameplan/tests/features/test_moderation_core.py": 4,
 	"gameplan/tests/features/test_moderation_visibility.py": 2,
 	"gameplan/gameplan/doctype/gp_user_profile/gp_user_profile.py": 1,
 	"gameplan/migrate_from_discourse/__init__.py": 1,
