@@ -298,10 +298,10 @@ class TestEveryoneMentionQueryCount(NotificationTestCase):
 	genuinely one insert per recipient and is supposed to scale.
 	"""
 
-	# Seven reads, including one batch role query, regardless of audience size:
+	# Eight reads, including batch roles and removal status, regardless of audience size:
 	# the active-user roster, GP Project (name/team/visibility), the GP Project and
-	# GP Team membership rows, GP Guest Access, GP Team.visibility, and Has Role.
-	AUDIENCE_QUERY_BUDGET = 7
+	# GP Team membership rows, GP Guest Access, GP Team.visibility, Has Role, and removal status.
+	AUDIENCE_QUERY_BUDGET = 8
 
 	def test_everyone_audience_query_count_does_not_grow_with_the_member_list(self):
 		discussion = create_discussion("Everyone thread", self.space, owner=self.member)

@@ -259,6 +259,25 @@ def users_who_can_view_content(users, doc):
 	if doc.doctype == "GP Comment" and doc.reference_doctype != "GP Discussion":
 		users = [user for user in users if user != "Guest"]
 	project = get_content_project(doc)
+	from gameplan.mixins.moderation import content_is_removed
+
+	if content_is_removed(doc):
+		info = get_project_info(project) if project else None
+		if not info:
+			return []
+		role_sets = get_audience_roles(users)
+		admins, guests = role_sets
+		staff = set(
+			frappe.get_all(
+				"GP Member",
+				filters={"parenttype": "GP Team", "parent": info.team},
+				or_filters={"is_admin": 1, "is_moderator": 1},
+				pluck="user",
+			)
+		)
+		staff.update(admins)
+		users = [user for user in users if user != "Guest" and user not in guests and user in staff]
+		return users_who_can_view_space(users, project, role_sets=role_sets)
 	if not project:
 		# can_view_content's own space-less fallback, inlined rather than called per
 		# user: it would re-resolve the project for every user (a query each, for a
@@ -931,6 +950,17 @@ def apply_project_query_filter(query, user=None):
 	Project = frappe.qb.DocType("GP Project")
 	criterion = project_access_criterion(Project, user)
 	return query.where(criterion) if criterion is not None else query
+
+
+def moderatable_project_names(community, user=None):
+	"""Resolve the moderator's current Space scope without per-Space permission reads."""
+	from gameplan.community_bans import can_moderate_community
+
+	user = user or frappe.session.user
+	if not can_moderate_community(community, user):
+		return []
+	Project = frappe.qb.DocType("GP Project")
+	return accessible_project_query(user).where(Project.team == community).run(pluck=True)
 
 
 def accessible_project_query(user=None):
