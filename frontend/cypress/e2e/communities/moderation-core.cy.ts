@@ -15,6 +15,23 @@ function confirmRemoval(label: string) {
 }
 
 describe('Community moderation core', () => {
+  it('opens moderation from the sidebar and switches Communities without a feed button', () => {
+    resetData('two_communities').then((ids) => {
+      cy.visit(`/g/community/${ids.communities![0]}/discussions`)
+      cy.get('.body-container')
+        .contains('button', /^Moderation$/)
+        .should('not.exist')
+      cy.get('[aria-label="Moderation"]').filter(':visible').first().click()
+      cy.location('pathname').should('eq', '/g/moderation')
+      cy.contains('h1', 'Moderation').should('be.visible')
+      cy.get('[role="combobox"]').first().click()
+      cy.contains('[role="option"]', 'Beta').click()
+      cy.location('search').should('include', `community=${ids.communities![1]}`)
+      cy.switchUser('member')
+      cy.visit('/g/moderation')
+      cy.contains('Only Community moderators can open this page.').should('be.visible')
+    })
+  })
   it('removes private Space management actions for a banned member while keeping reading available', () => {
     resetData('private_space_with_guest').then((ids) => {
       const path = `/g/community/${ids.community}/space/${ids.private_space}/discussions`
@@ -89,7 +106,7 @@ describe('Community moderation core', () => {
       cy.visit(path)
       cy.selectDropdownOption('Discussion Options', 'Hide discussion')
       confirmRemoval('Hide discussion')
-      cy.contains('h1', 'Community moderation').should('be.visible')
+      cy.contains('h1', 'Moderation').should('be.visible')
       cy.contains('Spam review').should('be.visible')
       cy.contains('button', 'Preview').click()
       cy.contains('Seed content').should('be.visible')
@@ -128,7 +145,7 @@ describe('Community moderation core', () => {
         reply().should('contain.text', 'This reply was removed by a moderator.')
         reply().should('not.contain.text', 'Spam reply sentinel')
         cy.visit(moderationPath(ids.community!))
-        cy.get('[role="combobox"]').click()
+        cy.contains('[role="combobox"]', 'Discussions').click()
         cy.contains('[role="option"]', 'Replies').click()
         cy.contains('Spam removed').should('be.visible')
         cy.contains('button', 'Preview').click()
@@ -166,7 +183,7 @@ describe('Community moderation core', () => {
       cy.switchUser('secondMember')
       cy.visit(moderationPath(ids.community!))
       cy.contains('button', 'Community bans').click()
-      cy.get('[role="combobox"]').click()
+      cy.get('input[placeholder="Name or email"]').type('Member')
       cy.contains('[role="option"]', /^Member$/).click()
       cy.contains('button', 'Ban from Community').click()
       confirmRemoval('Ban')
