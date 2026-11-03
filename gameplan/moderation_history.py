@@ -23,10 +23,15 @@ def ban_users(community: str, query: str = "", after: str = ""):
 	community_bans = (
 		frappe.qb.from_(Log)
 		.select(Log.user)
-		.where((Log.community == community) & Log.action.isin(["Ban", "Unban"]))
+		.where(
+			(Log.community == community)
+			& Log.action.isin(["Ban", "Unban", "Ban Changed", "Restriction Expired"])
+		)
 	)
-	users = frappe.qb.from_(User).select(User.name, User.full_name, User.user_image).where(
-		User.name.isin(community_bans)
+	users = (
+		frappe.qb.from_(User)
+		.select(User.name, User.full_name, User.user_image)
+		.where(User.name.isin(community_bans))
 	)
 	if query:
 		escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -72,7 +77,11 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 			Log.discussion,
 		),
 		"reply": (Log.comment.isin(replies) & post_actions, Log.comment),
-		"user": ((Log.community == community) & Log.action.isin(["Ban", "Unban"]), Log.user),
+		"user": (
+			(Log.community == community)
+			& Log.action.isin(["Ban", "Unban", "Ban Changed", "Restriction Expired"]),
+			Log.user,
+		),
 	}
 	if kind == "all":
 		criterion = Criterion.any(source[0] for source in sources.values())
@@ -94,6 +103,8 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 			Log.user,
 			Log.previous_slow_mode_seconds,
 			Log.slow_mode_seconds,
+			Log.previous_expires_at,
+			Log.expires_at,
 		)
 		.where(criterion)
 		.orderby(Log.creation, order=frappe.qb.desc)
@@ -101,4 +112,9 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 		.offset(max(0, cint(start)))
 		.limit(41)
 	).run(as_dict=True)
+	from gameplan.restrictions import iso_expiry
+
+	for row in rows:
+		row.expires_at = iso_expiry(row.expires_at)
+		row.previous_expires_at = iso_expiry(row.previous_expires_at)
 	return {"items": rows[:40], "has_more": len(rows) > 40}

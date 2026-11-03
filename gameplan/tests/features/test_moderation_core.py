@@ -150,7 +150,7 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 				self.discussion.reload().update({"content": "Banned edit"}).save(ignore_permissions=True)
 		with self.as_user(self.second_member):
 			self.assertEqual(community_bans(self.community.name)[0].user, self.outsider.name)
-			set_ban(self.community.name, self.outsider.name, 0)
+			set_ban(self.community.name, self.outsider.name, 0, "Appeal accepted")
 		self.assertFalse(is_banned(self.community.name, self.outsider.name))
 
 	def test_ban_survives_membership_removal_and_rejoin(self):
@@ -330,7 +330,7 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 						delete("File", file.name)
 					self.assertTrue(frappe.db.exists("File", file.name))
 		with self.as_user(self.second_member):
-			set_ban(self.community.name, self.outsider.name, 0)
+			set_ban(self.community.name, self.outsider.name, 0, "Appeal accepted")
 		with self.as_user(self.outsider):
 			for file in files:
 				delete("File", file.name)

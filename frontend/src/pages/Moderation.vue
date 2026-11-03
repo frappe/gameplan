@@ -8,14 +8,22 @@
         </p>
       </div>
       <Select
-        v-if="options.length"
+        v-if="options.length && !siteWide"
         v-model="selected"
         label="Community"
         class="w-full sm:w-64"
         :options="options"
       />
     </header>
-    <CommunityModeration v-if="selected" :key="selected" :community-id="selected" />
+    <div v-if="isGlobalAdmin(useSessionUser())" class="mb-5 flex gap-2">
+      <Button :variant="siteWide ? 'subtle' : 'solid'" @click="setView(false)"
+        >Community moderation</Button
+      ><Button :variant="siteWide ? 'solid' : 'subtle'" @click="setView(true)"
+        >Account suspensions</Button
+      >
+    </div>
+    <AccountSuspensions v-if="siteWide" />
+    <CommunityModeration v-else-if="selected" :key="selected" :community-id="selected" />
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
       Only Community moderators can open this page.
     </p>
@@ -24,13 +32,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Select } from 'frappe-ui'
+import { Button, Select } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
-import { canModerateCommunity } from '@/utils/permissions'
+import { canModerateCommunity, isGlobalAdmin } from '@/utils/permissions'
 import CommunityModeration from './CommunityModeration.vue'
+import AccountSuspensions from '@/components/AccountSuspensions.vue'
 const route = useRoute()
 const router = useRouter()
+const siteWide = computed(() => route.query.scope === 'site' && isGlobalAdmin(useSessionUser()))
+function setView(site: boolean) {
+  router.replace({ name: 'Moderation', query: site ? { scope: 'site' } : {} })
+}
 const options = computed(() =>
   (communities.data || [])
     .filter((community) => canModerateCommunity(community, useSessionUser()))

@@ -51,10 +51,18 @@
           {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
         </time>
       </div>
-      <p class="mt-1 text-base text-ink-gray-5">By {{ useUser(item.owner).full_name }}</p>
+      <p class="mt-1 text-base text-ink-gray-5">
+        By {{ item.action === 'Restriction Expired' ? 'System' : useUser(item.owner).full_name }}
+      </p>
       <p v-if="item.action === 'Slow Mode Changed'" class="mt-2 text-base text-ink-gray-6">
         {{ slowModeLabel(item.previous_slow_mode_seconds) }} →
         {{ slowModeLabel(item.slow_mode_seconds) }}
+      </p>
+      <p
+        v-if="['Ban', 'Ban Changed', 'Unban', 'Restriction Expired'].includes(item.action)"
+        class="mt-2 text-base text-ink-gray-6"
+      >
+        {{ restrictionTransition(item) }}
       </p>
       <p v-if="item.reason" class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">
         {{ item.reason }}
@@ -83,6 +91,7 @@ import {
   call,
   dayjsLocal,
 } from 'frappe-ui'
+import { restrictionTransition } from '@/data/restrictions'
 import { slowModeLabel } from '@/data/slowMode'
 import { useUser } from '@/data/users'
 import { extractServerMessage } from '@/utils'
@@ -115,6 +124,8 @@ type HistoryItem = {
   action: string
   owner: string
   creation: string
+  previous_expires_at?: string
+  expires_at?: string
   previous_slow_mode_seconds?: number
   slow_mode_seconds?: number
   reason?: string

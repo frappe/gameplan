@@ -15,7 +15,9 @@
   "community",
   "user",
   "previous_slow_mode_seconds",
-  "slow_mode_seconds"
+  "slow_mode_seconds",
+  "previous_expires_at",
+  "expires_at"
  ],
  "fields": [
   {
@@ -30,7 +32,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Action",
-   "options": "Hide\nRestore\nDelete Spam\nBan\nUnban\nSlow Mode Changed",
+   "options": "Hide\nRestore\nDelete Spam\nBan\nUnban\nSlow Mode Changed\nBan Changed\nSuspend\nSuspension Changed\nLift Suspension\nRestriction Expired",
    "reqd": 1
   },
   {
@@ -79,6 +81,18 @@
    "fieldname": "slow_mode_seconds",
    "label": "Slow Mode Seconds",
    "fieldtype": "Int",
+   "read_only": 1
+  },
+  {
+   "fieldname": "previous_expires_at",
+   "label": "Previous expiry (UTC)",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expires_at",
+   "label": "Expiry (UTC)",
+   "fieldtype": "Datetime",
    "read_only": 1
   }
  ],

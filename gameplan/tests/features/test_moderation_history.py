@@ -87,7 +87,7 @@ class TestModerationHistory(GameplanTestCase):
 	def test_user_filter_returns_only_this_community_ban_history(self):
 		other = create_community("Other bans")
 		set_ban(self.community.name, self.member.name, 1, "Spam")
-		set_ban(self.community.name, self.member.name, 0)
+		set_ban(self.community.name, self.member.name, 0, "Appeal accepted")
 		set_ban(other.name, self.member.name, 1, "Other Community reason")
 		self.reply.hide("Post action")
 		rows = self.entries(kind="user", target=self.member.name)

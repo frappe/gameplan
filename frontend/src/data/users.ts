@@ -19,10 +19,13 @@ export type EmailDigestDayOfWeek =
   | 'Saturday'
   | 'Sunday'
 
+let restrictionExpiryTimer: ReturnType<typeof setTimeout> | undefined
+
 let usersByName = reactive<Record<string, UserInfo>>({})
 
 export interface UserInfo {
   banned_communities?: string[]
+  community_restrictions?: { community: string; reason: string; expires_at?: string }[]
   name: string
   email: string
   enabled: number
@@ -70,6 +73,15 @@ function mergeUserInfo(user: UserInfo) {
     usersByName[user.name] = user
   }
   if (user.name === session.user) {
+    clearTimeout(restrictionExpiryTimer)
+    const deadlines = (user.community_restrictions || [])
+      .flatMap((r) => (r.expires_at ? [Date.parse(r.expires_at)] : []))
+      .filter((d) => d > Date.now())
+    if (deadlines.length)
+      restrictionExpiryTimer = setTimeout(
+        () => refreshOwnRestrictions(),
+        Math.min(Math.min(...deadlines) - Date.now() + 100, 2147483647),
+      )
     setCommunityOrder(user.community_order)
     loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
@@ -281,3 +293,22 @@ export function useSessionUser() {
 export function isGameplanAdmin(user: UserInfo = useSessionUser()) {
   return user.name === 'Administrator' || user.role === 'Gameplan Admin'
 }
+
+async function refreshOwnRestrictions() {
+  if (!session.user || session.user === 'Guest') return
+  try {
+    const restrictions = await call<NonNullable<UserInfo['community_restrictions']>>(
+      'gameplan.restriction_queries.my_bans',
+    )
+    const user = useSessionUser()
+    mergeUserInfo({
+      ...user,
+      community_restrictions: restrictions,
+      banned_communities: restrictions.map((r) => r.community),
+    })
+  } catch (error) {
+    console.warn('Could not refresh account restrictions', error)
+  }
+}
+onSocketEvent('gameplan:restrictions_changed', refreshOwnRestrictions)
+window.addEventListener('focus', refreshOwnRestrictions)

@@ -1,0 +1,56 @@
+{
+ "doctype": "DocType",
+ "name": "GP User Restriction",
+ "module": "Gameplan",
+ "autoname": "prompt",
+ "engine": "InnoDB",
+ "field_order": [
+  "user",
+  "community",
+  "active",
+  "expires_at",
+  "reason"
+ ],
+ "fields": [
+  {
+   "fieldname": "user",
+   "label": "User",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "community",
+   "label": "Community",
+   "fieldtype": "Data",
+   "default": ""
+  },
+  {
+   "fieldname": "active",
+   "label": "Active",
+   "fieldtype": "Check"
+  },
+  {
+   "fieldname": "expires_at",
+   "label": "Expires at (UTC)",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reason",
+   "label": "Reason",
+   "fieldtype": "Small Text"
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1
+  },
+  {
+   "role": "Gameplan Admin",
+   "read": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

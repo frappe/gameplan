@@ -139,7 +139,7 @@ class TestApprovals(GameplanTestCase):
 		set_ban(self.community.name, self.member.name, 1, "No participation")
 		with self.assertRaises(frappe.PermissionError):
 			self.decide(result)
-		set_ban(self.community.name, self.member.name, 0)
+		set_ban(self.community.name, self.member.name, 0, "Appeal accepted")
 		self.parent.close_discussion()
 		with self.assertRaises(frappe.ValidationError):
 			self.decide(result)

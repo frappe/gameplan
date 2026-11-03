@@ -95,23 +95,19 @@ class TestModerationAudienceScaling(GameplanTestCase):
 
 	def test_active_ban_pages_exclude_lifted_bans_and_bound_results(self):
 		from gameplan.moderation import community_bans
+		from gameplan.restrictions import restriction_name
 
-		now = frappe.utils.now()
 		for index in range(45):
-			for action in ["Ban", "Unban"] if index == 0 else ["Ban"]:
-				log = frappe.get_doc(
-					doctype="GP Moderation Log",
-					community=self.community.name,
-					user=f"banned-{index}@example.test",
-					action=action,
-					reason="Test history",
-				).insert(ignore_permissions=True, ignore_links=True)
-				frappe.db.set_value(
-					"GP Moderation Log",
-					log.name,
-					"creation",
-					frappe.utils.add_to_date(now, seconds=1) if action == "Unban" else now,
-				)
+			user = f"banned-{index}@example.test"
+			frappe.get_doc(doctype="User", name=user, email=user, first_name="Banned").db_insert()
+			frappe.get_doc(
+				doctype="GP User Restriction",
+				name=restriction_name(user, self.community.name),
+				user=user,
+				community=self.community.name,
+				active=int(index != 0),
+				reason="Test history",
+			).db_insert()
 		first = community_bans(self.community.name)
 		second = community_bans(self.community.name, start=40)
 		self.assertEqual(len(first), 41)

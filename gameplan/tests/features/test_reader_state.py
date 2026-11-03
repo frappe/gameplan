@@ -47,7 +47,7 @@ class TestReaderState(GameplanTestCase):
 						)
 					)
 				if not archived:
-					set_ban(self.community.name, self.member.name, 0)
+					set_ban(self.community.name, self.member.name, 0, "Appeal accepted")
 
 	def test_inaccessible_and_removed_discussions_do_not_accept_read_markers(self):
 		private = create_space("Restricted", self.community, visibility=VISIBILITY_MEMBER_ACCESS)

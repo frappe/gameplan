@@ -48,7 +48,7 @@ class TestBannedSpaceManagement(GameplanTestCase):
 		self.assertTrue(can_view_space(self.member.name, self.space.name))
 		self.assertTrue(can_manage_space(self.member.name, self.other_space))
 		self.assertTrue(can_manage_space("Administrator", self.space))
-		set_ban(self.community.name, self.member.name, 0)
+		set_ban(self.community.name, self.member.name, 0, "Appeal accepted")
 		self.assertTrue(can_manage_space(self.member.name, self.space))
 		with self.as_user(self.member):
 			self.space.move_to_team(self.destination.name)

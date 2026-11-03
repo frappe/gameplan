@@ -82,8 +82,8 @@
       </template>
       <template v-else-if="tab === 'bans'">
         <p class="my-4 text-base text-ink-gray-5">
-          Bans block participation in this Community until lifted. Reading and participation
-          elsewhere stay available.
+          Bans block participation in this Community until lifted or expired. Reading and
+          participation elsewhere stay available.
         </p>
         <div class="flex items-center gap-2">
           <Combobox
@@ -118,10 +118,16 @@
           class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
         >
           <div>
-            <div class="text-base-medium text-ink-gray-9">{{ useUser(ban.user).full_name }}</div>
+            <div class="text-base-medium text-ink-gray-9">
+              {{ ban.full_name || useUser(ban.user).full_name }}
+            </div>
             <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
+            <p class="mt-1 text-base text-ink-gray-6">{{ expiryLabel(ban.expires_at) }}</p>
           </div>
-          <Button @click="liftBan(ban.user)">Lift ban</Button>
+          <div class="flex gap-2">
+            <Button @click="editBan(ban)">Change</Button
+            ><Button @click="editBan(ban, true)">Lift ban</Button>
+          </div>
         </div>
         <div class="mt-4 flex gap-2">
           <Button v-if="start" @click="start -= 40">Previous</Button>
@@ -131,6 +137,15 @@
           No active Community bans.
         </p>
       </template>
+      <RestrictionDialog
+        v-if="banTarget"
+        :key="`${banTarget.user}-${liftingBan}`"
+        v-model:open="banDialogOpen"
+        :user="banTarget"
+        :community="communityId"
+        :lifting="liftingBan"
+        @saved="banSaved"
+      />
       <ApprovalQueue v-if="tab === 'approvals'" :key="communityId" :community-id="communityId" />
       <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
       <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
@@ -141,6 +156,8 @@
 </template>
 
 <script setup lang="ts">
+import RestrictionDialog from '@/components/RestrictionDialog.vue'
+import { expiryLabel, type RestrictionUser } from '@/data/restrictions'
 import WatchedWords from '@/components/WatchedWords.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ApprovalQueue from '@/components/ApprovalQueue.vue'
@@ -200,7 +217,10 @@ type RemovedItem = {
   spam_removed_at?: string
 }
 const items = ref<RemovedItem[]>([])
-const bans = ref<{ user: string; reason: string }[]>([])
+const bans = ref<RestrictionUser[]>([])
+const banTarget = ref<RestrictionUser | null>(null)
+const banDialogOpen = ref(false)
+const liftingBan = ref(false)
 const hasMore = ref(false)
 const selected = ref('')
 const previewContent = ref('')
@@ -352,38 +372,16 @@ function restore(item: RemovedItem) {
   })
 }
 function banUser() {
-  dialog.prompt({
-    title: 'Ban from Community',
-    message: `${
-      useUser(targetUser.value).full_name
-    } will lose participation rights here until the ban is lifted.`,
-    fields: [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
-    confirmLabel: 'Ban',
-    onConfirm: async ({ values }) => {
-      await call('gameplan.community_bans.set_ban', {
-        community: props.communityId,
-        user: targetUser.value,
-        banned: 1,
-        reason: values.reason,
-      })
-      targetUser.value = ''
-      await load()
-    },
-  })
+  editBan({ user: targetUser.value, full_name: useUser(targetUser.value).full_name })
 }
-function liftBan(user: string) {
-  dialog.confirm({
-    title: 'Lift Community ban',
-    message: `Restore participation rights for ${useUser(user).full_name}?`,
-    confirmLabel: 'Lift ban',
-    onConfirm: async () => {
-      await call('gameplan.community_bans.set_ban', {
-        community: props.communityId,
-        user,
-        banned: 0,
-      })
-      await load()
-    },
-  })
+function editBan(user: RestrictionUser, lifting = false) {
+  banTarget.value = user
+  liftingBan.value = lifting
+  banDialogOpen.value = true
+}
+async function banSaved() {
+  targetUser.value = ''
+  banTarget.value = null
+  await load()
 }
 </script>

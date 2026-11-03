@@ -11,6 +11,14 @@
       </template>
 
       <ReadOnlyBanner v-if="readOnlyMode" class="mb-3" />
+      <p
+        v-if="ownRestriction"
+        role="status"
+        class="m-3 rounded border border-outline-gray-3 bg-surface-gray-1 p-3 text-base text-ink-gray-8"
+      >
+        You cannot participate in this Community: {{ ownRestriction.reason }}.
+        {{ expiryLabel(ownRestriction.expires_at) }}.
+      </p>
       <slot />
     </DesktopShell>
     <CommandPalette v-if="!publicVisitor" />
@@ -25,9 +33,10 @@ import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { usersReady } from '@/data/users'
+import { usersReady, useSessionUser } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { getHomeRoute } from '@/router'
+import { expiryLabel } from '@/data/restrictions'
 import { isPublicVisitor } from '@/utils/publicAccess'
 
 const route = useRoute()
@@ -42,6 +51,15 @@ const effectiveRoute = computed(() => {
   if (!route.matched.some((record) => record.meta?.settingsOverlay)) return route
   return router.resolve(settingsBackgroundPath.value || getHomeRoute())
 })
+
+const ownRestriction = computed(
+  () =>
+    useSessionUser().community_restrictions?.find(
+      (r) =>
+        r.community === effectiveRoute.value.params.communityId &&
+        (!r.expires_at || Date.parse(r.expires_at) > Date.now()),
+    ),
+)
 
 const onCommunityRoute = computed(() => {
   return effectiveRoute.value.matched.some((record) => record.meta?.communityScope)

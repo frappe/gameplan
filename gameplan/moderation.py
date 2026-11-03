@@ -65,17 +65,9 @@ def community_bans(community: str, start: int = 0):
 	"""List one page of active bans for an authorized Community moderator."""
 	if not can_moderate_community(community):
 		frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
-	Log = frappe.qb.DocType("GP Moderation Log")
-	return (
-		latest_logs(["community", "user"], ["Ban", "Unban"])
-		.select(Log.user, Log.action, Log.reason, Log.creation)
-		.where((Log.community == community) & (Log.action == "Ban"))
-		.orderby(Log.creation, order=frappe.qb.desc)
-		.orderby(Log.name, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
-		.limit(41)
-		.run(as_dict=True)
-	)
+	from gameplan.restriction_queries import active_rows
+
+	return active_rows(community, start)
 
 
 @frappe.whitelist(methods=["GET", "POST"])
@@ -92,7 +84,9 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 	User = frappe.qb.DocType("User")
 	HasRole = frappe.qb.DocType("Has Role")
 	Member = frappe.qb.DocType("GP Member")
-	Log = frappe.qb.DocType("GP Moderation Log")
+	Restriction = frappe.qb.DocType("GP User Restriction")
+	from gameplan.restrictions import active_condition
+
 	admin_users = (
 		frappe.qb.from_(HasRole)
 		.select(HasRole.parent)
@@ -105,10 +99,11 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 		.where((Member.is_admin == 1) | (Member.is_moderator == 1))
 	)
 	active_bans = (
-		latest_logs(["community", "user"], ["Ban", "Unban"])
-		.select(Log.user)
-		.where((Log.community == community) & (Log.action == "Ban"))
+		frappe.qb.from_(Restriction)
+		.select(Restriction.user)
+		.where((Restriction.community == community) & active_condition(Restriction))
 	)
+
 	users = (
 		frappe.qb.from_(User)
 		.join(HasRole)

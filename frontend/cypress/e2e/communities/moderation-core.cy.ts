@@ -184,9 +184,11 @@ describe('Community moderation core', () => {
       cy.visit(moderationPath(ids.community!))
       cy.contains('button', 'Community bans').click()
       cy.get('input[placeholder="Name or email"]').type('Member')
-      cy.contains('[role="option"]', /^Member$/).click()
+      cy.get('[role="option"]')
+        .contains(/^Member$/)
+        .click()
       cy.contains('button', 'Ban from Community').click()
-      confirmRemoval('Ban')
+      confirmRemoval('Save restriction')
       cy.contains('button', 'Lift ban').should('be.visible')
 
       cy.switchUser('member')
@@ -225,7 +227,8 @@ describe('Community moderation core', () => {
       cy.visit(moderationPath(ids.community!))
       cy.contains('button', 'Community bans').click()
       cy.contains('button', 'Lift ban').click()
-      cy.get('[role="dialog"]').contains('button', 'Lift ban').click()
+      cy.get('[role="dialog"]').find('textarea').type('Appeal accepted')
+      cy.get('[role="dialog"]').contains('button', 'Lift restriction').click()
       cy.contains('No active Community bans.').should('be.visible')
       cy.switchUser('member')
       cy.visit(

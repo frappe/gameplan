@@ -178,7 +178,11 @@ override_doctype_class = {"File": "gameplan.moderated_file.ModeratedFile"}
 
 doc_events = {
 	"GP Team": {
-		"on_trash": ["gameplan.approval_policy.delete_counters", "gameplan.watched_words.delete_rules"]
+		"on_trash": [
+			"gameplan.approval_policy.delete_counters",
+			"gameplan.watched_words.delete_rules",
+			"gameplan.restrictions.clear_state",
+		]
 	},
 	"*": {
 		"on_trash": "gameplan.mixins.on_delete.on_trash",
@@ -227,12 +231,14 @@ doc_events = {
 			"gameplan.gameplan.doctype.gp_guest_access.gp_guest_access.on_user_delete",
 			"gameplan.approval_policy.delete_counters",
 			"gameplan.slow_mode.clear_state",
+			"gameplan.restrictions.clear_state",
 		],
 		"on_update": "gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.on_user_update",
 	},
 }
 
-on_login = "gameplan.www.g.on_login"
+on_login = ["gameplan.restrictions.require_not_suspended", "gameplan.www.g.on_login"]
+auth_hooks = ["gameplan.restrictions.require_not_suspended"]
 
 # Public access: frappe's generic REST routes and doctype-wide realtime rooms would hand
 # anonymous visitors data that gameplan.public_payload never cleans, and the public read
@@ -254,7 +260,10 @@ override_whitelisted_methods = {
 # ---------------
 
 scheduler_events = {
-	"all": ["gameplan.gameplan.doctype.gp_draft.gp_draft.publish_due_drafts"],
+	"all": [
+		"gameplan.gameplan.doctype.gp_draft.gp_draft.publish_due_drafts",
+		"gameplan.restrictions.expire_due",
+	],
 	"hourly": ["gameplan.gameplan.doctype.gp_invitation.gp_invitation.expire_invitations"],
 	"daily": ["gameplan.demo.demo.generate_data_daily", "gameplan.email_digest.send_due_email_digests"],
 }

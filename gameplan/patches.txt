@@ -51,3 +51,5 @@ gameplan.patches.backfill_visibility_from_is_private
 gameplan.gameplan.doctype.gp_user_profile.patches.backfill_first_day_post_counts
 gameplan.gameplan.doctype.gp_reaction.patches.point_reactions_at_their_posts
 gameplan.gameplan.doctype.gp_invitation.patches.hash_invitation_keys
+
+gameplan.patches.backfill_user_restrictions

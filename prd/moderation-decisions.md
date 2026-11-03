@@ -129,7 +129,7 @@ Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/co
 Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
 
 - Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
-- Temporary bans, automatic expiry, and separate silence behavior.
+- Separate silence behavior; timed Community bans and site suspensions are settled below.
 - Flood limits and automatic slow-mode expiry.
 - Bulk actions outside report review, background processing, and batch undo behavior.
 
@@ -211,3 +211,22 @@ Confirmed by Ebrahim:
 - Improve moderation layout and dark-mode contrast using Frappe UI patterns.
 - Removed content must not accept reactions, including reactions by staff viewing originals.
 - Apply shared fixes to source feature branches and the combined forum branch.
+
+## Timed restrictions — November 3, 2026
+
+Confirmed by Ebrahim after grilling:
+- Extend Community bans with optional expiry. Preserve reading, membership, and leave/rejoin protection.
+- Global admins may suspend an entire account across all Frappe apps on the site, including sessions and API access.
+- Presets: 1 hour, 1 day (24 hours), 1 week (168 hours), 30 days (720 hours), indefinite, or a custom timezone-labeled datetime. Each expiry represents one absolute instant and displays locally.
+- Retain Community staff protections. Global admin roles must be removed before site suspension. Never permit self-suspension or restriction of Administrator.
+- Require reasons for impose/change/lift. Record actor, time, old/new expiry. Show reason/expiry to the subject, not other ordinary users.
+- Global-only Account suspensions view has no Community filter. Community bans remain in their existing tab.
+- Email on impose/change/manual lift. Delivery failure cannot undo the restriction. No automatic expiry email.
+- Preserve existing published content and pending submissions; staff can still review them.
+- Expiry takes effect on the next access check, without cron. Independently disabled accounts stay disabled.
+- Record automatic expiry once, attributed to the system, with the actual deadline even when recording happens later.
+- Existing bans remain indefinite. Forum-scale operation and timezone correctness are required.
+
+Implementation choice: store indexed current restriction state separately from immutable action history and from User.enabled. Auth hooks check deadlines; bounded cleanup records expiries afterward.
+
+- PR timing: push this feature and integrate it into `forum-features`. Do not open a draft PR yet; Ebrahim will open the watched-words PR first.
