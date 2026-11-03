@@ -3,6 +3,7 @@ from datetime import timedelta
 
 import frappe
 from frappe.query_builder import Criterion
+from frappe.query_builder.functions import Count
 from frappe.utils import cint, now_datetime
 
 import gameplan
@@ -157,6 +158,20 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 		.run(as_dict=True)
 	)
 	rows = rows[:40]
+	Report = frappe.qb.DocType("GP Report")
+	report_reasons = {}
+	if rows:
+		for result in (
+			frappe.qb.from_(Report)
+			.select(Report.review, Report.reason, Count(Report.name).as_("count"))
+			.where(Report.review.isin([row.name for row in rows]))
+			.groupby(Report.review, Report.reason)
+			.orderby(Report.reason)
+			.run(as_dict=True)
+		):
+			report_reasons.setdefault(result.review, []).append(
+				{"reason": result.reason, "count": result.count}
+			)
 	comment_names = {row.reference_name for row in rows if row.reference_doctype == "GP Comment"}
 	comment_discussions = {}
 	if comment_names:
@@ -184,6 +199,7 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 			else comment_discussions.get(row.reference_name)
 		)
 		row["discussion_title"] = discussion_titles.get(discussion, "")
+		row["report_reasons"] = report_reasons.get(row.name, [])
 	return {"items": rows, "has_more": len(rows) > 40}
 
 
