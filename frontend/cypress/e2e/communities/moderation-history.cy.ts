@@ -84,6 +84,7 @@ describe('Community moderation history', () => {
         community: ids.community,
         user: 'member@example.com',
         banned: 0,
+        reason: 'Ban lifted',
       })
       cy.visit(`/g/community/${ids.community}/moderation`)
       cy.contains('button', /^History$/).click()
