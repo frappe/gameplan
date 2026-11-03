@@ -9,7 +9,14 @@
       >
         Stop Poll
       </Button>
-      <Tooltip v-else-if="!embedded" text="This is a poll">
+      <Tooltip v-if="!embedded && !_poll.anonymous" text="Show results">
+        <Button variant="ghost" label="Show results" @click="showDialog = true">
+          <template #icon>
+            <span class="lucide-bar-chart-2 size-4 -rotate-90" aria-hidden="true" />
+          </template>
+        </Button>
+      </Tooltip>
+      <Tooltip v-else-if="!embedded && !canStopPoll" text="This is a poll">
         <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
       </Tooltip>
       <Dropdown
@@ -333,14 +340,6 @@ const pollResults = computed(() => {
   }))
 })
 const dropdownOptions = computed(() => [
-  {
-    label: 'Show results',
-    icon: 'lucide-bar-chart-2',
-    condition: () => !props.embedded && !_poll.value.anonymous,
-    onClick: () => {
-      showDialog.value = true
-    },
-  },
   {
     label: 'Stop poll',
     icon: 'lucide-minus-circle',
