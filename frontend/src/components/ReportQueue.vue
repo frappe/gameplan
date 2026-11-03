@@ -1,10 +1,13 @@
 <template>
-  <Select
-    v-model="status"
-    class="my-4 max-w-xs"
-    label="Review status"
-    :options="['Pending', 'Resolved']"
-  />
+  <div class="my-4 flex flex-wrap gap-4">
+    <Select
+      v-model="status"
+      class="w-full max-w-xs"
+      label="Review status"
+      :options="['Pending', 'Resolved']"
+    />
+    <Select v-model="sortBy" class="w-full max-w-xs" label="Sort by" :options="sortOptions" />
+  </div>
   <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-3">
     <Button :disabled="!items.length || selected.size + unselected.length > 50" @click="selectPage"
       >Select this page</Button
@@ -49,8 +52,9 @@
           {{ item.discussion_title }}
         </p>
         <p class="mt-1 text-base text-ink-gray-5">
+          {{ item.report_count }} {{ item.report_count === 1 ? 'report' : 'reports' }} ·
           {{ item.decision || 'Pending review' }} ·
-          {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
+          {{ dayjsLocal(item.last_reported_at).format('D MMM YYYY [at] h:mm A') }}
         </p>
       </div>
       <Button @click="openReview(item)">Review</Button>
@@ -225,11 +229,16 @@ function bulkComplete() {
   load()
 }
 const status = ref('Pending'),
+  sortBy = ref('recent'),
   start = ref(0),
   hasMore = ref(false),
   loading = ref(false)
 const items = ref<Review[]>([]),
   error = ref<unknown>(null)
+const sortOptions = [
+  { label: 'Recent', value: 'recent' },
+  { label: 'Most reported', value: 'most_reported' },
+]
 const selectedReport = ref('')
 const view = ref('current')
 const evidenceLoading = ref(false)
@@ -279,6 +288,7 @@ async function load() {
     const result = await call<{ items: Review[]; has_more: boolean }>('gameplan.reporting.queue', {
       community: props.communityId,
       status: status.value,
+      sort_by: sortBy.value,
       start: start.value,
     })
     if (current === request) {
@@ -302,6 +312,10 @@ watch(
   },
   { immediate: true },
 )
+watch(sortBy, () => {
+  start.value = 0
+  load()
+})
 function changePage(delta: number) {
   start.value += delta
   load()
