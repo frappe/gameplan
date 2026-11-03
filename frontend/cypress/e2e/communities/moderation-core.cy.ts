@@ -142,8 +142,7 @@ describe('Community moderation core', () => {
         reply().find('button[aria-label="Comment Options"]').click()
         cy.contains('[role="menuitem"]', 'Delete spam').click()
         confirmRemoval('Delete spam')
-        reply().should('contain.text', 'This reply was removed by a moderator.')
-        reply().should('not.contain.text', 'Spam reply sentinel')
+        reply().should('not.exist')
         cy.visit(moderationPath(ids.community!))
         cy.contains('[role="combobox"]', 'Discussions').click()
         cy.contains('[role="option"]', 'Replies').click()
@@ -153,6 +152,10 @@ describe('Community moderation core', () => {
         cy.contains('button', 'Restore').click()
         cy.get('[role="dialog"]').contains('button', 'Restore').click()
         cy.contains('No removed content.').should('be.visible')
+        cy.visit(
+          `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+        )
+        reply().should('contain.text', 'Spam reply sentinel')
       })
     })
   })
