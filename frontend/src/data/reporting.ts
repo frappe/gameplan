@@ -35,7 +35,8 @@ export type Review = {
   reference_doctype: string
   reference_name: string
   discussion_title?: string
-  creation?: string
+  report_count: number
+  last_reported_at: string
   decision?: string
 }
 export type ReviewDetails = {
