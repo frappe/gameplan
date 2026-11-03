@@ -23,8 +23,9 @@ DECISIONS = ("Dismiss", "Uphold", "Hide", "Delete Spam")
 @frappe.whitelist(methods=["POST"])
 def submit(doctype: str, name: str, reason: str, note: str = ""):
 	user = frappe.session.user
-	if gameplan.is_anonymous(user) or not set(frappe.get_roles(user)).intersection(
-		{"Gameplan Member", "Gameplan Guest", "Gameplan Admin", "System Manager"}
+	roles = set(frappe.get_roles(user))
+	if gameplan.is_anonymous(user) or not (
+		roles.intersection({"Gameplan Member", "Gameplan Guest"}) or gameplan.is_admin(user)
 	):
 		frappe.throw("Sign in to report content", frappe.PermissionError)
 	doc = target(doctype, name)
@@ -93,15 +94,25 @@ def submit(doctype: str, name: str, reason: str, note: str = ""):
 		reported_title=doc.get("title"),
 		reported_content=doc.content,
 	).insert(ignore_permissions=True, ignore_links=bool(pending))
+	frappe.db.sql(
+		"""
+		UPDATE `tabGP Review`
+		SET `report_count` = `report_count` + 1, `last_reported_at` = %s
+		WHERE `name` = %s
+		""",
+		(report.creation, review),
+	)
 	return {"name": report.name}
 
 
 @frappe.whitelist(methods=["GET", "POST"])
-def queue(community: str, status: str = "Pending", start: int = 0):
+def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str = "recent"):
 	if not can_moderate_community(community):
 		frappe.throw("Only Community moderators can review reports", frappe.PermissionError)
 	if status not in ("Pending", "Resolved"):
 		frappe.throw("Unsupported review status")
+	if sort_by not in ("recent", "most_reported"):
+		frappe.throw("Unsupported report sort")
 	Project, Discussion, Comment, Review = [
 		frappe.qb.DocType(dt) for dt in ("GP Project", "GP Discussion", "GP Comment", "GP Review")
 	]
@@ -120,25 +131,31 @@ def queue(community: str, status: str = "Pending", start: int = 0):
 			(Review.reference_doctype == "GP Comment") & Review.reference_name.isin(replies),
 		]
 	)
-	rows = (
+	rows_query = (
 		frappe.qb.from_(Review)
 		.select(
 			Review.name,
 			Review.reference_doctype,
 			Review.reference_name,
 			Review.status,
-			Review.creation,
+			Review.report_count,
+			Review.last_reported_at,
 			Review.decision,
 			Review.decided_by,
 			Review.decided_at,
 			Review.decision_note,
 		)
 		.where(visible & (Review.status == status))
-		.orderby(Review.creation, order=frappe.qb.desc)
+	)
+	if sort_by == "most_reported":
+		rows_query = rows_query.orderby(Review.report_count, order=frappe.qb.desc)
+	rows = (
+		rows_query.orderby(Review.last_reported_at, order=frappe.qb.desc)
 		.orderby(Review.name, order=frappe.qb.desc)
 		.offset(max(0, cint(start)))
 		.limit(41)
-	).run(as_dict=True)
+		.run(as_dict=True)
+	)
 	rows = rows[:40]
 	comment_names = {row.reference_name for row in rows if row.reference_doctype == "GP Comment"}
 	comment_discussions = {}

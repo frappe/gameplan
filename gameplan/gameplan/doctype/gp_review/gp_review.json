@@ -11,6 +11,8 @@
   "reference_doctype",
   "reference_name",
   "status",
+  "report_count",
+  "last_reported_at",
   "decision",
   "decision_note",
   "decided_by",
@@ -40,6 +42,19 @@
    "label": "Status",
    "options": "Pending\nResolved",
    "reqd": 1
+  },
+  {
+    "default": "0",
+    "fieldname": "report_count",
+    "fieldtype": "Int",
+    "label": "Report Count",
+    "read_only": 1
+  },
+  {
+    "fieldname": "last_reported_at",
+    "fieldtype": "Datetime",
+    "label": "Last Reported At",
+    "read_only": 1
   },
   {
    "fieldname": "decision",
