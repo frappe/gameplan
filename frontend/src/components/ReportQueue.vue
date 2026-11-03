@@ -109,8 +109,8 @@
             class="mt-4"
             :loading="evidenceLoading"
             :disabled="resolving"
-            @click="loadReview(activeReport.name)"
-            >View reported version</Button
+            @click="view === 'reported' ? (view = 'current') : loadReview(activeReport.name)"
+            >{{ view === 'reported' ? 'View current version' : 'View reported version' }}</Button
           >
         </section>
         <div v-if="reportStart || details.has_more" class="flex gap-2">
@@ -148,7 +148,6 @@
           {{ useUser(details.current.owner).full_name }}
         </p>
         <div class="flex gap-2">
-          <Button v-if="view === 'reported'" @click="view = 'current'">Current post</Button>
           <Button
             :route="{
               name: 'Discussion',
