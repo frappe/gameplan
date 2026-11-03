@@ -52,6 +52,9 @@
         >
           {{ item.discussion_title }}
         </p>
+        <p v-if="item.report_reasons.length" class="mt-1 text-p-sm text-ink-gray-6">
+          {{ item.report_reasons.map(({ reason, count }) => `${reason}: ${count}`).join(' · ') }}
+        </p>
         <p class="mt-1 text-base text-ink-gray-5">
           {{ item.report_count }} {{ item.report_count === 1 ? 'report' : 'reports' }} ·
           {{ item.decision || 'Pending review' }} ·

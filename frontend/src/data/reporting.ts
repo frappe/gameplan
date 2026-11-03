@@ -37,6 +37,7 @@ export type Review = {
   discussion_title?: string
   report_count: number
   last_reported_at: string
+  report_reasons: { reason: string; count: number }[]
   decision?: string
 }
 export type ReviewDetails = {
