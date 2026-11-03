@@ -1,10 +1,13 @@
 <template>
-  <Select
-    v-model="status"
-    class="my-4 max-w-xs"
-    label="Review status"
-    :options="['Pending', 'Resolved']"
-  />
+  <div class="my-4 flex flex-wrap gap-4">
+    <Select
+      v-model="status"
+      class="w-full max-w-xs"
+      label="Review status"
+      :options="['Pending', 'Resolved']"
+    />
+    <Select v-model="sortBy" class="w-full max-w-xs" label="Sort by" :options="sortOptions" />
+  </div>
   <ErrorMessage
     v-if="error"
     class="mt-3"
@@ -30,8 +33,9 @@
           {{ item.discussion_title }}
         </p>
         <p class="mt-1 text-base text-ink-gray-5">
+          {{ item.report_count }} {{ item.report_count === 1 ? 'report' : 'reports' }} ·
           {{ item.decision || 'Pending review' }} ·
-          {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
+          {{ dayjsLocal(item.last_reported_at).format('D MMM YYYY [at] h:mm A') }}
         </p>
       </div>
       <Button @click="openReview(item)">Review</Button>
@@ -185,7 +189,8 @@ type Review = {
   reference_doctype: string
   reference_name: string
   discussion_title?: string
-  creation: string
+  report_count: number
+  last_reported_at: string
   decision?: string
 }
 type Details = {
@@ -217,11 +222,16 @@ type Details = {
   has_more: boolean
 }
 const status = ref('Pending'),
+  sortBy = ref('recent'),
   start = ref(0),
   hasMore = ref(false),
   loading = ref(false)
 const items = ref<Review[]>([]),
   error = ref<unknown>(null)
+const sortOptions = [
+  { label: 'Recent', value: 'recent' },
+  { label: 'Most reported', value: 'most_reported' },
+]
 const selectedReport = ref('')
 const view = ref('current')
 const evidenceLoading = ref(false)
@@ -271,6 +281,7 @@ async function load() {
     const result = await call<{ items: Review[]; has_more: boolean }>('gameplan.reporting.queue', {
       community: props.communityId,
       status: status.value,
+      sort_by: sortBy.value,
       start: start.value,
     })
     if (current === request) {
@@ -284,7 +295,7 @@ async function load() {
   }
 }
 watch(
-  [() => props.communityId, status],
+  [() => props.communityId, status, sortBy],
   () => {
     start.value = 0
     showReview.value = false
