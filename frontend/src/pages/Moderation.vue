@@ -1,12 +1,15 @@
 <template>
+  <PageHeaderMobile class="sm:hidden" title="Moderation">
+    <template #prefix><PageHeaderBackButton :fallback-route="{ name: 'More' }" /></template>
+  </PageHeaderMobile>
+  <PageHeader class="hidden sm:flex">
+    <Breadcrumbs :items="[{ label: 'Moderation', route: { name: 'Moderation' } }]" />
+  </PageHeader>
   <div class="mx-auto w-full max-w-6xl px-4 py-6 text-ink-gray-9 sm:px-8">
-    <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <div class="space-y-2">
-        <h1 class="text-2xl-semibold">Moderation</h1>
-        <p class="text-base text-ink-gray-6">
-          Review content and manage participation across your Communities.
-        </p>
-      </div>
+    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <p class="text-base text-ink-gray-6">
+        Review content and manage participation across your Communities.
+      </p>
       <Select
         v-if="options.length"
         v-model="selected"
@@ -14,7 +17,7 @@
         class="w-full sm:w-64"
         :options="options"
       />
-    </header>
+    </div>
     <CommunityModeration v-if="selected" :key="selected" :community-id="selected" />
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
       Only Community moderators can open this page.
@@ -24,7 +27,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Select } from 'frappe-ui'
+import { Breadcrumbs, PageHeader, PageHeaderBackButton, PageHeaderMobile, Select } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import { useSessionUser } from '@/data/users'
 import { canModerateCommunity } from '@/utils/permissions'
