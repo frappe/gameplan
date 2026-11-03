@@ -1,7 +1,7 @@
 """Current restriction state; moderation history is evidence, not an authorization index."""
 
 import hashlib
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import frappe
 from frappe.utils import cint, get_datetime
@@ -12,7 +12,7 @@ from gameplan.permissions import is_global_admin
 
 def utc_now():
 	# Deadlines are UTC instants, independent of the site's mutable timezone and DST folds.
-	return datetime.now(UTC).replace(tzinfo=None)
+	return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def restriction_name(user, community=""):
@@ -57,7 +57,7 @@ def expiry_from_iso(value):
 		parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
 		if parsed.tzinfo is None:
 			raise ValueError
-		result = parsed.astimezone(UTC).replace(tzinfo=None)
+		result = parsed.astimezone(timezone.utc).replace(tzinfo=None)
 	except (AttributeError, TypeError, ValueError, OverflowError):
 		frappe.throw("Expiry must include a valid timezone")
 	if result <= utc_now():
@@ -66,7 +66,7 @@ def expiry_from_iso(value):
 
 
 def iso_expiry(value):
-	return get_datetime(value).replace(tzinfo=UTC).isoformat() if value else None
+	return get_datetime(value).replace(tzinfo=timezone.utc).isoformat() if value else None
 
 
 @frappe.whitelist(methods=["POST"])
