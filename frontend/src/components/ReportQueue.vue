@@ -9,10 +9,11 @@
     <Select v-model="sortBy" class="w-full max-w-xs" label="Sort by" :options="sortOptions" />
   </div>
   <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-3">
-    <Button :disabled="!items.length || selected.size + unselected.length > 50" @click="selectPage"
-      >Select this page</Button
+    <Button
+      :disabled="!pageSelected && (!items.length || selected.size + unselected.length > 50)"
+      @click="togglePageSelection"
+      >{{ pageSelected ? 'Clear selection' : 'Select this page' }}</Button
     >
-    <Button :disabled="!selected.size" @click="selected.clear()">Clear selection</Button>
     <span role="status" class="text-base text-ink-gray-6">{{ selected.size }} of 50 selected</span>
     <Button :disabled="!selected.size" variant="solid" @click="showBulk = true"
       >Review selected</Button
@@ -215,6 +216,7 @@ const props = defineProps<{ communityId: string }>()
 const selected = ref(new Set<string>())
 const showBulk = ref(false)
 const unselected = computed(() => items.value.filter((item) => !selected.value.has(item.name)))
+const pageSelected = computed(() => items.value.length > 0 && unselected.value.length === 0)
 function toggleSelection(name: string, checked: boolean) {
   if (!checked) selected.value.delete(name)
   else if (selected.value.size < 50) selected.value.add(name)
@@ -222,6 +224,13 @@ function toggleSelection(name: string, checked: boolean) {
 function selectPage() {
   if (selected.value.size + unselected.value.length > 50) return
   for (const item of items.value) selected.value.add(item.name)
+}
+function togglePageSelection() {
+  if (pageSelected.value) {
+    for (const item of items.value) selected.value.delete(item.name)
+  } else {
+    selectPage()
+  }
 }
 function bulkComplete() {
   selected.value.clear()
