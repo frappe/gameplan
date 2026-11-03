@@ -202,7 +202,9 @@ function moderateReply(spam = false) {
     title: restore ? 'Restore reply' : spam ? 'Delete spam' : 'Hide reply',
     message: restore
       ? 'Make this reply visible again?'
-      : 'The reply will show a placeholder. Existing quotations in other posts stay unchanged.',
+      : spam
+        ? 'The reply will disappear from the thread and can be restored from Removed content.'
+        : 'The reply will show a placeholder. Existing quotations in other posts stay unchanged.',
     fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
     confirmLabel: restore ? 'Restore reply' : spam ? 'Delete spam' : 'Hide reply',
     onConfirm: async ({ values }) => {
