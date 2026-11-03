@@ -1,146 +1,146 @@
 <template>
   <div class="text-ink-gray-9">
     <template v-if="canModerate">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <TabButtons
-          v-model="tab"
-          class="shrink-0"
-          :options="[
-            { label: 'Approvals', value: 'approvals' },
-            { label: 'Reports', value: 'reports' },
-            { label: 'Removed content', value: 'removed' },
-            { label: 'Community bans', value: 'bans' },
-            ...(canManageCommunity(community, useSessionUser())
-              ? [{ label: 'Watched words', value: 'words' }]
-              : []),
-            { label: 'History', value: 'history' },
-          ]"
+      <ModerationSidebar
+        v-model="tab"
+        :options="[
+          { label: 'Approvals', value: 'approvals' },
+          { label: 'Reports', value: 'reports' },
+          { label: 'Removed content', value: 'removed' },
+          { label: 'Community bans', value: 'bans' },
+          ...(canManageCommunity(community, useSessionUser())
+            ? [{ label: 'Watched words', value: 'words' }]
+            : []),
+          { label: 'History', value: 'history' },
+        ]"
+      >
+        <template #actions>
+          <ApprovalSettings
+            v-if="tab === 'approvals' && canManageCommunity(community, useSessionUser())"
+            :key="communityId"
+            :community-id="communityId"
+          />
+        </template>
+        <ErrorMessage
+          v-if="error"
+          class="mt-4"
+          :message="extractServerMessage(error) || 'Could not load moderation data'"
         />
-        <ApprovalSettings
-          v-if="canManageCommunity(community, useSessionUser())"
-          :key="communityId"
+        <WatchedWords
+          v-if="tab === 'words' && canManageCommunity(community, useSessionUser())"
           :community-id="communityId"
-          class="ml-auto shrink-0"
         />
-      </div>
-      <ErrorMessage
-        v-if="error"
-        class="mt-4"
-        :message="extractServerMessage(error) || 'Could not load moderation data'"
-      />
-      <WatchedWords
-        v-if="tab === 'words' && canManageCommunity(community, useSessionUser())"
-        :community-id="communityId"
-      />
-      <template v-if="tab === 'removed'">
-        <Select
-          v-model="doctype"
-          class="my-4 max-w-xs"
-          aria-label="Content type"
-          :options="[
-            { label: 'Discussions', value: 'GP Discussion' },
-            { label: 'Replies', value: 'GP Comment' },
-          ]"
-        />
-        <div v-for="item in items" :key="item.name" class="border-b border-outline-gray-2 py-5">
-          <div class="text-base-medium text-ink-gray-9">{{ item.title }}</div>
-          <p class="mt-1 text-base text-ink-gray-5">
-            {{ item.spam_removed_at ? 'Spam removed' : 'Hidden' }} ·
-            {{ useUser(item.owner).full_name }}
-          </p>
-          <p class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">{{ item.reason }}</p>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <Button @click="preview(item)">Preview</Button>
-            <Button
-              :route="{
-                name: 'Discussion',
-                params: {
-                  communityId,
-                  spaceId: item.project,
-                  postId: item.discussion,
-                  slug: item.slug,
-                },
-              }"
-              >Open discussion</Button
+        <template v-if="tab === 'removed'">
+          <Select
+            v-model="doctype"
+            class="my-4 max-w-xs"
+            aria-label="Content type"
+            :options="[
+              { label: 'Discussions', value: 'GP Discussion' },
+              { label: 'Replies', value: 'GP Comment' },
+            ]"
+          />
+          <div v-for="item in items" :key="item.name" class="border-b border-outline-gray-2 py-5">
+            <div class="text-base-medium text-ink-gray-9">{{ item.title }}</div>
+            <p class="mt-1 text-base text-ink-gray-5">
+              {{ item.spam_removed_at ? 'Spam removed' : 'Hidden' }} ·
+              {{ useUser(item.owner).full_name }}
+            </p>
+            <p class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">{{ item.reason }}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <Button @click="preview(item)">Preview</Button>
+              <Button
+                :route="{
+                  name: 'Discussion',
+                  params: {
+                    communityId,
+                    spaceId: item.project,
+                    postId: item.discussion,
+                    slug: item.slug,
+                  },
+                }"
+                >Open discussion</Button
+              >
+              <Button @click="restore(item)">Restore</Button>
+            </div>
+            <div
+              v-if="selected === item.name"
+              class="mt-3 max-h-96 overflow-y-auto rounded-5 border border-outline-gray-2 bg-surface-gray-1 p-4"
             >
-            <Button @click="restore(item)">Restore</Button>
+              <CommentEditor :value="previewContent" :editable="false" />
+            </div>
+          </div>
+          <p v-if="!loading && !items.length" class="mt-5 text-base text-ink-gray-5">
+            No removed content.
+          </p>
+          <div class="mt-4 flex gap-2">
+            <Button v-if="start > 0" @click="start -= 40">Previous</Button>
+            <Button v-if="hasMore" @click="start += 40">Next</Button>
+          </div>
+        </template>
+        <template v-else-if="tab === 'bans'">
+          <p class="my-4 text-base text-ink-gray-5">
+            Bans block participation in this Community until lifted. Reading and participation
+            elsewhere stay available.
+          </p>
+          <div class="flex items-center gap-2">
+            <Combobox
+              v-model="targetUser"
+              v-model:query="userQuery"
+              :open="userPickerOpen"
+              :loading="userSearchLoading"
+              variant="outline"
+              open-on-click
+              label="User"
+              placeholder="Name or email"
+              description="Browse eligible members or type at least 2 characters to search."
+              class="min-w-0 flex-1"
+              :options="userOptions"
+              :filterable="false"
+              :empty-text="
+                userQuery.trim().length === 1
+                  ? 'Type one more character to search.'
+                  : 'No eligible members match this search.'
+              "
+              @update:open="setUserPickerOpen"
+            >
+              <template #item-prefix="{ item }">
+                <Avatar :image="item.image" :label="item.label" size="sm" />
+              </template>
+            </Combobox>
+            <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
           </div>
           <div
-            v-if="selected === item.name"
-            class="mt-3 max-h-96 overflow-y-auto rounded-5 border border-outline-gray-2 bg-surface-gray-1 p-4"
+            v-for="ban in bans"
+            :key="ban.user"
+            class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
           >
-            <CommentEditor :value="previewContent" :editable="false" />
+            <div>
+              <div class="text-base-medium text-ink-gray-9">{{ useUser(ban.user).full_name }}</div>
+              <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
+            </div>
+            <Button @click="liftBan(ban.user)">Lift ban</Button>
           </div>
-        </div>
-        <p v-if="!loading && !items.length" class="mt-5 text-base text-ink-gray-5">
-          No removed content.
-        </p>
-        <div class="mt-4 flex gap-2">
-          <Button v-if="start > 0" @click="start -= 40">Previous</Button>
-          <Button v-if="hasMore" @click="start += 40">Next</Button>
-        </div>
-      </template>
-      <template v-else-if="tab === 'bans'">
-        <p class="my-4 text-base text-ink-gray-5">
-          Bans block participation in this Community until lifted. Reading and participation
-          elsewhere stay available.
-        </p>
-        <div class="flex items-center gap-2">
-          <Combobox
-            v-model="targetUser"
-            v-model:query="userQuery"
-            :open="userPickerOpen"
-            :loading="userSearchLoading"
-            variant="outline"
-            open-on-click
-            label="User"
-            placeholder="Name or email"
-            description="Browse eligible members or type at least 2 characters to search."
-            class="min-w-0 flex-1"
-            :options="userOptions"
-            :filterable="false"
-            :empty-text="
-              userQuery.trim().length === 1
-                ? 'Type one more character to search.'
-                : 'No eligible members match this search.'
-            "
-            @update:open="setUserPickerOpen"
-          >
-            <template #item-prefix="{ item }">
-              <Avatar :image="item.image" :label="item.label" size="sm" />
-            </template>
-          </Combobox>
-          <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
-        </div>
-        <div
-          v-for="ban in bans"
-          :key="ban.user"
-          class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
-        >
-          <div>
-            <div class="text-base-medium text-ink-gray-9">{{ useUser(ban.user).full_name }}</div>
-            <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
+          <div class="mt-4 flex gap-2">
+            <Button v-if="start" @click="start -= 40">Previous</Button>
+            <Button v-if="hasMore" @click="start += 40">Next</Button>
           </div>
-          <Button @click="liftBan(ban.user)">Lift ban</Button>
-        </div>
-        <div class="mt-4 flex gap-2">
-          <Button v-if="start" @click="start -= 40">Previous</Button>
-          <Button v-if="hasMore" @click="start += 40">Next</Button>
-        </div>
-        <p v-if="!loading && !bans.length" class="mt-5 text-base text-ink-gray-5">
-          No active Community bans.
-        </p>
-      </template>
-      <ApprovalQueue v-if="tab === 'approvals'" :key="communityId" :community-id="communityId" />
-      <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
-      <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
-      <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
+          <p v-if="!loading && !bans.length" class="mt-5 text-base text-ink-gray-5">
+            No active Community bans.
+          </p>
+        </template>
+        <ApprovalQueue v-if="tab === 'approvals'" :key="communityId" :community-id="communityId" />
+        <ReportQueue v-if="tab === 'reports'" :communityId="communityId" />
+        <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
+        <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
+      </ModerationSidebar>
     </template>
     <p v-else class="text-base text-ink-gray-5">Only Community moderators can open this page.</p>
   </div>
 </template>
 
 <script setup lang="ts">
+import ModerationSidebar from '@/components/ModerationSidebar.vue'
 import WatchedWords from '@/components/WatchedWords.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ApprovalQueue from '@/components/ApprovalQueue.vue'
@@ -148,17 +148,7 @@ import ApprovalSettings from '@/components/ApprovalSettings.vue'
 import ReportQueue from '@/components/ReportQueue.vue'
 import { useRoute, useRouter } from 'vue-router'
 import ModerationHistory from '@/components/ModerationHistory.vue'
-import {
-  Avatar,
-  Button,
-  Combobox,
-  Select,
-  TabButtons,
-  ErrorMessage,
-  call,
-  dialog,
-  useDoctype,
-} from 'frappe-ui'
+import { Avatar, Button, Combobox, Select, ErrorMessage, call, dialog, useDoctype } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import { useCommunity } from '@/data/communities'
 import { useSessionUser, useUser } from '@/data/users'
