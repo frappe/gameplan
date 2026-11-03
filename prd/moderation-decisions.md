@@ -62,7 +62,7 @@ A recommendation becomes a decision only after Ebrahim accepts it.
 | D50 | Include Block, Require approval, Flag, and Censor in watched words. | Apply rules to discussion titles, bodies, replies, and edits. |
 | D51 | Community/global admins manage Community word lists. | Moderators enforce rules but cannot change them. |
 | D52 | CSV imports add rules after a preview. | Skip duplicates. Reject the whole import for invalid rows. Preserve existing rules. |
-| D53 | Match whole words or phrases, ignoring case by default. | Support * wildcards and optional case sensitivity. Do not accept arbitrary regex. |
+| D53 | Match whole words or phrases, ignoring case by default. Censor also matches inside words and masks the containing word. | Support * wildcards and optional case sensitivity. Do not accept arbitrary regex. |
 | D54 | Community staff and global admins bypass Block, Require approval, and Flag. | Censor still applies to displayed staff posts. |
 | D55 | Preserve code and working URLs. | Check prose, link labels, and destinations for write actions. Censor visible prose only. |
 | D56 | Hold approval-triggering edits privately while the published version stays visible. | Approval updates the same post. Reject stale proposals after published changes. |

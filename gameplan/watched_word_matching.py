@@ -18,11 +18,14 @@ def rules_for(community, action):
 
 
 @lru_cache(maxsize=8192)
-def pattern(word, case_sensitive=False):
+def pattern(word, case_sensitive=False, inside_words=False):
 	# fnmatch uses atomic groups for internal wildcards, avoiding exponential backtracking.
 	translated = fnmatch.translate(word.replace("[", "[[]").replace("?", "[?]"))[4:-3]
 	translated = translated.replace(".*?", r"\S*?").replace(".*", r"\S*")
-	return re.compile(r"(?<!\w)(?:" + translated + r")(?!\w)", 0 if case_sensitive else re.IGNORECASE)
+	boundaries = ("", "") if inside_words else (r"(?<!\w)", r"(?!\w)")
+	return re.compile(
+		boundaries[0] + "(?:" + translated + ")" + boundaries[1], 0 if case_sensitive else re.IGNORECASE
+	)
 
 
 def prose(content, *, links=False):
@@ -54,8 +57,17 @@ def censor(community, text, *, html=False):
 	def mask(value):
 		characters = list(value)
 		for row in rules:
-			for match in pattern(row.word, row.case_sensitive).finditer(value):
-				characters[match.start() : match.end()] = "■" * (match.end() - match.start())
+			last_end = 0
+			for match in pattern(row.word, row.case_sensitive, inside_words=True).finditer(value):
+				start, end = match.span()
+				if end <= last_end:
+					continue
+				while start > last_end and (value[start - 1].isalnum() or value[start - 1] == "_"):
+					start -= 1
+				while end < len(value) and (value[end].isalnum() or value[end] == "_"):
+					end += 1
+				characters[start:end] = "■" * (end - start)
+				last_end = end
 		return "".join(characters)
 
 	if not html:

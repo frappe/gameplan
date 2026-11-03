@@ -72,6 +72,11 @@ class TestWatchedWords(GameplanTestCase):
 
 	def test_censor_is_scoped_non_destructive_and_preserves_markup_code_and_urls(self):
 		self.rule("Censor", "spam")
+		self.assertEqual(censor(self.community.name, "antispam spammer SPAM"), "■■■■■■■■ ■■■■■■■ ■■■■")
+		self.assertEqual(
+			censor(self.community.name, "<p>anti<strong>spam</strong>mer</p>", html=True),
+			"<p>■■■■<strong>■■■■</strong>■■■</p>",
+		)
 		source = '<p>sp<strong>am</strong> <code>spam</code> <a href="https://spam.example">https://spam.example</a></p>'
 		masked = censor(self.community.name, source, html=True)
 		self.assertIn("■■<strong>■■</strong>", masked)
