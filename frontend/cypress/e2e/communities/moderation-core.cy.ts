@@ -143,6 +143,12 @@ describe('Community moderation core', () => {
         cy.contains('[role="menuitem"]', 'Delete spam').click()
         confirmRemoval('Delete spam')
         reply().should('not.exist')
+        cy.switchUser('member')
+        cy.visit(
+          `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
+        )
+        reply().should('not.exist')
+        cy.switchUser('secondMember')
         cy.visit(moderationPath(ids.community!))
         cy.contains('[role="combobox"]', 'Discussions').click()
         cy.contains('[role="option"]', 'Replies').click()
@@ -152,6 +158,7 @@ describe('Community moderation core', () => {
         cy.contains('button', 'Restore').click()
         cy.get('[role="dialog"]').contains('button', 'Restore').click()
         cy.contains('No removed content.').should('be.visible')
+        cy.switchUser('member')
         cy.visit(
           `/g/community/${ids.community}/space/${ids.space}/discussion/${ids.discussion}/${ids.discussion_slug}`,
         )
