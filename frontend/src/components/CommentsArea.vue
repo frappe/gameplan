@@ -386,6 +386,7 @@ const comments = useList<GPComment>({
   filters: {
     reference_doctype: props.doctype,
     reference_name: props.name,
+    spam_removed_at: ['is', 'not set'],
   },
   orderBy: 'creation asc, name asc',
   start: publicPageStart(),
@@ -516,7 +517,7 @@ watchEffect(() => {
 const timelineItems = computed(() => {
   let items: Array<GPComment | GPActivity | GPPoll> = []
   if (comments.data?.length) {
-    items = items.concat(comments.data)
+    items = items.concat(comments.data.filter((comment) => !comment.spam_removed_at))
   }
   if (activities.data?.length) {
     items = items.concat(activities.data)
