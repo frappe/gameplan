@@ -2,7 +2,10 @@ import { resetData, type SeedIds } from '../../support/seed'
 
 function moderation(ids: SeedIds) {
   cy.visit(`/g/community/${ids.community}/moderation`)
-  cy.contains('button', /^\s*Approvals\s*$/).click()
+  cy.contains('h2', 'Approvals').should('be.visible')
+  cy.get('[aria-label="Moderation sections"] [data-state="active"]')
+    .should('have.length', 1)
+    .and('contain.text', 'Approvals')
 }
 function policy(ids: SeedIds, count = 3) {
   cy.request('POST', '/api/method/gameplan.approval_policy.set_policy', {

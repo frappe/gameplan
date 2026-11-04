@@ -198,7 +198,7 @@ const tab = computed({
   get: () =>
     ['approvals', 'reports', 'removed', 'bans', 'history'].includes(String(route.query.tab))
       ? String(route.query.tab)
-      : 'removed',
+      : 'approvals',
   set: (value) => {
     router.replace({ query: { ...route.query, tab: value } })
   },
