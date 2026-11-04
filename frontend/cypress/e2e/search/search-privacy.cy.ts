@@ -24,4 +24,25 @@ describe('Search privacy', () => {
     cy.contains('Public roadmap').should('be.visible')
     cy.contains('Secret thread').should('not.exist')
   })
+
+  it('keeps Guest search and author filters usable without exposing account emails', () => {
+    cy.loginAs('guest')
+    cy.intercept('GET', '**/gameplan.api.search_sqlite*').as('search')
+    cy.visit(`/g/search?q=${term}`)
+    cy.wait('@search').then(({ response }) => {
+      expect(response?.statusCode).to.eq(200)
+      expect(JSON.stringify(response?.body)).not.to.include('member@example.com')
+    })
+    cy.contains('Secret thread').should('be.visible')
+    cy.contains('Public roadmap').should('not.exist')
+    cy.button('Author').click()
+    cy.contains('[role="option"]', 'Member').click()
+    cy.get('body').type('{esc}')
+    cy.wait('@search').then(({ response }) => {
+      expect(response?.statusCode).to.eq(200)
+      expect(JSON.stringify(response?.body)).not.to.include('member@example.com')
+    })
+    cy.contains('Secret thread').should('be.visible').click()
+    cy.contains('h1', 'Secret thread').should('be.visible')
+  })
 })

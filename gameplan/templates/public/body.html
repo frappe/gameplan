@@ -1,0 +1,49 @@
+<main class="public-document" data-public-content>
+  <header>
+    <nav aria-label="Breadcrumbs">
+      <a href="/g">Communities</a>
+      {% for item in seo.breadcrumbs %}
+      <span aria-hidden="true"> / </span><a href="{{ item.path | e }}">{{ item.title | e }}</a>
+      {% endfor %}
+    </nav>
+    <a href="{{ seo.login | e }}">Log in to participate</a>
+    <h1>{{ (seo.discussion.title if seo.discussion else seo.title) | e }}</h1>
+  </header>
+  {% if seo.spaces %}
+  <nav aria-label="Spaces">
+    {% for space in seo.spaces %}<a href="{{ space.path | e }}">{{ space.title | e }}</a> {% endfor %}
+  </nav>
+  {% endif %}
+  {% if seo.discussion %}
+  <article>
+    <p>{{ seo.discussion.owner | e }} · <time datetime="{{ seo.discussion.creation | e }}">{{ seo.discussion.creation | e }}</time></p>
+    <div class="public-post">{{ seo.discussion.content }}</div>
+  </article>
+  {% for poll in seo.polls %}
+  <section aria-label="Poll">
+    <h2>{{ poll.title | e }}</h2>
+    <ul>{% for option in poll.options %}<li>{{ option.title | e }}: {{ option.percentage | e }}%</li>{% endfor %}</ul>
+  </section>
+  {% endfor %}
+  <section aria-label="Replies">
+    {% for comment in seo.comments %}
+    <article id="comment-{{ comment.name | e }}">
+      <p>{{ comment.owner | e }} · <time datetime="{{ comment.creation | e }}">{{ comment.creation | e }}</time></p>
+      {% if comment.deleted_at %}<p>This message is deleted.</p>
+      {% else %}<div class="public-post">{{ comment.content }}</div>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% else %}
+  <ul>
+    {% for row in seo.rows %}
+    <li><h2><a href="{{ row.path | e }}">{{ row.title | e }}</a></h2><p>{{ row.excerpt | e }}</p></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <nav aria-label="Pagination">
+    {% if seo.previous %}<a href="{{ seo.previous | e }}" rel="prev">Previous page</a>{% endif %}
+    <span>Page {{ seo.page }}</span>
+    {% if seo.next %}<a href="{{ seo.next | e }}" rel="next">Next page</a>{% endif %}
+  </nav>
+</main>

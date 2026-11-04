@@ -16,6 +16,10 @@ class HasMentions:
 			return
 
 		mentions = extract_mentions(self.get(mentions_field))
+		authors = extract_rich_quote_authors(self.get(mentions_field))
+		from gameplan.guest_payload import users_for_handles
+
+		users = users_for_handles({mention.email for mention in mentions} | set(authors))
 		notified_users = set()
 		for mention in mentions:
 			# Handle special "everyone" mention
@@ -23,13 +27,14 @@ class HasMentions:
 				self._notify_everyone_mention()
 				continue
 
-			self._notify_user(mention.email, is_everyone=False)
-			notified_users.add(mention.email)
-		self._notify_rich_quote_authors(mentions_field, notified_users)
+			user = users.get(mention.email, mention.email)
+			self._notify_user(user, is_everyone=False)
+			notified_users.add(user)
+		self._notify_rich_quote_authors(authors, notified_users, users)
 
-	def _notify_rich_quote_authors(self, mentions_field, notified_users):
-		authors = extract_rich_quote_authors(self.get(mentions_field))
+	def _notify_rich_quote_authors(self, authors, notified_users, users):
 		for author in authors:
+			author = users.get(author, author)
 			if author in notified_users:
 				continue
 			self._notify_user(author, is_everyone=False, notification_type="Rich Quote")

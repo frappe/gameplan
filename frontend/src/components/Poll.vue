@@ -9,7 +9,7 @@
       >
         Stop Poll
       </Button>
-      <Tooltip v-if="!embedded && !_poll.anonymous" text="Show results">
+      <Tooltip v-if="!embedded && !isAnonymousVisitor() && !_poll.anonymous" text="Show results">
         <Button variant="ghost" label="Show results" @click="showDialog = true">
           <template #icon>
             <span class="lucide-bar-chart-2 size-4 -rotate-90" aria-hidden="true" />
@@ -158,15 +158,21 @@
     <!-- The tick moves optimistically, so a rejected vote has to say why it snapped back. -->
     <ErrorMessage class="-mt-2 mb-3" :message="voteError" />
     <Button
-      v-if="embedded && !_poll.anonymous"
+      v-if="embedded && !isAnonymousVisitor() && !_poll.anonymous"
       class="-mt-2"
       variant="ghost"
       @click="showDialog = true"
     >
       Show results
     </Button>
-    <div v-if="!embedded" class="mt-3">
+    <div v-if="!embedded" class="mt-3 flex flex-wrap items-center justify-between gap-2">
       <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
+      <Button
+        v-if="!isStopped && isAnonymousVisitor()"
+        size="sm"
+        label="Log in to vote"
+        @click="goToLogin"
+      />
     </div>
     <Dialog title="Poll results" v-model:open="showDialog">
       <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
@@ -222,6 +228,7 @@ import { canDeleteContent } from '@/utils/permissions'
 import type { GPPoll, GPPollOption } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { subscribeToDoc, useSocket } from '@/socket'
+import { isAnonymousVisitor, loginUrl } from '@/utils/publicAccess'
 
 interface Props {
   poll: GPPoll
@@ -270,8 +277,11 @@ const pollResource = useDoc<GPPoll, PollMethods>({
 
 const _poll = computed(() => pollResource.doc || props.poll)
 const owner = computed(() => useUser(_poll.value.owner))
-const participated = computed(() =>
-  _poll.value.votes.some((vote) => vote.user === sessionUser.name),
+const participated = computed(
+  () =>
+    !isAnonymousVisitor() &&
+    Boolean(_poll.value.votes?.length) &&
+    _poll.value.votes.some((vote) => vote.user === sessionUser.name),
 )
 const voteError = computed(
   () => pollResource.submitVote.error?.message || pollResource.retractVote.error?.message || null,
@@ -281,11 +291,15 @@ const voteError = computed(
 const voteIsFinal = computed(() => Boolean(_poll.value.anonymous) && participated.value)
 // Tallies stay hidden until the viewer has skin in the game, so early voters can't
 // be nudged by the running result. A stopped poll has nothing left to influence.
-const showResults = computed(() => participated.value || isStopped.value)
+const showResults = computed(
+  () => participated.value || isStopped.value || props.readOnlyMode || isAnonymousVisitor(),
+)
 // Deliberately not disabled while a vote is in flight: the tick updates optimistically,
 // so greying every option for the round trip just makes a click flicker. Overlapping
 // clicks are handled by queueing them instead (see queueVote).
-const isOptionDisabled = computed(() => isStopped.value || props.readOnlyMode || voteIsFinal.value)
+const isOptionDisabled = computed(
+  () => isStopped.value || props.readOnlyMode || voteIsFinal.value || isAnonymousVisitor(),
+)
 const isSingleChoice = computed(() => !_poll.value.multiple_answers)
 // The radiogroup reads the same map the checkboxes do, so an optimistic pick and the
 // snap-back after a rejected vote behave identically for both controls.
@@ -311,6 +325,10 @@ const totalLabel = computed(() => {
   const total = _poll.value.total_votes || 0
   if (!_poll.value.multiple_answers) {
     return `${total} ${total === 1 ? 'vote' : 'votes'}`
+  }
+
+  if (isAnonymousVisitor()) {
+    return `${total} ${total === 1 ? 'answer' : 'answers'}`
   }
 
   const voters = new Set(_poll.value.votes.map((vote) => vote.user)).size
@@ -534,6 +552,10 @@ function formatPercentage(percentage?: number) {
  *  option titles are free text. */
 function optionId(option: GPPollOption) {
   return `poll-${props.poll.name}-option-${option.idx}`
+}
+
+function goToLogin() {
+  window.location.href = loginUrl()
 }
 
 function copyLink() {

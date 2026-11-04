@@ -2,14 +2,14 @@
   <div class="body-container mt-5">
     <SpaceHeaderActions placement="title">
       <DropdownMoreOptions
-        v-if="!isBulkMoveMode"
+        v-if="!publicVisitor && !isBulkMoveMode"
         label="Space actions"
         align="start"
         :options="spaceActions"
       />
     </SpaceHeaderActions>
     <SpaceHeaderActions>
-      <template v-if="canStartDiscussion && !isBulkMoveMode">
+      <template v-if="!publicVisitor && canStartDiscussion && !isBulkMoveMode">
         <Button
           variant="solid"
           icon-left="lucide-plus"
@@ -41,7 +41,7 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <div class="mb-4 flex items-center justify-between">
+    <div v-if="!publicVisitor" class="mb-4 flex items-center justify-between">
       <SpaceTabs :spaceId="spaceId" />
       <Select
         class="shrink-0 !w-fit"
@@ -103,7 +103,7 @@ import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { useSessionUser } from '@/data/users'
-import { canManageCommunity } from '@/utils/permissions'
+import { canManageCommunity, canMoveContentToSpace } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
 import {
   useSpace,
@@ -119,6 +119,7 @@ import {
 } from '@/data/spaces'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 interface BulkUpdateResponse {
   moved: string[]
@@ -139,11 +140,13 @@ const showMoveDialog = ref(false)
 const selectedSpace = ref<string | null>(null)
 const discussionListRef = useTemplateRef('discussionListRef')
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 const {
   space: currentSpace,
   isArchived,
   canEditSettings,
   canManageAccess,
+  canUnarchive,
   canChangeMembership,
   canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
@@ -191,8 +194,8 @@ const spaceActions = computed(() => [
     condition: () => canChangeMembership.value,
   },
   {
-    label: 'Manage access',
-    icon: 'lucide-users',
+    label: 'Visibility',
+    icon: 'lucide-eye',
     onClick: () => (showSpaceAccessDialog.value = true),
     condition: () => canManageAccess.value,
   },
@@ -212,7 +215,7 @@ const spaceActions = computed(() => [
     label: 'Unarchive',
     icon: 'lucide-archive-restore',
     onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
-    condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
+    condition: () => isArchived.value && canUnarchive.value,
   },
 ])
 const selectedSpaceTitle = computed(() => {
@@ -220,7 +223,10 @@ const selectedSpaceTitle = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== props.spaceId,
+  filterFn: (space) =>
+    !space.archived_at &&
+    space.name !== props.spaceId &&
+    canMoveContentToSpace(currentSpace.value, space, sessionUser),
 })
 
 const bulkMoveDiscussions = useCall<
