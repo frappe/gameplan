@@ -51,7 +51,7 @@ describe('Mobile discussion creation', () => {
     // The discussion view drops the bottom nav so the comment box can float.
     cy.get('[data-slot="mobile-nav"]').should('not.exist')
 
-    cy.intercept('POST', '/api/v2/document/GP%20Comment').as('postComment')
+    cy.intercept('POST', '/api/method/gameplan.approvals.submit').as('postComment')
     cy.button('Add a comment').click()
     cy.iconButton('Expand comment box').should('be.visible')
     cy.get('[contenteditable=true]')
@@ -61,7 +61,7 @@ describe('Mobile discussion creation', () => {
     cy.button('Submit').click()
 
     cy.wait('@postComment')
-      .its('response.body.data')
+      .its('response.body.message')
       .then((comment: { name: string }) => {
         cy.get(`div[data-id="${comment.name}"]`)
           .should('be.visible')

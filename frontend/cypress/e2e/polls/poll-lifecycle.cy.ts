@@ -33,7 +33,7 @@ describe('Poll lifecycle', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.wait('@getDiscussion')
 
-    cy.intercept({ method: 'POST', url: '/api/v2/document/GP%20Comment', times: 1 }).as(
+    cy.intercept({ method: 'POST', url: '/api/method/gameplan.approvals.submit', times: 1 }).as(
       'createComment',
     )
     cy.button('Add a comment').click()
@@ -49,9 +49,9 @@ describe('Poll lifecycle', () => {
     cy.get('[contenteditable=true] > p').last().click().type('After the poll')
     cy.button('Submit').click()
     cy.wait('@createComment').then(({ response }) => {
-      expect(response?.body.data.content).to.match(
-        /Before the poll.*data-poll="\d+".*After the poll/s,
-      )
+      cy.request(`/api/v2/document/GP%20Comment/${response?.body.message.name}`)
+        .its('body.data.content')
+        .should('match', /Before the poll.*data-poll="\d+".*After the poll/s)
     })
 
     cy.contains('Ship on Friday?').should('be.visible')

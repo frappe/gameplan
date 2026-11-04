@@ -55,7 +55,7 @@ describe('Comment drafts', () => {
 
   it('removes the comment draft from the list once submitted', () => {
     cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
-    cy.intercept('POST', '/api/v2/document/GP%20Comment').as('comment')
+    cy.intercept('POST', '/api/method/gameplan.approvals.submit').as('comment')
 
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 

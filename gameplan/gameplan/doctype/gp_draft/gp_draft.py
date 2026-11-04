@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils import get_datetime, now_datetime
 
 from gameplan.utils.document import with_stored_document
+from gameplan.visibility import VISIBILITY_GENERAL
 
 # Edit drafts finish on the post or comment they edit; new-comment drafts finish on the
 # discussion or task they reply to.
@@ -69,6 +70,13 @@ class GPDraft(Document):
 			# New editor uploads are unattached and get picked up by HasAttachments on
 			# insert. Older drafts can still have files attached to the draft itself;
 			# move those before deleting the draft so Frappe doesn't cascade-delete them.
+			from gameplan.approval_policy import needs_approval
+			from gameplan.approvals import hold, new_content, validate_destination
+
+			target = new_content("GP Discussion", self.project, "", self.title, content)
+			validate_destination(target)
+			if needs_approval(target):
+				return hold(target, f"draft:{self.name}", self.name)
 			discussion = frappe.new_doc(
 				"GP Discussion", title=self.title, content=content, project=self.project
 			).insert()
@@ -226,7 +234,7 @@ def get_my_drafts():
 		results = frappe.qb.get_query(
 			"GP Project",
 			filters={"name": ["in", list(project_ids)]},
-			fields=["name", "title", "team", "is_private"],
+			fields=["name", "title", "team", "visibility"],
 			ignore_permissions=False,
 		).run(as_dict=True)
 		projects = {str(p.name): p for p in results}
@@ -252,7 +260,7 @@ def get_my_drafts():
 					"space": r.project,
 					"space_title": project.title if project else None,
 					"community": project.team if project else None,
-					"is_private": project.is_private if project else 0,
+					"visibility": project.visibility if project else VISIBILITY_GENERAL,
 					"discussion": None,
 					"scheduled_at": r.scheduled_at,
 				}
@@ -276,7 +284,7 @@ def get_my_drafts():
 					"space": discussion.project,
 					"space_title": project.title,
 					"community": project.team,
-					"is_private": project.is_private,
+					"visibility": project.visibility,
 					"discussion": r.reference_name,
 				}
 			)
@@ -286,7 +294,14 @@ def get_my_drafts():
 
 @frappe.whitelist(methods=["POST"])
 def publish_draft(name: str):
-	"""Publish a discussion draft by name. Returns the new GP Discussion name."""
+	"""Publish a discussion or return its held submission, including after a lost response."""
+	if not frappe.db.exists("GP Draft", name):
+		from gameplan.approvals import detail, outcome, submission_key
+
+		submission = frappe.db.get_value("GP Submission", {"request_key": submission_key(f"draft:{name}")})
+		if submission:
+			detail(submission)
+			return outcome(frappe.get_doc("GP Submission", submission))
 	return frappe.get_doc("GP Draft", name).publish()
 
 

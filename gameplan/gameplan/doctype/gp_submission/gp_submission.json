@@ -1,0 +1,121 @@
+{
+ "actions": [],
+ "allow_bulk_edit": 0,
+ "allow_rename": 0,
+ "autoname": "hash",
+ "creation": "2026-10-25 21:22:50.306050",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "project",
+  "discussion",
+  "title",
+  "content",
+  "request_key",
+  "status",
+  "decision_note",
+  "decided_by",
+  "decided_at",
+  "published_doctype",
+  "published_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "project",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Space"
+  },
+  {
+   "fieldname": "discussion",
+   "fieldtype": "Data",
+   "label": "Discussion"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title"
+  },
+  {
+   "fieldname": "content",
+   "fieldtype": "Code",
+   "label": "Content",
+   "options": "HTML"
+  },
+  {
+   "fieldname": "request_key",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Request Key",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Pending\nApproved\nRejected\nWithdrawn",
+   "reqd": 1
+  },
+  {
+   "fieldname": "decision_note",
+   "fieldtype": "Small Text",
+   "label": "Decision Note"
+  },
+  {
+   "fieldname": "decided_by",
+   "fieldtype": "Data",
+   "label": "Decided By"
+  },
+  {
+   "fieldname": "decided_at",
+   "fieldtype": "Datetime",
+   "label": "Decided At"
+  },
+  {
+   "fieldname": "published_doctype",
+   "fieldtype": "Data",
+   "label": "Published Doctype"
+  },
+  {
+   "fieldname": "published_name",
+   "fieldtype": "Data",
+   "label": "Published Name",
+   "search_index": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 0,
+ "links": [],
+ "modified": "2026-10-25 21:22:50.306050",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Submission",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "role": "Gameplan Member",
+   "read": 1
+  },
+  {
+   "role": "Gameplan Guest",
+   "read": 1
+  },
+  {
+   "role": "Gameplan Admin",
+   "read": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

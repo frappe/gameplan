@@ -3,6 +3,8 @@ gameplan.patches.rename_doctypes_with_gp_prefix
 gameplan.gameplan.doctype.gp_discussion.patches.migrate_gp_bookmark_child
 
 [post_model_sync]
+gameplan.gameplan.doctype.gp_moderation_log.patches.add_audience_indexes
+gameplan.gameplan.doctype.gp_submission.patches.add_slow_mode_index
 gameplan.gameplan.doctype.team_user_profile.patches.create_user_profile
 gameplan.gameplan.doctype.team_user_profile.patches.set_name
 gameplan.gameplan.doctype.team_project_discussion.patches.rename_team_project_status_update_doctype
@@ -45,5 +47,8 @@ gameplan.gameplan.doctype.gp_user_profile.patches.set_email_digest_off_by_defaul
 gameplan.gameplan.doctype.gp_comment.patches.add_owner_reference_index
 gameplan.gameplan.doctype.gp_user_profile.patches.bind_starter_bento_cards
 gameplan.patches.attach_profile_bento_card_images
+gameplan.patches.backfill_visibility_from_is_private
+gameplan.patches.backfill_review_report_stats
+gameplan.gameplan.doctype.gp_user_profile.patches.backfill_first_day_post_counts
 gameplan.gameplan.doctype.gp_reaction.patches.point_reactions_at_their_posts
 gameplan.gameplan.doctype.gp_invitation.patches.hash_invitation_keys
