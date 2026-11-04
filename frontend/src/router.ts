@@ -783,14 +783,16 @@ router.beforeEach(async (to, from) => {
   // that is so App.vue can keep rendering it behind the dialog.
   if (isSettingsRoute(to)) {
     const base = resolveOverlayBase(to, from)
-    if (base) {
+    if (from.matched.length === 0) {
+      // Cold load or reload: render Home behind the dialog, even when the record names
+      // another page. A page mounted now reads /settings from useRoute() instead of its
+      // own URL, so it would stay wrong after closing. Closing mounts the real page.
+      const home = router.resolve(getHomeRoute())
+      const communityId = home.params.communityId
+      if (communityId) communityState.scope(routeParam(communityId))
+      settingsBackgroundPath.value = home.fullPath
+    } else if (base) {
       settingsBackgroundPath.value = base.path
-      // Cold load or reload: the guard below never ran for this page, so scope its
-      // community here or it cannot render.
-      if (from.matched.length === 0) {
-        const communityId = router.resolve(base.path).params.communityId
-        if (communityId) communityState.scope(routeParam(communityId))
-      }
     }
     return
   }
