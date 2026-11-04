@@ -6,25 +6,27 @@
     <Breadcrumbs :items="[{ label: 'Moderation', route: { name: 'Moderation' } }]" />
   </PageHeader>
   <div class="flex min-h-0 flex-1 flex-col text-ink-gray-9">
-    <div
-      v-if="isGlobalAdmin(useSessionUser())"
-      class="border-b border-outline-gray-2 px-4 py-3 sm:px-8"
+    <CommunityModeration
+      v-if="selected || siteWide"
+      :key="selected"
+      :community-id="selected"
+      :site-wide="siteWide"
+      @community="openCommunitySection"
     >
-      <TabButtons
-        v-model="scope"
-        :options="[
-          { label: 'Community moderation', value: 'community' },
-          { label: 'Account suspensions', value: 'site' },
-        ]"
-      />
-    </div>
-    <ScrollArea v-if="siteWide" class="min-h-0 flex-1" viewport-class="px-4 py-5 sm:px-8"
-      ><AccountSuspensions
-    /></ScrollArea>
-    <CommunityModeration v-else-if="selected" :key="selected" :community-id="selected">
-      <template #sidebar>
-        <Select v-model="selected" label="Community" :options="options" />
+      <template #sidebar
+        ><Select v-model="selected" label="Community" :options="options"
+      /></template>
+      <template v-if="isGlobalAdmin(useSessionUser())" #administration>
+        <SidebarLabel class="mt-6">Site administration</SidebarLabel>
+        <SidebarItem
+          label="Account suspensions"
+          icon="lucide-shield-ban"
+          :active="siteWide"
+          class="mt-0.5"
+          @click="openAccountSuspensions"
+        />
       </template>
+      <template #site-wide><AccountSuspensions /></template>
     </CommunityModeration>
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
       Only Community moderators can open this page.
@@ -39,8 +41,8 @@ import {
   PageHeader,
   PageHeaderBackButton,
   PageHeaderMobile,
-  TabButtons,
-  ScrollArea,
+  SidebarItem,
+  SidebarLabel,
   Select,
 } from 'frappe-ui'
 import { communities } from '@/data/communities'
@@ -51,11 +53,12 @@ import AccountSuspensions from '@/components/AccountSuspensions.vue'
 const route = useRoute()
 const router = useRouter()
 const siteWide = computed(() => route.query.scope === 'site' && isGlobalAdmin(useSessionUser()))
-const scope = computed({
-  get: () => (siteWide.value ? 'site' : 'community'),
-  set: (value) =>
-    router.replace({ name: 'Moderation', query: value === 'site' ? { scope: 'site' } : {} }),
-})
+function openCommunitySection(tab: string) {
+  router.replace({ name: 'Moderation', query: { community: selected.value, tab } })
+}
+function openAccountSuspensions() {
+  router.replace({ name: 'Moderation', query: { community: selected.value, scope: 'site' } })
+}
 const options = computed(() =>
   (communities.data || [])
     .filter((community) => canModerateCommunity(community, useSessionUser()))
