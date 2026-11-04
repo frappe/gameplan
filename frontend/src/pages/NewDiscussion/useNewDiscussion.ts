@@ -257,7 +257,7 @@ export function useNewDiscussion() {
   // connection that is fine. A push that actually threw stops us on the first attempt.
   async function flushUntilPushed(): Promise<boolean> {
     for (let attempt = 0; attempt < FLUSH_ATTEMPTS; attempt++) {
-      await draft.flush()
+      await draft.flush({ allowEmptyBody: true })
       if (!draft.serverName.value || !draft.dirty.value) return true
       if (draft.lastError.value) return false
     }

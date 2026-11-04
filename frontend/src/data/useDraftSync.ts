@@ -279,12 +279,26 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   const seed = (): DraftPayload => (initialPayload ? initialPayload() : { content: '' })
 
+  // Whether the copy last stored or loaded here has a body. Once it does, auto-save never
+  // replaces it with an empty one: a single stray undo or select-all + delete would
+  // otherwise overwrite a long draft with nothing. Publishing still sends what is on screen.
+  let hasStoredBody = false
+  function rememberStoredBody(payload: DraftPayload) {
+    hasStoredBody = !isEditorContentEmpty(payload.content)
+  }
+
+  function isSaveable(payload: DraftPayload, { allowEmptyBody = false } = {}) {
+    if (!canSave(payload)) return false
+    return allowEmptyBody || !hasStoredBody || !isEditorContentEmpty(payload.content)
+  }
+
   // Suppress the change-watcher while we write a payload the user did not type: a sibling
   // tab's copy, or the blank buffer left behind by a finished draft.
   const applying = ref(false)
   function applyPayload(payload: DraftPayload) {
     applying.value = true
     data.value = payload
+    rememberStoredBody(payload)
     nextTick(() => {
       applying.value = false
     })
@@ -320,6 +334,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       user: draftOwner,
     }
     await putDraftRecord(record)
+    rememberStoredBody(record.payload)
     if (previousKey && previousKey !== record.key) {
       await deleteDraftRecord(previousKey)
     }
@@ -329,9 +344,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   let activePush: Promise<void> | null = null
 
-  async function persistToServer() {
+  async function persistToServer(options: { allowEmptyBody?: boolean } = {}) {
     const payload = data.value
-    if (!payload || readOnly.value || !isEnabled() || !dirty.value || !canSave(payload)) return
+    if (!payload || readOnly.value || !isEnabled() || !dirty.value) return
+    if (!isSaveable(payload, options)) return
     // Snapshot what we are about to send, and the edit clock it belongs to, BEFORE the
     // request goes out. Marking the draft synced as of the response time would mark every
     // keystroke typed while the request was in flight as already pushed — those edits go
@@ -373,8 +389,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // Chain behind an in-flight push rather than joining it: that request was built from an
   // older snapshot, so returning its promise would report edits made since as pushed. The
   // chained run is free when nothing changed — persistToServer() bails on `!dirty`.
-  function pushToServer(): Promise<void> {
-    const next = (activePush ?? Promise.resolve()).then(persistToServer)
+  function pushToServer(options: { allowEmptyBody?: boolean } = {}): Promise<void> {
+    const next = (activePush ?? Promise.resolve()).then(() => persistToServer(options))
     const push = next.finally(() => {
       if (activePush === push) activePush = null
     })
@@ -382,7 +398,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     return push
   }
 
-  const debouncedPush = debounce(pushToServer, debounceMs)
+  const debouncedPush = debounce(() => pushToServer(), debounceMs)
 
   /**
    * Latches on the first edit the person makes, and never clears.
@@ -402,7 +418,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       if (!data.value || applying.value || readOnly.value || !isEnabled()) return
       touched.value = true
       updatedAt.value = Date.now()
-      if (!canSave(data.value)) return
+      if (!isSaveable(data.value)) return
       void persistLocal()
       debouncedPush()
     },
@@ -473,6 +489,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     syncedAt.value = resolved.syncedAt
     restored.value = resolved.restored
     previousKey = resolved.localKey
+    rememberStoredBody(resolved.payload)
     if (quietly) applyPayload(resolved.payload)
     else data.value = resolved.payload
     if (resolved.needsLocalWrite) await persistLocal()
@@ -563,11 +580,12 @@ export function useDraftSync(options: UseDraftSyncOptions) {
 
   /** Force any pending change to the server now (creating the row if needed). Chains behind
    *  an in-flight push, so on return the server row reflects the local buffer — unless
-   *  `dirty` is still true, which means the push failed. */
-  async function flush() {
+   *  `dirty` is still true, which means the push failed or would have emptied a stored body.
+   *  Pass `allowEmptyBody` when the person has confirmed what is on screen, e.g. publish. */
+  async function flush(options: { allowEmptyBody?: boolean } = {}) {
     await open()
     debouncedPush.cancel?.()
-    await pushToServer()
+    await pushToServer(options)
     return serverName.value
   }
 
@@ -627,7 +645,7 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   onScopeDispose(() => {
     unsubscribe()
     // Best-effort: push un-synced edits as we leave so nothing is lost on navigation.
-    if (dirty.value && data.value && canSave(data.value)) void pushToServer()
+    if (dirty.value && data.value && isSaveable(data.value)) void pushToServer()
   })
 
   return {
