@@ -11,8 +11,9 @@
       </template>
       <template #sidebar>
         <AppSidebar v-if="onCommunityRoute" :public-view="publicVisitor" />
+        <!-- Keep the Teleport target mounted while settings changes the background route. -->
         <div
-          v-if="effectiveRoute.name === 'Moderation'"
+          v-show="effectiveRoute.name === 'Moderation'"
           id="moderation-sidebar"
           class="h-full shrink-0"
         />
