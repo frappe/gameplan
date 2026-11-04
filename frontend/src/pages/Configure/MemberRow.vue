@@ -55,7 +55,10 @@ const props = defineProps<{
 }>()
 
 const user = computed(() => useUser(props.member.user))
-const roleLabel = computed(() => (props.member.is_admin ? 'Community Admin' : 'Member'))
+const roleLabel = computed(() => {
+  if (props.member.is_admin) return 'Community Admin'
+  return props.member.is_moderator ? 'Moderator' : 'Member'
+})
 const profileRoute = computed(() => {
   return user.value.user_profile
     ? { name: 'PersonProfileProfile', params: { personId: user.value.user_profile } }

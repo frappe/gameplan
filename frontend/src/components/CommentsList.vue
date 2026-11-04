@@ -162,15 +162,38 @@ const newMessagesFrom = ref(props.newCommentsFrom)
 const highlightedItem = ref(null)
 const newCommentEditor = ref(null)
 
+let commentsLoaded = false
 const comments = useList<
   Pick<
     GPComment,
-    'name' | 'content' | 'owner' | 'creation' | 'modified' | 'edited_at' | 'deleted_at'
+    | 'name'
+    | 'content'
+    | 'owner'
+    | 'creation'
+    | 'modified'
+    | 'edited_at'
+    | 'deleted_at'
+    | 'hidden_at'
+    | 'spam_removed_at'
+    | 'reference_doctype'
+    | 'reference_name'
   >
 >({
   doctype: 'GP Comment',
   cacheKey: ['Comments', props.doctype, props.name],
-  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
+  fields: [
+    'name',
+    'content',
+    'owner',
+    'creation',
+    'modified',
+    'edited_at',
+    'deleted_at',
+    'hidden_at',
+    'spam_removed_at',
+    'reference_doctype',
+    'reference_name',
+  ],
   transform(data) {
     return data.map((d) => ({ ...d, name: d.name.toString(), doctype: 'GP Comment' }))
   },
@@ -181,6 +204,8 @@ const comments = useList<
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
+    if (commentsLoaded) return
+    commentsLoaded = true
     if (route.query.comment) {
       let comment = comments.data?.find((c) => c.name === route.query.comment)
       scrollToItem(comment)
@@ -379,6 +404,9 @@ async function submitComment() {
 
   await draft.commit()
   resetCommentState()
+  await comments.reload()
+  await nextTick()
+  scrollToEnd()
 }
 
 function onNewCommentChange(content: string) {
@@ -419,6 +447,7 @@ socket.on('new_activity', (data: NewActivityEvent) => {
   // doctype passes a number here, so a strict compare never matches.
   if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
     activities.reload()
+    comments.reload()
   }
 })
 

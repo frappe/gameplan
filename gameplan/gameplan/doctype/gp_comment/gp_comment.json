@@ -11,7 +11,9 @@
   "reference_name",
   "edited_at",
   "deleted_at",
-  "tags"
+  "hidden_at",
+  "tags",
+  "spam_removed_at"
  ],
  "fields": [
   {
@@ -40,6 +42,12 @@
    "label": "Edited At"
   },
   {
+   "fieldname": "hidden_at",
+   "fieldtype": "Datetime",
+   "label": "Hidden At",
+   "read_only": 1
+  },
+  {
    "fieldname": "deleted_at",
    "fieldtype": "Datetime",
    "label": "Deleted At"
@@ -49,6 +57,12 @@
    "fieldtype": "Table",
    "label": "Tags",
    "options": "GP Tag Link"
+  },
+  {
+   "fieldname": "spam_removed_at",
+   "fieldtype": "Datetime",
+   "label": "Spam Removed At",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
@@ -108,6 +122,11 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "row_format": "Dynamic",

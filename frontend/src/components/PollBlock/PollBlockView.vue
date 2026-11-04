@@ -66,14 +66,16 @@ const thread = inject(threadPollsKey, null)
 const questionInput = useTemplateRef<InputRef>('questionInput')
 
 const draft = computed<PollDraft | null>(() => props.node.attrs.draft)
-const poll = computed(() =>
-  thread?.polls.data?.find((p) => String(p.name) === String(props.node.attrs.poll)),
-)
+const poll = computed(() => {
+  const rows = thread?.embeddedPolls?.data ?? thread?.polls.data
+  return rows?.find((p) => String(p.name) === String(props.node.attrs.poll))
+})
 
 onMounted(() => {
   if (draft.value && !draft.value.title) nextTick(() => questionInput.value?.focus())
-  if (props.node.attrs.poll && thread && !poll.value && !thread.polls.loading) {
-    thread.polls.reload()
+  const resource = thread?.embeddedPolls ?? thread?.polls
+  if (props.node.attrs.poll && resource && !poll.value && !resource.loading) {
+    resource.reload()
   }
 })
 

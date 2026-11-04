@@ -1,10 +1,18 @@
 import type { Community } from '@/data/communities'
 import { getCommunity } from '@/data/communities'
 import type { Space } from '@/data/spaces'
+import { isMemberAccess, VISIBILITY_ANONYMOUS } from '@/utils/visibility'
 
 type PermissionUser = {
   name?: string | null
   role?: string
+  banned_communities?: string[]
+}
+
+export function isCommunityBanned(communityId: string | undefined, user: PermissionUser) {
+  return Boolean(
+    communityId && user.banned_communities?.includes(communityId) && !isGlobalAdmin(user),
+  )
 }
 
 export function canManageCommunity(community: Community | null | undefined, user: PermissionUser) {
@@ -31,6 +39,29 @@ export function isGuest(user: PermissionUser) {
   return user.role === 'Gameplan Guest'
 }
 
+export function isAnonymousEligibleSpace(space: Space | null | undefined) {
+  const community = space && getCommunity(space.team)
+  return Boolean(
+    space &&
+    !space.archived_at &&
+    space.visibility === VISIBILITY_ANONYMOUS &&
+    community &&
+    !community.archived_at &&
+    community.visibility === VISIBILITY_ANONYMOUS,
+  )
+}
+
+/** Moving existing private content into public view needs publication approval. */
+export function canMoveContentToSpace(
+  source: Space | null | undefined,
+  target: Space,
+  user: PermissionUser,
+) {
+  return (
+    isGlobalAdmin(user) || isAnonymousEligibleSpace(source) || !isAnonymousEligibleSpace(target)
+  )
+}
+
 /**
  * Mirror of backend `can_manage_space`: global admins can manage any space,
  * guests never manage one, private-space members can manage their own space,
@@ -43,15 +74,42 @@ export function isGuest(user: PermissionUser) {
 export function canManageSpace(space: Space | null | undefined, user: PermissionUser) {
   if (!space || !user.name) return false
   if (isGlobalAdmin(user)) return true
-  if (isGuest(user)) return false
-  if (space.is_private) {
+  if (isGuest(user) || isCommunityBanned(space.team, user)) return false
+  if (isMemberAccess(space.visibility)) {
     return Boolean(space.members?.some((member) => member.user === user.name))
   }
   return isCommunityAdmin(getCommunity(space.team), user.name)
 }
 
+export function canModerateCommunity(
+  community: Community | null | undefined,
+  user: PermissionUser,
+) {
+  if (!community || !user.name || user.name === 'Guest' || isGuest(user)) return false
+  return (
+    isGlobalAdmin(user) ||
+    Boolean(
+      community.members?.some(
+        (member) => member.user === user.name && (member.is_admin || member.is_moderator),
+      ),
+    )
+  )
+}
+
+export function canModerateSpace(space: Space | null | undefined, user: PermissionUser) {
+  if (!space || !user.name || user.name === 'Guest' || isGuest(user)) return false
+  if (isGlobalAdmin(user)) return true
+  if (
+    isMemberAccess(space.visibility) &&
+    !space.members?.some((member) => member.user === user.name)
+  )
+    return false
+  return canModerateCommunity(getCommunity(space.team), user)
+}
+
 /** Guests can never invite; otherwise invite rights follow space management. */
 export function canInviteGuests(space: Space | null | undefined, user: PermissionUser) {
+  if (isCommunityBanned(space?.team, user)) return false
   if (isGuest(user)) return false
   return canManageSpace(space, user)
 }
@@ -74,6 +132,7 @@ export function canDeleteContent(
   space: Space | null | undefined,
   user: PermissionUser,
 ) {
+  if (isCommunityBanned(space?.team, user)) return false
   if (!content || !user.name) return false
   if (isGlobalAdmin(user)) return true
   if (content.owner === user.name) return true
@@ -99,6 +158,7 @@ export function canEditContent(
   space: Space | null | undefined,
   user: PermissionUser,
 ) {
+  if (isCommunityBanned(space?.team, user)) return false
   if (!content || !user.name) return false
   if (isGlobalAdmin(user)) return true
   if (isGuest(user)) return content.owner === user.name
@@ -116,6 +176,7 @@ export function canMoveOrPinContent(
   space: Space | null | undefined,
   user: PermissionUser,
 ) {
+  if (isCommunityBanned(space?.team, user)) return false
   if (isGuest(user)) return false
   return canEditContent(content, space, user)
 }

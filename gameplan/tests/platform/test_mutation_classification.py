@@ -328,3 +328,21 @@ class TestControlCheck(unittest.TestCase):
 		healthy, reason, _ = self._control(result("bench: ok\n", 0))
 		self.assertFalse(healthy)
 		self.assertIn("never reported", reason)
+
+
+class TestBaselineDiagnostics(unittest.TestCase):
+	def test_a_later_passing_category_does_not_hide_the_failure(self):
+		output = (
+			"AssertionError: unread counts differ\nFAILED (failures=1)\n"
+			"Running another category\nRan 3 tests in 0.192s\nOK\n"
+		)
+		with (
+			mock.patch.object(campaign, "run_tests", return_value=result(output, returncode=1)),
+			mock.patch.object(campaign, "_log") as log,
+		):
+			ok, reason = campaign._baseline_ok("test.localhost", ["test.spaces"], 120)
+		self.assertFalse(ok)
+		self.assertIn("failed (exit 1)", reason)
+		self.assertIn(
+			"AssertionError: unread counts differ", "\n".join(call.args[0] for call in log.call_args_list)
+		)

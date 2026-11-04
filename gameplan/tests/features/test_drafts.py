@@ -28,6 +28,10 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 	set_owner,
 )
+from gameplan.visibility import (
+	VISIBILITY_GENERAL,
+	VISIBILITY_MEMBER_ACCESS,
+)
 
 
 class TestDrafts(GameplanTestCase):
@@ -315,7 +319,10 @@ class TestDraftCommit(GameplanTestCase):
 
 	def test_a_draft_commits_only_onto_content_its_owner_can_write(self):
 		private_space = create_space(
-			"Draft Commit Private Space", self.community, is_private=1, members=[self.member]
+			"Draft Commit Private Space",
+			self.community,
+			visibility=VISIBILITY_MEMBER_ACCESS,
+			members=[self.member],
 		)
 		private_discussion = create_discussion("Draft Commit Private", private_space, owner=self.member)
 		draft, attachment = self._reply_draft_with_attachment(self.outsider, self.discussion)
@@ -374,7 +381,7 @@ class TestMyDrafts(GameplanTestCase):
 		self.assertEqual(str(row["space"]), str(self.space.name))
 		self.assertEqual(row["space_title"], "My Drafts Space")
 		self.assertEqual(str(row["community"]), str(self.community.name))
-		self.assertEqual(row["is_private"], 0)
+		self.assertEqual(row["visibility"], VISIBILITY_GENERAL)
 		self.assertIsNone(row["discussion"])
 
 	def test_lists_comment_drafts_with_their_parent_discussion(self):
@@ -405,7 +412,7 @@ class TestMyDrafts(GameplanTestCase):
 		"""Membership can be revoked after the draft was written. The space lookup is the gate:
 		if it stops checking permissions the list leaks the private space's title and hands back
 		a route the user cannot open."""
-		private_space = create_space("Locked Space", self.community, is_private=1)
+		private_space = create_space("Locked Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS)
 		draft = frappe.get_doc(
 			doctype="GP Draft",
 			type="Discussion",
@@ -433,7 +440,7 @@ class TestMyDrafts(GameplanTestCase):
 		self.assertIsNone(row["space"])
 		self.assertIsNone(row["space_title"])
 		self.assertIsNone(row["community"])
-		self.assertEqual(row["is_private"], 0)
+		self.assertEqual(row["visibility"], VISIBILITY_GENERAL)
 
 	def test_the_list_collapses_duplicate_reply_drafts_without_deleting_them(self):
 		"""One row per reply on the list path, but the stale sibling stays on disk.
@@ -537,7 +544,7 @@ class TestScheduledDrafts(GameplanTestCase):
 		)
 		self.space.reload()
 		self.space.members = []
-		self.space.is_private = 1
+		self.space.visibility = VISIBILITY_MEMBER_ACCESS
 		self.space.save(ignore_permissions=True)
 		with patch("frappe.log_error") as log_error:
 			publish_due_drafts()

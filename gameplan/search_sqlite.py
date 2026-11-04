@@ -1,5 +1,6 @@
 # Copyright (c) 2022, Frappe Technologies Pvt. Ltd. and Contributors
 # MIT License. See license.txt
+import hashlib
 import re
 import time
 
@@ -17,6 +18,7 @@ from frappe.search.sqlite_search import (
 )
 from frappe.utils import cstr
 
+import gameplan
 from gameplan.permissions import project_access_criterion
 
 INDEX_BUILD_FLAG = "discussions_index_in_progress"
@@ -39,7 +41,15 @@ class GameplanSearch(SQLiteSearch):
 	INDEX_NAME = "gameplan_search.db"
 
 	INDEX_SCHEMA = {
-		"metadata_fields": ["team", "project", "tags", "owner", "reference_doctype", "reference_name"],
+		"metadata_fields": [
+			"team",
+			"project",
+			"tags",
+			"owner",
+			"reference_doctype",
+			"reference_name",
+			"content_hash",
+		],
 		"tokenizer": "unicode61 remove_diacritics 2 tokenchars '-_'",
 	}
 
@@ -54,8 +64,16 @@ class GameplanSearch(SQLiteSearch):
 			"fields": ["name", "title", "content", "modified", "project", "team", "owner"],
 		},
 		"GP Comment": {
-			"fields": ["name", "content", "modified", "reference_doctype", "reference_name", "owner"],
-			"filters": {"deleted_at": ("is", "not set")},
+			"fields": [
+				"name",
+				"content",
+				"modified",
+				"reference_doctype",
+				"reference_name",
+				"owner",
+				"hidden_at",
+			],
+			"filters": {"deleted_at": ("is", "not set"), "hidden_at": ("is", "not set")},
 		},
 	}
 
@@ -64,12 +82,25 @@ class GameplanSearch(SQLiteSearch):
 		disabled = frappe.conf.get("disable_gameplan_search", False)
 		return not disabled
 
+	def index_exists(self):
+		# Frappe's after-migrate job rebuilds indexes that lack the content fingerprint.
+		if not super().index_exists():
+			return False
+		return any(
+			row["name"] == "content_hash" for row in self.sql("PRAGMA table_info(search_fts)", read_only=True)
+		)
+
 	def prepare_document(self, doc):
 		"""Prepare a document for indexing with Gameplan-specific handling."""
+		from gameplan.mixins.moderation import discussion_is_removed, is_removed, parent_discussion
+
+		if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
+			return None
 		# Get base document from parent class
 		document = super().prepare_document(doc)
 		if not document:
 			return None
+		document["content_hash"] = content_fingerprint(document.get("title"), document.get("content"))
 
 		if doc.doctype == "GP Comment":
 			# For comments, we need to resolve the project from the reference
@@ -294,6 +325,10 @@ class GameplanSearch(SQLiteSearch):
 			return True
 		return len(query_word) > 2 and title_word == f"{query_word}s"
 
+	def _expand_query_with_corrections(self, query):
+		# The shared vocabulary retains removed text, including hidden replies.
+		return query, None
+
 	def search(self, query, title_only=False, filters=None):
 		"""
 		Enhanced search method that handles tag filtering using LIKE operations.
@@ -317,7 +352,13 @@ class GameplanSearch(SQLiteSearch):
 					filters["tags"] = ["LIKE", tag_filters]
 
 			# Call parent search with the converted filters
-			return super().search(query, title_only, filters)
+			response = super().search(query, title_only, filters)
+			# Recheck live state: an asynchronous index update may still contain removed text.
+			if not (gameplan.is_anonymous() or gameplan.is_guest()):
+				from gameplan.moderation import filter_removed_search_results
+
+				response["results"] = filter_removed_search_results(response["results"])
+			return response
 		finally:
 			del self._requested_projects
 
@@ -428,6 +469,11 @@ class GameplanSearch(SQLiteSearch):
 			"doctypes": doctype_counts,
 			"tags": tag_counts,
 		}
+
+
+def content_fingerprint(title, content):
+	"""Identify the exact normalized text stored with an indexed search result."""
+	return hashlib.sha256(frappe.as_json([title or "", content or ""]).encode()).hexdigest()
 
 
 class GameplanSearchIndexMissingError(SQLiteSearchIndexMissingError):
