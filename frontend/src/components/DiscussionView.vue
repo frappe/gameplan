@@ -912,7 +912,11 @@ function moderateDiscussion(spam = false) {
       reloadDiscussionLists()
       await discussion.reload()
       close()
-      await router.push({ name: 'CommunityModeration', params: { communityId: space.value?.team } })
+      await router.push({
+        name: 'CommunityModeration',
+        params: { communityId: space.value?.team },
+        query: { tab: 'removed' },
+      })
     },
   })
 }
