@@ -35,7 +35,7 @@ import { communities, type Community } from '@/data/communities'
 import { spaces } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPTeam } from '@/types/doctypes'
-import { getManageableCommunities } from '@/utils/permissions'
+import { canMoveContentToSpace, getManageableCommunities } from '@/utils/permissions'
 
 const props = defineProps<{
   community: Community
@@ -52,6 +52,13 @@ const selectedCommunity = ref<string | null>(null)
 const communityOptions = computed(() => {
   return getManageableCommunities(communities.data || [], sessionUser)
     .filter((community) => !community.archived_at && community.name !== props.community.name)
+    .filter((community) =>
+      (spaces.data || [])
+        .filter((space) => space.team === props.community.name)
+        .every((space) =>
+          canMoveContentToSpace(space, { ...space, team: community.name }, sessionUser),
+        ),
+    )
     .map((community) => ({
       label: community.title,
       value: community.name,

@@ -33,7 +33,8 @@ query-builder statements, both of which skip these hooks.
 
 import frappe
 
-from gameplan.permissions import criterion_sql, get_doc_value, is_delete_cascade
+import gameplan
+from gameplan.permissions import NOTHING, criterion_sql, get_doc_value, is_delete_cascade
 
 # The column naming the user a row belongs to, per doctype.
 NOTIFICATION_USER_FIELD = "to_user"
@@ -44,12 +45,17 @@ FOLLOW_USER_FIELD = "user"
 
 def _own_rows_only(doctype, fieldname, user):
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		# Nobody signed out owns a row, and "Guest" must not match one by name.
+		return criterion_sql(NOTHING)
 	table = frappe.qb.DocType(doctype)
 	return criterion_sql(table[fieldname] == user)
 
 
 def _belongs_to_user(doc, fieldname, user):
 	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return False
 	# Doctype-level checks arrive without a document (e.g. "may this user open the list
 	# at all?"); those stay open and the query conditions above do the scoping.
 	if not hasattr(doc, "doctype"):
@@ -63,7 +69,25 @@ def _belongs_to_user(doc, fieldname, user):
 
 
 def notification_query_conditions(user=None, **kwargs):
-	return _own_rows_only("GP Notification", NOTIFICATION_USER_FIELD, user)
+	return criterion_sql(notification_criterion(user))
+
+
+def notification_criterion(user=None):
+	user = user or frappe.session.user
+	if gameplan.is_anonymous(user):
+		return NOTHING
+	Notification = frappe.qb.DocType("GP Notification")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	from gameplan.permissions import visible_discussion_criterion
+
+	visible = (
+		frappe.qb.from_(Discussion).select(Discussion.name).where(visible_discussion_criterion(Discussion))
+	)
+	return (Notification.to_user == user) & (
+		Notification.discussion.isnull()
+		| (Notification.discussion == "")
+		| Notification.discussion.isin(visible)
+	)
 
 
 def notification_has_permission(doc, ptype="read", user=None, **kwargs):
@@ -71,7 +95,11 @@ def notification_has_permission(doc, ptype="read", user=None, **kwargs):
 
 	Deliberately no admin exception — nothing in Gameplan reads someone else's bell feed.
 	"""
-	return _belongs_to_user(doc, NOTIFICATION_USER_FIELD, user)
+	from gameplan.mixins.moderation import discussion_is_removed
+
+	return _belongs_to_user(doc, NOTIFICATION_USER_FIELD, user) and not (
+		hasattr(doc, "doctype") and discussion_is_removed(doc.discussion)
+	)
 
 
 def project_visit_query_conditions(user=None, **kwargs):
@@ -102,6 +130,8 @@ def pinned_project_has_permission(doc, ptype="read", user=None, **kwargs):
 	`delete` matters most here: unpinning *is* deleting the row (there is no unpin
 	endpoint), which is why the role grant has to stay and this hook has to scope it.
 	"""
+	if gameplan.is_anonymous(user or frappe.session.user):
+		return False
 	if ptype == "create":
 		# `Document.insert` runs the create check *before* `before_insert`, and
 		# `before_insert` is where `user` gets stamped with the session user. Judging the
