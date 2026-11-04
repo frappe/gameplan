@@ -109,7 +109,7 @@ export default defineConfig({
     allowedHosts: true,
     // Allow serving the symlinked checkout's real path (yarn dev:local).
     fs: {
-      allow: ['..', 'node_modules', '../frappe-ui'],
+      allow: ['..', fs.realpathSync(path.resolve(__dirname, 'node_modules')), '../frappe-ui'],
     },
   },
   resolve: {
