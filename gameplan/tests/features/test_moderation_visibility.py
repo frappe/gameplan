@@ -78,6 +78,36 @@ class TestModerationVisibility(GameplanTestCase):
 		with self.as_user(self.outsider), self.assertRaises(frappe.PermissionError):
 			frappe.get_doc("GP Poll", self.poll.name).check_permission("read")
 
+	def test_discussion_file_safety_checks_batch_replies_and_polls(self):
+		for index in range(10):
+			reply = create_comment(self.discussion, content=f"Reply {index}", owner=self.member)
+			with self.as_user(self.member):
+				frappe.get_doc(
+					doctype="GP Poll",
+					discussion=self.discussion.name,
+					comment=reply.name,
+					title=f"Poll {index}",
+					options=[{"title": "Yes"}, {"title": "No"}],
+				).insert()
+
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
+			self.discussion._check_moderated_files()
+
+		self.assertLessEqual(queries.call_count, 3)
+
+	def test_restoring_discussion_reuses_indexed_reply_search_hits(self):
+		from gameplan.moderation import filter_removed_search_results
+
+		hit = {"doctype": "GP Comment", "name": str(self.reply.name)}
+		self.discussion.hide("Reviewed")
+		self.assertEqual(filter_removed_search_results([hit]), [])
+
+		with patch("frappe.enqueue") as enqueue:
+			self.discussion.restore()
+
+		enqueue.assert_not_called()
+		self.assertEqual(filter_removed_search_results([hit]), [hit])
+
 	def test_removed_content_cannot_be_shared_and_restore_reenables_sharing(self):
 		for doc in (self.reply, self.discussion):
 			doc.hide("Reviewed")

@@ -76,17 +76,6 @@ def community_bans(community: str, start: int = 0):
 	)
 
 
-def reindex_discussion_replies(discussion):
-	from frappe.search.sqlite_search import update_doc_index
-
-	for name in frappe.get_all(
-		"GP Comment",
-		filters={"reference_doctype": "GP Discussion", "reference_name": discussion},
-		pluck="name",
-	):
-		update_doc_index(frappe.get_doc("GP Comment", name))
-
-
 def filter_removed_search_results(results):
 	from gameplan.mixins.moderation import is_removed
 
