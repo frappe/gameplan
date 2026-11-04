@@ -223,6 +223,26 @@ class TestReporting(GameplanTestCase):
 		frappe.qb.update(Report).set(Report.creation, "2000-01-01 00:00:00").run()
 		self.report(self.reply)
 
+	def test_queue_uses_lookahead_to_advertise_next_page(self):
+		for index in range(41):
+			doc = create_discussion(f"Queue page {index}", self.space, owner=self.member)
+			frappe.get_doc(
+				doctype="GP Review",
+				reference_doctype="GP Discussion",
+				reference_name=str(doc.name),
+				status="Pending",
+				report_count=1,
+			).insert(ignore_permissions=True)
+
+		with self.as_user(self.outsider):
+			first = queue(self.community.name)
+			second = queue(self.community.name, start=40)
+
+		self.assertEqual(len(first["items"]), 40)
+		self.assertTrue(first["has_more"])
+		self.assertEqual(len(second["items"]), 1)
+		self.assertFalse(second["has_more"])
+
 	def test_evidence_is_loaded_one_version_at_a_time_and_cannot_cross_reviews(self):
 		first = self.report()
 		self.discussion.reload()

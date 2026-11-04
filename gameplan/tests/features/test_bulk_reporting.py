@@ -77,6 +77,29 @@ class TestBulkReporting(GameplanTestCase):
 				self.previews(names)
 		self.assertEqual(declared_http_methods(preview), {"POST"})
 
+	def test_preview_batches_database_reads_for_fifty_reviews(self):
+		reviews = []
+		for index in range(50):
+			doc = create_discussion(f"Batch preview {index}", self.space, owner=self.member)
+			reviews.append(
+				frappe.get_doc(
+					doctype="GP Review",
+					reference_doctype="GP Discussion",
+					reference_name=str(doc.name),
+					status="Pending",
+				)
+				.insert(ignore_permissions=True)
+				.name
+			)
+
+		from unittest.mock import patch
+
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
+			items = self.previews(reviews)
+
+		self.assertEqual(len(items), 50)
+		self.assertLessEqual(queries.call_count, 12)
+
 	def test_private_missing_and_moved_targets_have_no_preview_details(self):
 		private = create_space(
 			"Private",
