@@ -207,3 +207,25 @@ body {
 .ProseMirror table col[style*="min-width"] {
   width: 120px;
 }
+
+/* Footnotes (components/editor/footnotes). Gray only: the marker reads as a
+   reference, not as a link colour. */
+.ProseMirror sup[data-type='footnote-reference'] {
+  @apply cursor-pointer rounded-1 px-[0.15em] font-medium text-ink-gray-6;
+}
+
+.ProseMirror sup[data-type='footnote-reference']:hover {
+  @apply bg-surface-gray-2 text-ink-gray-9;
+}
+
+.ProseMirror ol[data-type='footnotes'] {
+  @apply mt-8 border-t border-outline-gray-1 pt-4 text-[0.875em] text-ink-gray-7;
+}
+
+.ProseMirror ol[data-type='footnotes'] li p {
+  @apply my-1;
+}
+
+.footnote-back-link {
+  @apply ml-1 rounded-1 px-0.5 text-ink-gray-5 hover:bg-surface-gray-2 hover:text-ink-gray-8;
+}
