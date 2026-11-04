@@ -35,6 +35,7 @@ declare global {
     read_only_mode?: boolean
     system_timezone?: string
     max_file_size?: number | string
+    file_chunk_size?: number | string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
   }
