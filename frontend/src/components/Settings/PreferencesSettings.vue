@@ -91,6 +91,11 @@
 
         <QuickReactionsEditor class="mt-2" />
       </section>
+
+      <section v-if="!sessionUser.isGuest">
+        <h2 class="text-md-semibold text-ink-gray-8">Offline</h2>
+        <OfflineSettingsPanel class="mt-2" />
+      </section>
     </div>
   </PanelBody>
 
@@ -122,6 +127,7 @@ import { useTheme, type Theme } from '@/utils/useTheme'
 import { useCursorStyle, type CursorStyle } from '@/utils/useCursorStyle'
 import type { GPUserProfile } from '@/types/doctypes'
 import QuickReactionsEditor from './QuickReactionsEditor.vue'
+import OfflineSettingsPanel from './OfflineSettingsPanel.vue'
 
 const sessionUser = useSessionUser()
 const { currentTheme, setTheme } = useTheme()

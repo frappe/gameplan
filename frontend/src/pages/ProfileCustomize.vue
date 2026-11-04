@@ -138,11 +138,11 @@ import {
   PageHeader,
   Breadcrumbs,
   Button,
-  dialog,
   toast,
   Tooltip,
-  useDoc,
   usePageMeta,
+  useDoc,
+  dialog,
 } from 'frappe-ui'
 import ProfileBentoEditorPanel from '@/components/ProfileBento/ProfileBentoEditorPanel.vue'
 import ProfileBentoGrid from '@/components/ProfileBento/ProfileBentoGrid.vue'
@@ -375,6 +375,7 @@ onBeforeRouteLeave(() => {
     // `confirm`, not `danger`: this screen stays on gray, with no red anywhere.
     dialog.confirm({
       title: 'Discard changes',
+      worksOffline: true,
       message: 'Your profile has unsaved changes. Leaving now discards them.',
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',

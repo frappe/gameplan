@@ -66,11 +66,80 @@ describe('Comment drafts', () => {
     // Posting the reply commits the draft, which deletes the GP Draft row.
     cy.button('Submit').click()
     cy.wait('@comment')
+    cy.button('Add a comment').should('be.visible')
 
     interceptDrafts()
     cy.visit('/g/drafts')
     cy.wait('@getDrafts')
     cy.contains(replyText).should('not.exist')
+  })
+
+  it('shows a failed discard and keeps the comment edit for retry', () => {
+    cy.request('POST', '/api/v2/document/GP%20Comment', {
+      reference_doctype: 'GP Discussion',
+      reference_name: discussion,
+      content: '<p>Original comment</p>',
+    }).then(({ body }) => {
+      const comment = `div[data-id="${body.data.name}"]`
+      cy.intercept('POST', '/api/v2/document/GP%20Draft').as('editDraft')
+      cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+      cy.get(comment).should('be.visible')
+      cy.selectDropdownOption('Comment Options', 'Edit')
+      cy.get(`${comment} [contenteditable=true]`).click().type('{moveToEnd} with unsent edits')
+      cy.wait('@editDraft')
+      cy.intercept(
+        { method: 'DELETE', url: '**/api/v2/document/GP%20Draft/*', times: 1 },
+        { statusCode: 503 },
+      ).as('failedDiscard')
+      cy.get(comment).contains('button', 'Discard').click()
+      cy.wait('@failedDiscard')
+      cy.get(comment).contains('Error').should('be.visible')
+      cy.get(`${comment} [contenteditable=true]`).should('contain.text', 'with unsent edits')
+      cy.get(comment).contains('button', 'Discard').click()
+      cy.get(`${comment} [contenteditable=true]`).should('not.exist')
+      cy.get(comment).contains('Original comment').should('be.visible')
+      cy.get(comment).contains('with unsent edits').should('not.exist')
+      cy.get(comment).contains('Error').should('not.exist')
+    })
+  })
+
+  it('shows an empty reply discard failure and allows retry', () => {
+    cy.intercept('POST', '/api/v2/document/GP%20Draft').as('draftInsert')
+    cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
+    cy.button('Add a comment').click()
+    cy.get('[contenteditable=true]').click().type('Reply to discard')
+    cy.wait('@draftInsert')
+    cy.get('[contenteditable=true]').type('{selectall}{backspace}')
+    cy.intercept(
+      { method: 'DELETE', url: '**/api/v2/document/GP%20Draft/*', times: 1 },
+      {
+        statusCode: 503,
+        body: { errors: [{ type: 'ValidationError', message: 'Discard temporarily unavailable' }] },
+      },
+    ).as('failedDiscard')
+    cy.button('Discard').click()
+    cy.wait('@failedDiscard')
+    cy.contains('Discard temporarily unavailable').should('be.visible')
+    cy.get('[contenteditable=true]').should('be.visible')
+    cy.get('[contenteditable=true]').type('Reply after failed discard')
+    cy.intercept(
+      { method: 'POST', url: '**/api/v2/document/GP%20Comment', times: 1 },
+      {
+        statusCode: 503,
+        body: { errors: [{ type: 'ValidationError', message: 'Posting temporarily unavailable' }] },
+      },
+    ).as('failedPost')
+    cy.button('Submit').click()
+    cy.wait('@failedPost')
+    cy.contains('Posting temporarily unavailable').should('be.visible')
+    cy.contains('Discard temporarily unavailable').should('not.exist')
+    cy.get('[contenteditable=true]')
+      .should('contain.text', 'Reply after failed discard')
+      .type('{selectall}{backspace}')
+    cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('retryDiscard')
+    cy.button('Discard').click()
+    cy.wait('@retryDiscard').its('response.statusCode').should('eq', 202)
+    cy.button('Add a comment').should('be.visible')
   })
 
   it('blocks a new comment until its draft finishes loading', () => {

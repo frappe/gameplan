@@ -1,4 +1,6 @@
 import { io, type Socket } from 'socket.io-client'
+import { watch } from 'vue'
+import { isOnline, onReconnect } from '@/data/online'
 import { socketio_port } from '../../../../sites/common_site_config.json'
 
 /** Payload published by GP Activity on every new discussion/comment activity.
@@ -100,12 +102,19 @@ export function initSocket() {
     if (hasConnected) runEach(reconnectListeners, 'Socket reconnect listener')
     hasConnected = true
   })
+  // Pause while offline; the network callback resumes connection attempts.
+  watch(isOnline, (online) => {
+    if (!online) appSocket.disconnect()
+  })
+  onReconnect(() => appSocket.connect())
 
-  // Frappe rejects the handshake when its auth call to the web server fails, which happens
-  // while a deploy restarts the web server. socket.io never retries a rejected handshake.
-  // Retrying is safe: a logged-out session passes auth as Guest instead of failing.
+  // A rejected handshake needs an explicit retry, but never while the browser is offline.
   appSocket.on('connect_error', () => {
-    if (!appSocket.active) setTimeout(() => appSocket.connect(), HANDSHAKE_RETRY_DELAY)
+    if (!appSocket.active) {
+      setTimeout(() => {
+        if (isOnline.value) appSocket.connect()
+      }, HANDSHAKE_RETRY_DELAY)
+    }
   })
 
   // Attach one dispatcher per known event. socket.io keeps these across reconnects, so unlike

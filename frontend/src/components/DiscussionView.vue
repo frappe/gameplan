@@ -16,7 +16,8 @@
       </span>
     </PageHeader>
     <div class="discussion-container">
-      <div v-if="discussion.loading">
+      <!-- Only when nothing is cached: a refresh keeps the current copy on screen. -->
+      <div v-if="discussion.loading && !discussion.doc">
         <div
           class="sticky -top-px z-[1] flex w-full items-center bg-surface-base pb-2 pt-2 sm:top-0 sm:pt-14"
         >
@@ -175,6 +176,7 @@
               @save="updatePost"
               @discard="cancelEdit"
             />
+            <ErrorMessage v-if="editingPost" class="mt-2" :message="postDiscardError" />
           </div>
           <div class="mt-3" v-show="!editingPost">
             <Reactions
@@ -294,6 +296,13 @@
           again.
         </p>
       </EmptyStateBox>
+      <!-- Offline and never cached: say so and offer a Retry, not the catch-all below. -->
+      <OfflineContentFallback
+        v-else-if="discussion.isFinished && isOfflineFailure"
+        class="mx-auto mt-14 max-w-2xl px-6"
+        v-bind="loadFailureCopy('this discussion')"
+        @retry="discussion.reload()"
+      />
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
            Fail visibly instead of rendering a blank page. Gated on isFinished so the
            pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash
@@ -363,7 +372,11 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
+import { isOfflineError, loadFailureCopy } from '@/data/loadFailure'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { whenOnline } from '@/data/online'
+import { refuseOffline } from '@/data/offline/requests'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -468,6 +481,7 @@ function isMissingOrForbidden(error: unknown): boolean {
   const type = (error as { type?: string } | null)?.type
   return type === 'DoesNotExistError' || type === 'PermissionError'
 }
+const isOfflineFailure = computed(() => isOfflineError(discussion.error))
 const showTitleInMobileHeader = ref(false)
 const mobileHeaderTitle = computed(() =>
   showTitleInMobileHeader.value ? discussion.doc?.title || 'Discussion' : 'Discussion',
@@ -482,6 +496,7 @@ function scrollToQuotingComment(commentId: string) {
 }
 
 const editingPost = ref(false)
+const postDiscardError = ref(null)
 // snapshot of title/content captured when edit mode opens, so we can detect
 // unsaved changes and confirm before discarding them
 const editSnapshot = ref<{ title: string; content: string } | null>(null)
@@ -621,12 +636,12 @@ async function scrollToUnread() {
   }
 
   if (route.name === 'Discussion' && route.params.postId === doc?.name) {
-    discussion.trackVisit
-      .submit()
-      .then(() => {
-        refreshUnreadCountForProjects([doc.project])
-      })
-      .catch(() => {})
+    whenOnline(() =>
+      discussion.trackVisit
+        .submit()
+        .then(() => refreshUnreadCountForProjects([doc.project]))
+        .catch(() => {}),
+    )
   }
 }
 
@@ -734,12 +749,16 @@ function isPostDirty() {
   )
 }
 
-function closeEditor() {
-  editingPost.value = false
-  editSnapshot.value = null
-  // Explicit discard throws the draft away (navigating away would keep it instead).
-  postDraft.clear()
-  discussion.reload()
+async function closeEditor() {
+  postDiscardError.value = null
+  try {
+    if (!(await postDraft.clear())) return
+    editingPost.value = false
+    editSnapshot.value = null
+    discussion.reload()
+  } catch (error) {
+    postDiscardError.value = error
+  }
 }
 
 function cancelEdit() {
@@ -747,6 +766,7 @@ function cancelEdit() {
   if (isPostDirty()) {
     dialog.danger({
       title: 'Discard changes',
+      worksOffline: true,
       message: 'You have unsaved changes. Are you sure you want to discard them?',
       confirmLabel: 'Discard changes',
       cancelLabel: 'Keep editing',
@@ -758,7 +778,8 @@ function cancelEdit() {
 }
 
 function updatePost() {
-  if (!editingPost.value || !canSavePost.value) return
+  if (!editingPost.value || !canSavePost.value || refuseOffline()) return
+  postDiscardError.value = null
   // Show the new title at once instead of the old one until the server answers.
   const title = postDraftData.value?.title
   const previousTitle = discussion.doc?.title

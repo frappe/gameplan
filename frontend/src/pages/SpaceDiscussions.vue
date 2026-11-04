@@ -54,7 +54,8 @@
       ref="discussionListRef"
       :filters="() => ({ project: spaceId })"
       :orderBy="() => discussionOrderBy"
-      :cacheKey="`SpaceDiscussions-${spaceId}`"
+      :cacheKey="spaceFeedKey(spaceId)"
+      :key="spaceId"
       :selectable="isBulkMoveMode"
       v-model:selectedDiscussions="selectedDiscussions"
     />
@@ -117,6 +118,7 @@ import {
   archiveSpace,
   unarchiveSpace,
 } from '@/data/spaces'
+import { spaceFeedKey } from '@/data/discussions'
 import { copyToClipboard } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
 

@@ -2,6 +2,7 @@ import { MaybeRefOrGetter, toValue } from 'vue'
 import { toast, useDoc } from 'frappe-ui'
 import { GPTask } from '@/types/doctypes'
 import { OptimisticSave } from '@/utils/optimisticSave'
+import { revalidateOnReconnect } from '@/data/offline/resources'
 
 interface Task extends GPTask {}
 
@@ -21,7 +22,8 @@ interface CachedTask {
 let tasksCache: Record<string, CachedTask> = {}
 
 export function useTask(taskId: MaybeRefOrGetter<string>) {
-  return cachedTask(taskId).resource
+  const cached = tasksCache[toValue(taskId)]
+  return cached ? revalidateOnReconnect(cached.resource) : cachedTask(taskId).resource
 }
 
 /** Moves a task to another space, one save at a time. */

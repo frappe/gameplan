@@ -19,7 +19,7 @@ describe('Search privacy', () => {
     cy.contains('Public roadmap').should('be.visible')
     cy.contains('Secret thread').should('be.visible')
 
-    cy.loginAs('secondMember')
+    cy.switchUser('secondMember')
     cy.visit(`/g/search?q=${term}`)
     cy.contains('Public roadmap').should('be.visible')
     cy.contains('Secret thread').should('not.exist')

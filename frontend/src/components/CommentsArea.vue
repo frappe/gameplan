@@ -199,7 +199,7 @@
               can-attach-poll
               placeholder="Add a comment..."
             />
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
+            <ErrorMessage class="mt-2" :message="discardError || comments.insert.error" />
           </div>
         </div>
       </div>
@@ -220,20 +220,29 @@ import {
   useTemplateRef,
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useDebounceFn, useEventListener } from '@vueuse/core'
+import { useList, ErrorMessage, Button, Tooltip, dialog } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
-import { dialog, shellScrollContainer } from 'frappe-ui'
+import { shellScrollContainer } from 'frappe-ui'
 import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
 import { GPActivity, GPBookmark, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
 import { useRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes'
 import { useDraftSync } from '@/data/useDraftSync'
+import { refuseOffline } from '@/data/offline/requests'
+import {
+  ACTIVITY_FIELDS,
+  COMMENT_FIELDS,
+  POLL_FIELDS,
+  activitiesCacheKey,
+  commentsCacheKey,
+  pollsCacheKey,
+} from '@/data/discussionTimeline'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
@@ -296,6 +305,7 @@ const sessionUser = useSessionUser()
 const isMobileViewport = useIsMobile()
 
 const showCommentBox = ref(false)
+const discardError = ref(null)
 const composerMinimized = ref(false)
 const mobileComposerFullscreen = ref(false)
 const composerToolbarExpanded = ref(false)
@@ -334,8 +344,8 @@ const composerStorageKey = computed(() => {
 
 const comments = useList<GPComment>({
   doctype: 'GP Comment',
-  cacheKey: ['Comments', props.doctype, props.name],
-  fields: ['name', 'content', 'owner', 'creation', 'modified', 'edited_at', 'deleted_at'],
+  cacheKey: commentsCacheKey(props.doctype, props.name),
+  fields: COMMENT_FIELDS,
   transform(data) {
     return data.map((d) => ({ ...d, doctype: 'GP Comment' }))
   },
@@ -346,16 +356,22 @@ const comments = useList<GPComment>({
   orderBy: 'creation asc',
   limit: 99999,
   onSuccess() {
+    // Reconnect and socket refreshes must preserve the reader's scroll position.
+    if (positionedFor === String(props.name)) return
     if (route.query.comment) {
       if (route.query.comment === 'first_post') {
         router.replace({ query: {} })
+        positionedFor = String(props.name)
         return
       }
       const comment = comments.data?.find((c) => c.name === route.query.comment)
+      if (!comment) return
       scrollToItem(comment)
-    } else if (!route.query.fromSearch && comments.data?.length > 0) {
+    } else {
+      if (route.query.fromSearch || !comments.data?.length) return
       scrollToEnd()
     }
+    positionedFor = String(props.name)
   },
 })
 
@@ -366,9 +382,12 @@ const bookmarks = useList<GPBookmark>({
   limit: 99999,
 })
 
+let positionedFor: string | null = null
+
 const activities = useList<GPActivity>({
   doctype: 'GP Activity',
-  fields: ['name', 'user', 'action', 'data', 'creation'],
+  cacheKey: activitiesCacheKey(props.doctype, props.name),
+  fields: ACTIVITY_FIELDS,
   filters: {
     reference_doctype: props.doctype,
     reference_name: props.name,
@@ -390,27 +409,21 @@ const activities = useList<GPActivity>({
 // The parent bumps `activityVersion` with the doc's `modified` on every such action,
 // so reload the timeline when it changes (skipping the initial undefined -> value
 // transition on first load, when the list has already fetched on mount).
+// This and the `new_activity` socket event can fire for the same action; one debounced
+// reload keeps the second from aborting the first and leaving the cached timeline up.
+const reloadActivities = useDebounceFn(() => activities.reload(), 100)
+
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev) reloadActivities()
   },
 )
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    'comment',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-  ],
+  cacheKey: pollsCacheKey(props.name),
+  fields: POLL_FIELDS,
   filters: {
     discussion: props.name,
   },
@@ -598,6 +611,7 @@ function highlightComment(id: string) {
 }
 
 function resetCommentState() {
+  discardError.value = null
   showCommentBox.value = false
   composerMinimized.value = false
   mobileComposerFullscreen.value = false
@@ -607,7 +621,8 @@ function resetCommentState() {
 }
 
 async function submitComment() {
-  if (!canSubmit.value || comments.insert.loading) return
+  if (!canSubmit.value || comments.insert.loading || refuseOffline()) return
+  discardError.value = null
 
   const comment = await comments.insert.submit({
     reference_doctype: props.doctype,
@@ -702,20 +717,24 @@ function onNewCommentChange(content: string) {
 }
 
 async function discardComment() {
+  discardError.value = null
   if (!editorObject.value?.isEmpty) {
     dialog.danger({
       title: 'Discard comment',
+      worksOffline: true,
       message: 'Are you sure you want to discard your comment?',
       confirmLabel: 'Discard comment',
       cancelLabel: 'Keep comment',
       onConfirm: async () => {
-        await draft.clear()
-        resetCommentState()
+        if (await draft.clear()) resetCommentState()
       },
     })
   } else {
-    await draft.clear()
-    resetCommentState()
+    try {
+      if (await draft.clear()) resetCommentState()
+    } catch (error) {
+      discardError.value = error
+    }
   }
 }
 
@@ -804,7 +823,7 @@ onMounted(() => {
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
-      activities.reload()
+      reloadActivities()
     }
   })
 })
