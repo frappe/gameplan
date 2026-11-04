@@ -1,6 +1,7 @@
 import type { Community } from '@/data/communities'
 import { getCommunity } from '@/data/communities'
 import type { Space } from '@/data/spaces'
+import { isMemberAccess, VISIBILITY_ANONYMOUS } from '@/utils/visibility'
 
 type PermissionUser = {
   name?: string | null
@@ -31,6 +32,29 @@ export function isGuest(user: PermissionUser) {
   return user.role === 'Gameplan Guest'
 }
 
+export function isAnonymousEligibleSpace(space: Space | null | undefined) {
+  const community = space && getCommunity(space.team)
+  return Boolean(
+    space &&
+    !space.archived_at &&
+    space.visibility === VISIBILITY_ANONYMOUS &&
+    community &&
+    !community.archived_at &&
+    community.visibility === VISIBILITY_ANONYMOUS,
+  )
+}
+
+/** Moving existing private content into public view needs publication approval. */
+export function canMoveContentToSpace(
+  source: Space | null | undefined,
+  target: Space,
+  user: PermissionUser,
+) {
+  return (
+    isGlobalAdmin(user) || isAnonymousEligibleSpace(source) || !isAnonymousEligibleSpace(target)
+  )
+}
+
 /**
  * Mirror of backend `can_manage_space`: global admins can manage any space,
  * guests never manage one, private-space members can manage their own space,
@@ -44,7 +68,7 @@ export function canManageSpace(space: Space | null | undefined, user: Permission
   if (!space || !user.name) return false
   if (isGlobalAdmin(user)) return true
   if (isGuest(user)) return false
-  if (space.is_private) {
+  if (isMemberAccess(space.visibility)) {
     return Boolean(space.members?.some((member) => member.user === user.name))
   }
   return isCommunityAdmin(getCommunity(space.team), user.name)

@@ -13,6 +13,7 @@ export interface PollDraft {
 
 export interface ThreadPolls {
   polls: ReturnType<typeof useList<GPPoll>>
+  embeddedPolls?: ReturnType<typeof useList<GPPoll>>
   space: () => Space | null | undefined
   readOnlyMode: () => boolean
 }

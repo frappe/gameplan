@@ -1,4 +1,4 @@
-import { defineConfig, type PluginOption } from 'vite'
+import { defineConfig, type IndexHtmlTransformContext, type PluginOption } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import path from 'path'
@@ -31,6 +31,18 @@ export default defineConfig({
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
   },
   plugins: [
+    {
+      name: 'gameplan-public-html',
+      transformIndexHtml(html: string, context: IndexHtmlTransformContext) {
+        if (context.server) return html
+        return html
+          .replace('<title>Gameplan</title>', '{% include "gameplan/templates/public/head.html" %}')
+          .replace(
+            '<!-- public-content -->',
+            '{% if seo %}{% include "gameplan/templates/public/body.html" %}{% endif %}',
+          )
+      },
+    },
     frappeui({
       frontendRoute: '/g',
       frappeTypes: {

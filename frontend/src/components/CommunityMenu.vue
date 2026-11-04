@@ -1,7 +1,7 @@
 <template>
   <nav>
     <MobileListRow
-      v-for="(feed, index) in feeds"
+      v-for="(feed, index) in visibleFeeds"
       :key="feed.feedType"
       :border="index > 0"
       :active="!activeSpaceId && activeFeedType === feed.feedType"
@@ -44,7 +44,7 @@
             {{ getSpaceUnreadCount(space.name) }}
           </span>
           <span
-            v-if="space.is_private"
+            v-if="isMemberAccess(space.visibility)"
             class="size-4 text-ink-gray-4 lucide-lock"
             aria-hidden="true"
           />
@@ -68,6 +68,8 @@ import MobileListRow from '@/components/MobileListRow.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
+import { isMemberAccess } from '@/utils/visibility'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 type FeedType = 'recent' | 'unread' | 'participating'
 
@@ -120,6 +122,10 @@ const feeds = computed<FeedRow[]>(() => [
   },
 ])
 
+const visibleFeeds = computed(() =>
+  feeds.value.filter((feed) => !isAnonymousVisitor() || feed.feedType === 'recent'),
+)
+
 const communitySpaceList = computed(() => {
   return (spaces.data || []).filter((space) => {
     return !space.archived_at && space.team === props.communityId
@@ -144,7 +150,7 @@ function feedUnreadCount(feedType: FeedType): number {
 watch(
   () => props.communityId,
   (communityId) => {
-    if (communityId) fetchParticipatingUnreadCount(communityId)
+    if (communityId && !isAnonymousVisitor()) fetchParticipatingUnreadCount(communityId)
   },
   { immediate: true },
 )

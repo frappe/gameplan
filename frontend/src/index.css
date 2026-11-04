@@ -204,6 +204,62 @@ body {
   }
 }
 
-.ProseMirror table col[style*="min-width"] {
+.ProseMirror table col[style*='min-width'] {
   width: 120px;
+}
+
+/* Readable public content before Vue mounts, including when JavaScript is disabled. */
+.public-document {
+  max-width: 52rem;
+  margin: auto;
+  padding: 1.5rem;
+  color: var(--ink-gray-9, #171717);
+}
+.public-document header,
+.public-document article,
+.public-document li {
+  margin-bottom: 1.5rem;
+}
+.public-document nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.public-document a {
+  text-decoration: underline;
+}
+.public-document h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin: 1rem 0;
+}
+.public-document h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.public-post {
+  overflow-wrap: anywhere;
+}
+.public-post p,
+.public-post pre,
+.public-post ul,
+.public-post ol {
+  margin: 0.75rem 0;
+}
+.public-post img,
+.public-post video {
+  max-width: 100%;
+  height: auto;
+}
+.public-post pre,
+.public-post table {
+  overflow: auto;
+  max-width: 100%;
+}
+.public-post ul {
+  list-style: disc inside;
+}
+.public-post ol {
+  list-style: decimal inside;
 }
