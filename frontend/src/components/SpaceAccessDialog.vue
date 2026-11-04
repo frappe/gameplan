@@ -5,12 +5,7 @@
         <section>
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0">
-              <Badge>
-                <template #prefix>
-                  <span :class="[accessIcon, 'size-3']" />
-                </template>
-                {{ accessLabel }}
-              </Badge>
+              <p class="text-base-medium text-ink-gray-8">{{ accessLabel }}</p>
               <p class="mt-1 text-p-sm text-ink-gray-5">{{ accessDescription }}</p>
             </div>
             <div class="flex shrink-0 items-center gap-2 self-end sm:self-auto">
@@ -142,16 +137,7 @@
 </template>
 <script setup lang="ts">
 import { ref, computed, reactive, watch } from 'vue'
-import {
-  Badge,
-  Combobox,
-  toast,
-  Tooltip,
-  TextInput,
-  useDoctype,
-  useList,
-  ScrollArea,
-} from 'frappe-ui'
+import { Combobox, toast, Tooltip, TextInput, useDoctype, useList, ScrollArea } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import VisibilityDialog from '@/components/VisibilityDialog.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -160,12 +146,7 @@ import { spaces as spaceList, useSpace } from '@/data/spaces'
 import { isGameplanAdmin, useSessionUser, useUser, users } from '@/data/users'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
-import {
-  isMemberAccess,
-  VISIBILITY_ANONYMOUS,
-  visibilityIcon,
-  visibilityTier,
-} from '@/utils/visibility'
+import { isMemberAccess, VISIBILITY_ANONYMOUS, visibilityTier } from '@/utils/visibility'
 
 const props = defineProps<{ spaceId: string }>()
 const show = defineModel<boolean>()
@@ -217,7 +198,6 @@ let guestsAndInvites = computed(() => {
 })
 
 const accessLabel = computed(() => visibilityTier(space.value?.visibility))
-const accessIcon = computed(() => visibilityIcon(space.value?.visibility))
 const accessDescription = computed(() => {
   if (visibilityTier(space.value?.visibility) === VISIBILITY_ANONYMOUS) {
     return 'Anyone with the link can read this space without signing in, if its community is Anonymous too.'
