@@ -230,3 +230,11 @@ Confirmed by Ebrahim after grilling:
 Implementation choice: store indexed current restriction state separately from immutable action history and from User.enabled. Auth hooks check deadlines; bounded cleanup records expiries afterward.
 
 - PR timing: push this feature and integrate it into `forum-features`. Do not open a draft PR yet; Ebrahim will open the watched-words PR first.
+
+## Moderation navigation — November 4, 2026
+
+Confirmed by Ebrahim:
+- Reuse the existing Frappe UI sidebar components in the shell sidebar position, at full viewport height.
+- Keep the standard page header over the content area.
+- Put Account suspensions under Site administration in the sidebar, visible only to global admins. Remove the separate scope switcher.
+- Open Approvals by default. Preserve explicit section links.

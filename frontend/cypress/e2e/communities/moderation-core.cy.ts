@@ -117,7 +117,7 @@ describe('Community moderation core', () => {
       cy.contains(/Page not found|Discussion not found/).should('exist')
 
       cy.switchUser('secondMember')
-      cy.visit(moderationPath(ids.community!))
+      cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
       cy.contains('button', 'Restore').click()
       cy.get('[role="dialog"]').contains('button', 'Restore').click()
       cy.contains('No removed content.').should('be.visible')
@@ -149,7 +149,7 @@ describe('Community moderation core', () => {
         )
         reply().should('not.exist')
         cy.switchUser('secondMember')
-        cy.visit(moderationPath(ids.community!))
+        cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
         cy.contains('[role="combobox"]', 'Discussions').click()
         cy.contains('[role="option"]', 'Replies').click()
         cy.contains('Spam removed').should('be.visible')
@@ -191,7 +191,7 @@ describe('Community moderation core', () => {
     resetData('space_with_discussion').then((ids) => {
       appointModerator(ids.community!)
       cy.switchUser('secondMember')
-      cy.visit(moderationPath(ids.community!))
+      cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
       cy.contains('button', 'Community bans').click()
       cy.get('input[placeholder="Name or email"]').type('Member')
       cy.get('[role="option"]')
@@ -234,7 +234,7 @@ describe('Community moderation core', () => {
         })
 
       cy.switchUser('secondMember')
-      cy.visit(moderationPath(ids.community!))
+      cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
       cy.contains('button', 'Community bans').click()
       cy.contains('button', 'Lift ban').click()
       cy.get('[role="dialog"]').find('textarea').type('Appeal accepted')
