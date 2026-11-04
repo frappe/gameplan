@@ -157,6 +157,7 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 		.limit(41)
 		.run(as_dict=True)
 	)
+	has_more = len(rows) > 40
 	rows = rows[:40]
 	Report = frappe.qb.DocType("GP Report")
 	report_reasons = {}
@@ -181,9 +182,9 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 			.where(Comment.name.isin(comment_names))
 		).run(as_dict=True)
 		comment_discussions = {comment.name: comment.reference_name for comment in comments}
-	discussion_names = {
-		row.reference_name for row in rows if row.reference_doctype == "GP Discussion"
-	} | set(comment_discussions.values())
+	discussion_names = {row.reference_name for row in rows if row.reference_doctype == "GP Discussion"} | set(
+		comment_discussions.values()
+	)
 	discussion_titles = {}
 	if discussion_names:
 		titles = (
@@ -200,7 +201,7 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 		)
 		row["discussion_title"] = discussion_titles.get(discussion, "")
 		row["report_reasons"] = report_reasons.get(row.name, [])
-	return {"items": rows, "has_more": len(rows) > 40}
+	return {"items": rows, "has_more": has_more}
 
 
 @frappe.whitelist(methods=["GET", "POST"])
