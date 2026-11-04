@@ -215,7 +215,7 @@ describe('Community moderation core', () => {
       cy.visit(moderationPath(ids.community!))
       cy.contains('button', 'Community bans').click()
       cy.get('input[placeholder="Name or email"]').type('Member')
-      cy.contains('[role="option"]', /^Member$/).click()
+      cy.contains('[role="option"]', 'Member').click()
       cy.contains('button', 'Ban from Community').click()
       confirmRemoval('Ban')
       cy.contains('button', 'Lift ban').should('be.visible')
