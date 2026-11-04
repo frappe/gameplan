@@ -171,7 +171,7 @@ class TestReporting(GameplanTestCase):
 		set_ban(self.community.name, self.second_member.name, 1, "Spam")
 		with self.assertRaises(frappe.PermissionError):
 			self.report()
-		set_ban(self.community.name, self.second_member.name, 0)
+		set_ban(self.community.name, self.second_member.name, 0, "Appeal accepted")
 		self.discussion.hide("Removed")
 		with self.assertRaises(frappe.PermissionError):
 			self.report()

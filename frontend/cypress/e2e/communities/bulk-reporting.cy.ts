@@ -41,7 +41,7 @@ describe('Bulk report review', () => {
     resetData('space_with_discussion').then((ids) => {
       seedReports(ids).then((targets) => {
         openReports(ids)
-        cy.contains('button', 'Select this page').click()
+        cy.contains('button', 'Select this page').scrollIntoView().click()
         cy.contains('2 of 50 selected').should('be.visible')
         cy.contains('button', 'Review selected').click()
         cy.get('[role="dialog"]').contains('Spam: 1').should('be.visible')
@@ -79,7 +79,7 @@ describe('Bulk report review', () => {
       seedReports(ids, 3).then((targets) => {
         openReports(ids)
         cy.intercept('POST', '**/gameplan.reporting_bulk.preview').as('preview')
-        cy.contains('button', 'Select this page').click()
+        cy.contains('button', 'Select this page').scrollIntoView().click()
         cy.contains('button', 'Review selected').click()
         cy.wait('@preview').then(({ response }) => {
           const items = response!.body.message
@@ -116,7 +116,7 @@ describe('Bulk report review', () => {
         cy.request(`/api/v2/document/GP Discussion/${targets[1]}`)
           .its('body.data.hidden_at')
           .should('not.be.ok')
-        cy.contains('button', 'Select this page').click()
+        cy.contains('button', 'Select this page').scrollIntoView().click()
         cy.contains('button', 'Review selected').click()
         cy.contains('Edited after preview').should('be.visible')
         confirm('Uphold')
@@ -135,26 +135,35 @@ describe('Bulk report review', () => {
               name: `review-${start + i}`,
               reference_doctype: 'GP Discussion',
               reference_name: String(start + i),
-              creation: '2026-10-23 10:00:00',
+              report_count: 1,
+              report_reasons: [{ reason: 'Spam', count: 1 }],
+              last_reported_at: '2026-10-23 10:00:00',
             })),
             has_more: start === 0,
           },
         })
-      })
+      }).as('queuePage')
       openReports(ids)
-      cy.contains('button', 'Select this page').click()
+      cy.wait('@queuePage')
+      cy.contains('button', 'Select this page').scrollIntoView().click()
       cy.contains('40 of 50 selected').should('be.visible')
-      cy.contains('button', /^Next$/).click()
+      cy.contains('button', /^Next$/)
+        .scrollIntoView()
+        .click()
+      cy.wait('@queuePage')
       cy.contains('button', 'Select this page').should('be.disabled')
       for (let i = 0; i < 10; i++) cy.get('input[aria-label^="Select discussion"]').eq(i).check()
       cy.contains('50 of 50 selected').scrollIntoView().should('be.visible')
       cy.get('input[aria-label^="Select discussion"]').eq(10).should('be.disabled')
-      cy.contains('button', /^Previous$/).click()
+      cy.contains('button', /^Previous$/)
+        .scrollIntoView()
+        .click()
+      cy.wait('@queuePage')
       cy.get('input[aria-label^="Select discussion"]:checked').should('have.length', 40)
-      cy.contains('button', 'Clear selection').click()
-      cy.contains('0 of 50 selected').should('be.visible')
-      cy.contains('button', 'Select this page').click()
-      cy.contains('[role="combobox"]', 'Pending').click()
+      cy.contains('button', 'Clear selection').scrollIntoView().click()
+      cy.contains('10 of 50 selected').should('be.visible')
+      cy.contains('button', 'Select this page').scrollIntoView().click()
+      cy.contains('[role="combobox"]', 'Pending').scrollIntoView().click()
       cy.contains('[role="option"]', 'Resolved').click()
       cy.get('input[aria-label^="Select discussion"]').should('not.exist')
       cy.contains('[role="combobox"]', 'Resolved').click()

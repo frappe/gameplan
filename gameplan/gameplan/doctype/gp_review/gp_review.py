@@ -14,3 +14,5 @@ class GPReview(Document):
 def on_doctype_update():
 	frappe.db.add_index("GP Review", ["reference_doctype", "reference_name", "status"], "target_review")
 	frappe.db.add_index("GP Review", ["status", "creation"], "review_queue")
+	frappe.db.add_index("GP Review", ["status", "report_count"], "review_report_count")
+	frappe.db.add_index("GP Review", ["status", "last_reported_at"], "review_last_reported")

@@ -33,6 +33,12 @@ class TestReviewIntegrity(GameplanTestCase):
 		with self.as_user(self.outsider):
 			return detail(self.community.name, review)
 
+	def evidence(self, review):
+		with self.as_user(self.outsider):
+			metadata = detail(self.community.name, review)
+			self.assertIsNone(metadata["evidence"])
+			return detail(self.community.name, review, report=metadata["reports"][0].name)["evidence"]
+
 	def decide(self, review, expected, decision="Dismiss"):
 		with self.as_user(self.outsider):
 			return resolve(self.community.name, review, decision, "Reviewed", expected)
@@ -49,7 +55,7 @@ class TestReviewIntegrity(GameplanTestCase):
 		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
 			self.discussion.delete()
 		data = self.details(review)
-		self.assertEqual(data["evidence"].reported_content, self.discussion.content)
+		self.assertEqual(self.evidence(review).reported_content, self.discussion.content)
 		with self.as_user(self.outsider):
 			self.assertIn(review, [row.name for row in queue(self.community.name)["items"]])
 		self.decide(review, data["current"]["version"])
@@ -63,7 +69,7 @@ class TestReviewIntegrity(GameplanTestCase):
 		for doc in (self.reply, self.discussion):
 			with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
 				doc.delete()
-		self.assertEqual(self.details(review)["evidence"].reported_content, "Reported reply")
+		self.assertEqual(self.evidence(review).reported_content, "Reported reply")
 		self.decide(review, self.details(review)["current"]["version"])
 		with self.as_user(self.member):
 			self.discussion.delete()
@@ -103,7 +109,7 @@ class TestReviewIntegrity(GameplanTestCase):
 			self.reply.reference_doctype = "GP Task"
 			self.reply.reference_name = str(task.name)
 			self.reply.save()
-		self.assertEqual(self.details(review)["evidence"].reported_content, "Reported reply")
+		self.assertEqual(self.evidence(review).reported_content, "Reported reply")
 		self.decide(review, self.details(review)["current"]["version"])
 		with self.as_user(self.member):
 			self.reply.reload()
