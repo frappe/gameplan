@@ -124,6 +124,8 @@ One test map mirroring the product's feature catalog, at three layers:
     | `GP Discussion.unpin_discussion` | Mutation → POST | Clears pin metadata and saves activity. |
     | `GP Discussion.add_bookmark` | Mutation → POST | Inserts a private bookmark. |
     | `GP Discussion.remove_bookmark` | Mutation → POST | Deletes a private bookmark. |
+    | `GP Discussion.highlight_comment` | Mutation → POST | Marks one reply as the accepted answer, replacing any current one, and logs activity. |
+    | `GP Discussion.unhighlight_comment` | Mutation → POST | Clears the accepted answer and logs activity. |
     | `GP Comment.add_bookmark` | Mutation → POST | Inserts a private bookmark of one comment. |
     | `GP Comment.remove_bookmark` | Mutation → POST | Deletes a private bookmark of one comment. |
     | `GP Draft.publish` | Mutation → POST | Inserts a discussion, migrates files, and deletes the draft. |
