@@ -117,7 +117,10 @@ class PublicGameplanSearch(GameplanSearch):
 					"reference_name": result.get("reference_name"),
 				}
 			)
-		return public_results
+		from gameplan.watched_word_payload import clean
+		from gameplan.watched_word_scope import ResponseScopes
+
+		return clean(public_results, scopes=ResponseScopes(public_results, verified=True))
 
 	def _live_rows(self, results):
 		"""A fixed number of batched queries, never one permission lookup per result."""

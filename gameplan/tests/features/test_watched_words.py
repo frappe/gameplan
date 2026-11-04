@@ -305,6 +305,29 @@ class TestWatchedWords(GameplanTestCase):
 			self.assertEqual(result[2].content, "■■■■■ beta")
 		self.assertEqual(counts, [3, 3])
 
+	def test_response_filters_are_metadata_and_verified_results_use_one_rule_query(self):
+		from gameplan.watched_word_scope import ResponseScopes
+
+		self.rule("Censor", "classified")
+		rows = [
+			{
+				"doctype": "GP Discussion",
+				"name": self.post.name,
+				"project": str(self.space.name),
+				"team": self.community.name,
+				"content": "classified text",
+			}
+		]
+		filters = {"doctype": ["GP Discussion"], "project": [str(self.space.name)]}
+		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
+			result = clean(
+				{"results": rows, "summary": {"applied_filters": filters}},
+				scopes=ResponseScopes(rows, verified=True),
+			)
+		self.assertEqual(queries.call_count, 1)
+		self.assertEqual(result.results[0].content, "■■■■■■■■■■ text")
+		self.assertEqual(result.summary.applied_filters, filters)
+
 	def test_held_edit_does_not_change_legacy_reply_cooldown(self):
 		from frappe.utils import add_to_date, get_datetime
 

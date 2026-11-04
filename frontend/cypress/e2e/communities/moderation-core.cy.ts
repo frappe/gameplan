@@ -214,10 +214,12 @@ describe('Community moderation core', () => {
       cy.switchUser('secondMember')
       cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
       cy.contains('button', 'Community bans').click()
+      cy.intercept('POST', '**/gameplan.moderation.ban_candidates', (req) => {
+        if (req.body.query === 'Member') req.alias = 'memberCandidates'
+      })
       cy.get('input[placeholder="Name or email"]').type('Member')
-      cy.get('[role="option"]')
-        .contains(/^Member$/)
-        .click()
+      cy.wait('@memberCandidates').its('response.statusCode').should('eq', 200)
+      cy.contains('[role="option"]', 'Member').click()
       cy.contains('button', 'Ban from Community').click()
       confirmRemoval('Save restriction')
       cy.contains('button', 'Lift ban').should('be.visible')

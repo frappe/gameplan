@@ -48,7 +48,7 @@ def text_fields():
 
 
 def clean(payload, community=None, *, scopes=None):
-	scopes = scopes or ResponseScopes(payload)
+	scopes = scopes or ResponseScopes(payload, community=community)
 	if isinstance(payload, list | tuple):
 		return [clean(row, community, scopes=scopes) for row in payload]
 	if not isinstance(payload, dict):
@@ -57,7 +57,7 @@ def clean(payload, community=None, *, scopes=None):
 	reference = row.get("_watched_reference_doctype") or row.get("reference_doctype")
 	if reference and reference != "GP Discussion":
 		return frappe._dict({key: value for key, value in row.items() if not key.startswith("_watched_")})
-	if row.get("doctype") in {
+	if isinstance(row.get("doctype"), str) and row["doctype"] in {
 		"GP Draft",
 		"GP Submission",
 		"GP Report",
@@ -97,7 +97,10 @@ def clean(payload, community=None, *, scopes=None):
 				pass
 		elif community and isinstance(value, str) and key in fields:
 			row[key] = censor(
-				community, value, html="<" in value and key not in {"title", "discussion_title"}
+				community,
+				value,
+				html="<" in value and key not in {"title", "discussion_title"},
+				rules=scopes.rules.get(community, []),
 			)
 	return row
 
