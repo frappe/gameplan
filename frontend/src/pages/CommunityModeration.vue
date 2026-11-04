@@ -2,28 +2,30 @@
   <div class="flex min-h-0 flex-1 flex-col text-ink-gray-9">
     <template v-if="canModerate || siteWide">
       <div class="flex min-h-0 flex-1 flex-col sm:flex-row">
-        <Sidebar
-          :collapsible="false"
-          width="14rem"
-          aria-label="Moderation sections"
-          class="hidden sm:flex"
-        >
-          <div class="p-3"><slot name="sidebar" /></div>
-          <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-0.5 pb-10">
-            <SidebarLabel>Moderation</SidebarLabel>
-            <div class="mt-0.5 space-y-0.5">
-              <SidebarItem
-                v-for="option in sections"
-                :key="option.value"
-                :label="option.label"
-                :icon="option.icon"
-                :active="!siteWide && tab === option.value"
-                @click="selectSection(option.value)"
-              />
-            </div>
-            <slot name="administration" />
-          </ScrollArea>
-        </Sidebar>
+        <Teleport v-if="!isMobileViewport" to="#moderation-sidebar">
+          <Sidebar
+            :collapsible="false"
+            width="14rem"
+            aria-label="Moderation sections"
+            class="hidden sm:flex"
+          >
+            <div class="p-3"><slot name="sidebar" /></div>
+            <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-0.5 pb-10">
+              <SidebarLabel>Moderation</SidebarLabel>
+              <div class="mt-0.5 space-y-0.5">
+                <SidebarItem
+                  v-for="option in sections"
+                  :key="option.value"
+                  :label="option.label"
+                  :icon="option.icon"
+                  :active="!siteWide && tab === option.value"
+                  @click="selectSection(option.value)"
+                />
+              </div>
+              <slot name="administration" />
+            </ScrollArea>
+          </Sidebar>
+        </Teleport>
         <div class="space-y-3 border-b border-outline-gray-2 p-4 sm:hidden">
           <slot name="sidebar" />
           <Select
@@ -194,6 +196,7 @@
 
 <script setup lang="ts">
 import { Sidebar, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
+import { useIsMobile } from '@/utils/useIsMobile'
 import RestrictionDialog from '@/components/RestrictionDialog.vue'
 import { expiryLabel, type RestrictionUser } from '@/data/restrictions'
 import WatchedWords from '@/components/WatchedWords.vue'
@@ -211,6 +214,7 @@ import { canModerateCommunity, canManageCommunity } from '@/utils/permissions'
 import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { extractServerMessage } from '@/utils'
 
+const isMobileViewport = useIsMobile()
 const sections = computed(() => [
   { label: 'Approvals', value: 'approvals', icon: 'lucide-check-check' },
   { label: 'Reports', value: 'reports', icon: 'lucide-flag' },

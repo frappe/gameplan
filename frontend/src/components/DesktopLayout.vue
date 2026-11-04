@@ -11,6 +11,11 @@
       </template>
       <template #sidebar>
         <AppSidebar v-if="onCommunityRoute" :public-view="publicVisitor" />
+        <div
+          v-if="effectiveRoute.name === 'Moderation'"
+          id="moderation-sidebar"
+          class="h-full shrink-0"
+        />
       </template>
 
       <ReadOnlyBanner v-if="readOnlyMode" class="mb-3" />
