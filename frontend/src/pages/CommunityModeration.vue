@@ -208,7 +208,7 @@ const tab = computed({
       String(route.query.tab),
     )
       ? String(route.query.tab)
-      : 'removed',
+      : 'approvals',
   set: (value) => {
     router.replace({ query: { ...route.query, tab: value } })
   },
