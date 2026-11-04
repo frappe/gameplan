@@ -5,20 +5,12 @@
   <PageHeader class="hidden sm:flex">
     <Breadcrumbs :items="[{ label: 'Moderation', route: { name: 'Moderation' } }]" />
   </PageHeader>
-  <div class="mx-auto w-full max-w-6xl px-4 py-6 text-ink-gray-9 sm:px-8">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <p class="text-base text-ink-gray-6">
-        Review content and manage participation across your Communities.
-      </p>
-      <Select
-        v-if="options.length"
-        v-model="selected"
-        label="Community"
-        class="w-full sm:w-64"
-        :options="options"
-      />
-    </div>
-    <CommunityModeration v-if="selected" :key="selected" :community-id="selected" />
+  <div class="flex min-h-0 flex-1 flex-col text-ink-gray-9">
+    <CommunityModeration v-if="selected" :key="selected" :community-id="selected">
+      <template #sidebar>
+        <Select v-model="selected" label="Community" :options="options" />
+      </template>
+    </CommunityModeration>
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
       Only Community moderators can open this page.
     </p>
