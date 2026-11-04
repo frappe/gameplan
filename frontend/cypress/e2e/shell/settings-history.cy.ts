@@ -95,6 +95,9 @@ describe('Settings dialog and browser history', () => {
       dialog().should('be.visible')
       selectTab('Preferences')
       pathIs('/g/settings/preferences')
+      // A page wrongly mounted by the tab switch loads lazily, so give it time to mount.
+      cy.wait(2000)
+      cy.get('input[placeholder="Start typing to Search"]').should('not.exist')
       cy.get('body').type('{esc}')
       pathIs('/g/search')
       cy.location('search').should('equal', '?q=alpha')
