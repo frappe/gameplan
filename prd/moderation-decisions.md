@@ -184,3 +184,11 @@ Confirmed by Ebrahim:
 - Improve moderation layout and dark-mode contrast using Frappe UI patterns.
 - Removed content must not accept reactions, including reactions by staff viewing originals.
 - Apply shared fixes to source feature branches and the combined forum branch.
+
+## Moderation navigation — November 4, 2026
+
+Confirmed by Ebrahim:
+- Reuse the existing Frappe UI sidebar components in the shell sidebar position, at full viewport height.
+- Keep the standard page header over the content area.
+- Put Account suspensions under Site administration in the sidebar, visible only to global admins. Remove the separate scope switcher.
+- Open Approvals by default. Preserve explicit section links.
