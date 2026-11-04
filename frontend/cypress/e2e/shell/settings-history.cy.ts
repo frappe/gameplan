@@ -85,14 +85,21 @@ describe('Settings dialog and browser history', () => {
       })
     })
 
-    it('closes to the original page after a reload', () => {
-      visitTwoPages()
+    // A page mounted under the dialog reads /settings from useRoute(), so it must not
+    // mount until the dialog closes: not on the reload, and not on the next tab switch.
+    it('closes to a working page after a reload', () => {
+      cy.visit('/g/search?q=alpha')
+      cy.get('input:visible').first().should('have.value', 'alpha')
       openFromAccountMenu()
       cy.reload()
       dialog().should('be.visible')
+      selectTab('Preferences')
+      pathIs('/g/settings/preferences')
       cy.get('body').type('{esc}')
-      pathIs('/g/people')
+      pathIs('/g/search')
+      cy.location('search').should('equal', '?q=alpha')
       dialogClosed()
+      cy.get('input:visible').first().should('have.value', 'alpha')
     })
 
     it('walks community detail back to the list, and closes past both', () => {

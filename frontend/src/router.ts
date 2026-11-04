@@ -791,7 +791,7 @@ router.beforeEach(async (to, from) => {
       const communityId = home.params.communityId
       if (communityId) communityState.scope(routeParam(communityId))
       settingsBackgroundPath.value = home.fullPath
-    } else if (base) {
+    } else if (base && !isSettingsRoute(from)) {
       settingsBackgroundPath.value = base.path
     }
     return
