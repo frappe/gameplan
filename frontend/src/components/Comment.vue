@@ -174,9 +174,13 @@ const startEditing = () => {
 }
 
 const discardEdit = async () => {
-  isEditing.value = false
-  updateError.value = null
-  await draft.clear()
+  try {
+    if (!(await draft.clear())) return
+    isEditing.value = false
+    updateError.value = null
+  } catch (error) {
+    updateError.value = error
+  }
 }
 
 const updateComment = () => {
