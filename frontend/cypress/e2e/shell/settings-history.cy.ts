@@ -85,7 +85,7 @@ describe('Settings dialog and browser history', () => {
       })
     })
 
-    it('keeps the page beneath across a reload', () => {
+    it('closes to the original page after a reload', () => {
       visitTwoPages()
       openFromAccountMenu()
       cy.reload()
@@ -109,6 +109,20 @@ describe('Settings dialog and browser history', () => {
       openAlphaSpaces()
       pathIs('/g/settings/communities/alpha/spaces')
       cy.get('body').type('{esc}')
+      pathIs('/g/people')
+      dialogClosed()
+    })
+
+    it('does not stack entries through the Back to communities button', () => {
+      visitTwoPages()
+      openFromAccountMenu()
+      selectTab('Communities')
+      openAlphaSpaces()
+      pathIs('/g/settings/communities/alpha/spaces')
+      cy.get('button[aria-label="Back to communities"]:visible').click()
+      pathIs('/g/settings/communities')
+
+      cy.go('back')
       pathIs('/g/people')
       dialogClosed()
     })
