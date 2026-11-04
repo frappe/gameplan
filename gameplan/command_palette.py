@@ -8,9 +8,10 @@ import frappe
 @frappe.whitelist()
 def search_sqlite(query):
 	"""Search using SQLite FTS for command palette"""
-	from gameplan.search_sqlite import GameplanSearch, GameplanSearchIndexMissingError
+	from gameplan.public_search import search_for_viewer
+	from gameplan.search_sqlite import GameplanSearchIndexMissingError
 
-	search = GameplanSearch()
+	search = search_for_viewer()
 
 	try:
 		result = search.search(query, title_only=True)

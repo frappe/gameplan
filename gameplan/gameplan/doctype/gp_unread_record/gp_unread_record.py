@@ -6,8 +6,9 @@ from datetime import timedelta
 import frappe
 from frappe.model.document import Document, bulk_insert
 
-import gameplan
+from gameplan.permissions import get_audience_roles, users_who_can_view_space
 from gameplan.realtime import notify_unread_counts_changed
+from gameplan.visibility import is_member_access
 
 
 class GPUnreadRecord(Document):
@@ -337,6 +338,16 @@ class GPUnreadRecord(Document):
 		else:
 			condition = (UnreadRecord.user == user) & (UnreadRecord.is_unread == 1)
 
+		from gameplan.permissions import visible_discussion_criterion
+
+		Discussion = frappe.qb.DocType("GP Discussion")
+		visible = (
+			frappe.qb.from_(Discussion)
+			.select(Discussion.name)
+			.where(visible_discussion_criterion(Discussion))
+		)
+		condition &= UnreadRecord.discussion.isin(visible)
+
 		result = (
 			frappe.qb.from_(UnreadRecord)
 			.select(
@@ -395,6 +406,9 @@ class GPUnreadRecord(Document):
 			.where((Discussion.owner == user) | clause_discussions_commented_by_user(user))
 			.select(Count(Discussion.name).distinct())
 		)
+		from gameplan.permissions import visible_discussion_criterion
+
+		query = query.where(visible_discussion_criterion(Discussion))
 		query = apply_accessible_project_filter(query, Discussion.project)
 
 		if team:
@@ -405,11 +419,11 @@ class GPUnreadRecord(Document):
 	@staticmethod
 	def _get_project_members(project_name):
 		"""Get all users who have access to the project"""
-		project = frappe.db.get_value("GP Project", project_name, ["name", "is_private"], as_dict=True)
+		project = frappe.db.get_value("GP Project", project_name, ["name", "visibility"], as_dict=True)
 
 		all_users = set()
 
-		if project.is_private:
+		if is_member_access(project.visibility):
 			members = frappe.qb.get_query(
 				"GP Member",
 				fields=["user"],
@@ -421,9 +435,7 @@ class GPUnreadRecord(Document):
 				"GP User Profile", filters={"enabled": 1}, fields=["user"]
 			).run(pluck=True)
 
-			for user in enabled_users:
-				if not gameplan.is_guest(user):
-					all_users.add(user)
+			all_users.update(enabled_users)
 
 		# Include guest users with explicit project access
 		guest_users = frappe.qb.get_query(
@@ -432,8 +444,10 @@ class GPUnreadRecord(Document):
 			filters={"project": project.name},
 		).run(pluck=True)
 		all_users.update(guest_users)
-
-		return list(all_users)
+		role_sets = get_audience_roles(all_users)
+		if not is_member_access(project.visibility):
+			all_users.difference_update(role_sets[1] - set(guest_users))
+		return users_who_can_view_space(all_users, project_name, role_sets=role_sets)
 
 	@staticmethod
 	def _notify_unread_counts_changed(users):

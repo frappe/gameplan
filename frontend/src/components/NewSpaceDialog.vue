@@ -34,11 +34,12 @@
       </div>
       <div class="flex items-center space-x-2">
         <div class="w-7 h-7"></div>
-        <div>
+        <div class="w-full">
           <FormControl
-            type="checkbox"
-            label="Keep it private &mdash; Only visible to users"
-            v-model="newSpace.doc.is_private"
+            type="select"
+            label="Visibility"
+            :options="visibilityOptions"
+            v-model="newSpace.doc.visibility"
           />
         </div>
       </div>
@@ -73,6 +74,7 @@ import { computed, h, ref, watch } from 'vue'
 import { activeCommunities, communities } from '@/data/communities'
 import { isGameplanAdmin } from '@/data/users'
 import { until } from '@vueuse/core'
+import { creatableVisibilityOptions, VISIBILITY_GENERAL } from '@/utils/visibility'
 
 const props = defineProps<{
   // When set, the dialog always creates in this community and hides the community picker.
@@ -84,8 +86,11 @@ const newSpace = useNewDoc<GPProject>('GP Project', {
   title: '',
   icon: '',
   team: '',
-  is_private: 0,
+  visibility: VISIBILITY_GENERAL,
 })
+// General by default. Gameplan Admins may also create on the Anonymous tier; a space is
+// only public once its community is Anonymous too.
+const visibilityOptions = computed(() => creatableVisibilityOptions(isGameplanAdmin()))
 const selectedCommunity = ref<string | null>(null)
 
 const isCommunityLocked = computed(() => Boolean(props.lockedCommunityId))

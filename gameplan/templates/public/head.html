@@ -1,0 +1,10 @@
+<title>{{ (seo.title if seo else "Gameplan") | e }}</title>
+<meta name="robots" content="{{ 'index, follow' if seo else 'noindex, follow' }}" data-public-seo />
+{% if seo %}
+<link rel="canonical" href="{{ seo.url | e }}" data-public-seo />
+<meta name="description" content="{{ seo.description | e }}" data-public-seo />
+<meta property="og:title" content="{{ seo.title | e }}" data-public-seo />
+<meta property="og:description" content="{{ seo.description | e }}" data-public-seo />
+<meta property="og:url" content="{{ seo.url | e }}" data-public-seo />
+<meta property="og:type" content="{{ 'article' if seo.discussion else 'website' }}" data-public-seo />
+{% endif %}

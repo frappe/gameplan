@@ -10,7 +10,7 @@ from frappe.query_builder.functions import Count
 from frappe.utils import add_to_date, get_datetime, get_url, getdate, now_datetime, nowdate
 from frappe.utils.verified_command import get_signed_params, verify_request
 
-from gameplan.permissions import apply_accessible_project_filter
+from gameplan.permissions import apply_accessible_project_filter, visible_discussion_criterion
 from gameplan.utils import html_to_text_preview
 
 EMAIL_DIGEST_FREQUENCY_DAYS = {
@@ -160,7 +160,7 @@ def open_digest_preferences(
 
 
 def get_unread_notifications(user: str):
-	return frappe.qb.get_query(
+	rows = frappe.qb.get_query(
 		"GP Notification",
 		fields=[
 			"name",
@@ -183,6 +183,10 @@ def get_unread_notifications(user: str):
 		order_by="creation desc",
 		limit=MAX_DIGEST_ITEMS,
 	).run(as_dict=True)
+
+	from gameplan.mixins.moderation import discussion_is_removed
+
+	return [row for row in rows if not discussion_is_removed(row.discussion)]
 
 
 def get_unread_discussions(user: str):
@@ -216,6 +220,7 @@ def get_unread_discussions(user: str):
 		.where((UnreadRecord.user == user) & (UnreadRecord.is_unread == 1) & Project.archived_at.isnull())
 		.groupby(Discussion.name)
 	)
+	query = query.where(visible_discussion_criterion(Discussion))
 	query = apply_accessible_project_filter(query, Discussion.project, user)
 	return get_popular_discussions(query.run(as_dict=True))
 

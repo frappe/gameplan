@@ -18,13 +18,16 @@ from gameplan.tests.fixtures import (
 	grant_guest_access,
 	set_owner,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class TestClientList(GameplanTestCase):
 	def setUp(self):
 		super().setUp()
 		self.community = create_community("Client List Community", members=[self.member, self.outsider])
-		self.space = create_space("Client List Space", self.community, is_private=1, members=[self.member])
+		self.space = create_space(
+			"Client List Space", self.community, visibility=VISIBILITY_MEMBER_ACCESS, members=[self.member]
+		)
 		self.discussion = create_discussion("Client List Discussion", self.space, owner=self.member)
 		self.task = create_task("Client List Task", self.space, owner=self.member)
 

@@ -81,4 +81,47 @@ describe('Notifications', () => {
     cy.contains("You're caught up").should('be.visible')
     cy.get('[aria-label="Loading notification"]').should('not.exist')
   })
+
+  it('refreshes read notifications after moderation even when the unread count stays zero', () => {
+    cy.then(() =>
+      cy.request('POST', '/api/method/frappe.client.insert', {
+        doc: {
+          doctype: 'GP Notification',
+          to_user: 'member@example.com',
+          from_user: 'member2@example.com',
+          discussion,
+          type: 'Mention',
+          message: 'Previously read discussion notification',
+          read: 1,
+        },
+      }),
+    )
+    cy.loginAs('member')
+    cy.visit('/g/notifications')
+    cy.contains('button', /^\s*Read\s*$/).click()
+    cy.contains('Previously read discussion notification').should('be.visible')
+    for (const action of ['hide', 'restore']) {
+      cy.then(() =>
+        cy.task('requestAsUser', {
+          user: 'Administrator',
+          path: `/api/v2/document/GP Discussion/${discussion}/method/${action}`,
+          body: action === 'hide' ? { reason: 'Reviewed elsewhere' } : {},
+        }),
+      )
+      cy.window().then((win) => {
+        const app = (win.document.querySelector('#app') as any).__vue_app__
+        const handlers = app.config.globalProperties.$socket.listeners(
+          'gameplan:notification_count_changed',
+        )
+        expect(handlers, 'notification event listeners').not.to.be.empty
+        handlers.forEach((handler: (payload: unknown) => void) => {
+          handler({ count: 0, force_refresh: true })
+          handler({ count: 0 })
+        })
+      })
+      cy.contains('Previously read discussion notification').should(
+        action === 'hide' ? 'not.exist' : 'be.visible',
+      )
+    }
+  })
 })

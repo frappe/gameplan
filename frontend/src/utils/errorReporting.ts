@@ -1,3 +1,4 @@
+import { isAnonymousVisitor } from "@/utils/publicAccess"
 /// <reference types="vite/client" />
 /**
  * One funnel for errors, including the ones the UI swallows.
@@ -89,6 +90,7 @@ export function installErrorReporting(app: App, router: Router): void {
 }
 
 function sendToServer(error: unknown, context: ErrorContext): void {
+  if (isAnonymousVisitor()) return
   const message = describe(error)
   const fingerprint = `${context.action}::${message.split('\n')[0]}`
   // One report per distinct error per page load: a retried action repeats the same
