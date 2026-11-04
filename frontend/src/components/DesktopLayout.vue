@@ -27,6 +27,7 @@ import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
 import { usersReady } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
+import { isSettingsRoute } from '@/components/Settings/overlayHistory'
 import { getHomeRoute } from '@/router'
 
 const route = useRoute()
@@ -37,7 +38,7 @@ const router = useRouter()
 // Drive the layout off that background page so the sidebar and rail state don't
 // change when settings opens over a community.
 const effectiveRoute = computed(() => {
-  if (!route.matched.some((record) => record.meta?.settingsOverlay)) return route
+  if (!isSettingsRoute(route)) return route
   return router.resolve(settingsBackgroundPath.value || getHomeRoute())
 })
 
