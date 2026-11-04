@@ -8,13 +8,16 @@
     />
     <Select v-model="sortBy" class="w-full max-w-xs" label="Sort by" :options="sortOptions" />
   </div>
-  <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-3">
-    <Button
+  <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-4">
+    <Checkbox
+      size="sm"
+      label="Select this page"
+      :model-value="pageSelected"
+      :indeterminate="pageHasSelection && !pageSelected"
       :disabled="!pageSelected && (!items.length || selected.size + unselected.length > 50)"
-      @click="togglePageSelection"
-      >{{ pageSelected ? 'Clear selection' : 'Select this page' }}</Button
-    >
-    <span role="status" class="text-base text-ink-gray-6">{{ selected.size }} of 50 selected</span>
+      @update:model-value="togglePageSelection"
+    />
+    <span role="status" class="text-p-sm text-ink-gray-6">{{ selected.size }} of 50 selected</span>
     <Button :disabled="!selected.size" variant="solid" @click="showBulk = true"
       >Review selected</Button
     >
@@ -219,6 +222,7 @@ const props = defineProps<{ communityId: string }>()
 const selected = ref(new Set<string>())
 const showBulk = ref(false)
 const unselected = computed(() => items.value.filter((item) => !selected.value.has(item.name)))
+const pageHasSelection = computed(() => items.value.some((item) => selected.value.has(item.name)))
 const pageSelected = computed(() => items.value.length > 0 && unselected.value.length === 0)
 function toggleSelection(name: string, checked: boolean) {
   if (!checked) selected.value.delete(name)
