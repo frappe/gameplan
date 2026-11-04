@@ -15,6 +15,27 @@ function confirmRemoval(label: string) {
 }
 
 describe('Community moderation core', () => {
+  it('keeps the moderation sidebar after dismissing settings outside the dialog', () => {
+    cy.viewport(1280, 800)
+    resetData('space_with_discussion').then((ids) => {
+      cy.visit(`${moderationPath(ids.community!)}?tab=removed`)
+      cy.get('#moderation-sidebar').then(($sidebar) => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          cy.selectDropdownOption('Account menu', 'Settings')
+          cy.contains('[role="dialog"]', 'User settings').should('be.visible')
+          cy.get('body').click(5, 5, { force: true })
+          cy.location('pathname').should('eq', '/g/moderation')
+          cy.get('#moderation-sidebar').should(($current) => {
+            expect($current[0]).to.equal($sidebar[0])
+          })
+          cy.get('#moderation-sidebar').contains('button', 'Removed content').should('be.visible')
+        }
+        cy.get('#moderation-sidebar').contains('button', 'Community bans').click()
+        cy.contains('h2', 'Community bans').should('be.visible')
+      })
+    })
+  })
+
   it('opens moderation from the sidebar and switches Communities without a feed button', () => {
     resetData('two_communities').then((ids) => {
       cy.visit(`/g/community/${ids.communities![0]}/discussions`)
