@@ -289,8 +289,12 @@ function openCommunityMembers(communityId: string) {
   router.push({ name: 'SettingsCommunity', params: { communityId, view: 'members' } })
 }
 
+// Returns to the list's own history entry when there is one, so going in and out of
+// communities does not stack entries for Back to walk through.
 function showCommunities() {
-  router.push({ name: 'SettingsTab', params: { tab: 'communities' } })
+  const list = router.resolve({ name: 'SettingsTab', params: { tab: 'communities' } })
+  if (window.history.state?.back === list.fullPath) router.back()
+  else router.replace(list)
 }
 
 // Clear a community's search/filter state when entering, leaving, or switching

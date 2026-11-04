@@ -1,5 +1,7 @@
 import { ref, type Component } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import router from '@/router'
+import { isSettingsRoute } from './overlayHistory'
 
 type LucideIconString = `lucide-${string}`
 
@@ -40,9 +42,9 @@ export function showCommunitiesSettings(
   view: CommunitiesView = 'spaces',
 ) {
   if (communityId) {
-    router.push({ name: 'SettingsCommunity', params: { communityId, view } })
+    openSettingsRoute({ name: 'SettingsCommunity', params: { communityId, view } })
   } else {
-    router.push({ name: 'SettingsTab', params: { tab: 'communities' } })
+    openSettingsRoute({ name: 'SettingsTab', params: { tab: 'communities' } })
   }
 }
 
@@ -67,7 +69,13 @@ export const settingsShortcutLabel = /Mac/i.test(navigator.platform) ? '⌘⇧,'
  */
 export function showSettingsDialog(defaultTab: string | null = null) {
   const slug = slugForLabel(defaultTab) ?? tabs[0]?.slug ?? 'profile'
-  router.push({ name: 'SettingsTab', params: { tab: slug } })
+  openSettingsRoute({ name: 'SettingsTab', params: { tab: slug } })
+}
+
+// With the dialog already open (say, from the command palette) this only changes what
+// it shows, which is not a new history entry.
+function openSettingsRoute(to: RouteLocationRaw) {
+  return isSettingsRoute(router.currentRoute.value) ? router.replace(to) : router.push(to)
 }
 
 function slugForLabel(label: string | null): string | null {

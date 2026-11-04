@@ -14,6 +14,13 @@ import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { settingsBackgroundPath } from './components/Settings'
+import {
+  isLeavingOverlay,
+  isSettingsRoute,
+  leaveOverlayFor,
+  recordOverlayBase,
+  resolveOverlayBase,
+} from './components/Settings/overlayHistory'
 import { shellScrollContainer } from 'frappe-ui'
 
 declare const __FRONTEND_ROUTE__: string
@@ -736,6 +743,10 @@ function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLo
   }
 }
 
+router.afterEach((to, _from, failure) => {
+  if (!failure && isSettingsRoute(to)) recordOverlayBase()
+})
+
 router.beforeEach(async (to, from) => {
   saveAndRestoreScrollPosition(to, from)
 
@@ -762,25 +773,23 @@ router.beforeEach(async (to, from) => {
 
   await ensureCommunityDataLoaded()
 
+  if (isLeavingOverlay(to, from)) {
+    leaveOverlayFor(to)
+    return false
+  }
+
   // Settings overlay: don't run the community-scope/canonical logic below, which
   // would tear down the page the dialog is layered over. Just remember which page
   // that is so App.vue can keep rendering it behind the dialog.
-  if (to.matched.some((route) => route.meta?.settingsOverlay)) {
-    const comingFromSettings = from.matched.some((route) => route.meta?.settingsOverlay)
-    if (!comingFromSettings) {
-      if (from.matched.length > 0) {
-        // In-app open: layer over the page we came from (already scoped correctly).
-        settingsBackgroundPath.value = from.fullPath
-      } else {
-        // Cold load / refresh on a /settings URL: default to Home and scope its
-        // community so the background page can actually render.
-        const home = getHomeRoute()
-        const homeCommunityId =
-          typeof home === 'object' && 'params' in home
-            ? (home.params?.communityId as string | undefined)
-            : undefined
-        if (homeCommunityId) communityState.scope(homeCommunityId)
-        settingsBackgroundPath.value = router.resolve(home).fullPath
+  if (isSettingsRoute(to)) {
+    const base = resolveOverlayBase(to, from)
+    if (base) {
+      settingsBackgroundPath.value = base.path
+      // Cold load or reload: the guard below never ran for this page, so scope its
+      // community here or it cannot render.
+      if (from.matched.length === 0) {
+        const communityId = router.resolve(base.path).params.communityId
+        if (communityId) communityState.scope(routeParam(communityId))
       }
     }
     return
