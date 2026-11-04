@@ -4,32 +4,48 @@
       Applies to the entire Frappe site and every installed app. Suspended accounts cannot sign in
       or use API access.
     </p>
-    <div class="flex flex-wrap items-end gap-2">
-      <Combobox
-        v-model="chosen"
-        v-model:query="query"
-        label="User"
-        placeholder="Name or email"
-        class="min-w-[12rem] flex-1"
-        open-on-click
-        :options="options"
-        :filterable="false"
-        :loading="searching"
-        @update:open="pickerOpen = $event"
-      >
-        <template #item-prefix="{ item }"
-          ><Avatar :image="item.image" :label="item.label" size="sm"
-        /></template>
-      </Combobox>
-      <Button :disabled="!chosen" @click="edit({ user: chosen })">Suspend account</Button>
-      <Button v-if="chosen" @click="showHistory({ user: chosen })">View history</Button>
+    <div class="space-y-1.5">
+      <div class="flex flex-wrap items-end gap-2">
+        <Combobox
+          v-model="chosen"
+          v-model:query="query"
+          label="User"
+          placeholder="Name or email"
+          class="min-w-[12rem] flex-1"
+          open-on-click
+          :options="options"
+          :filterable="false"
+          :loading="searching && !options.length"
+          :empty-text="
+            query.trim().length === 1
+              ? 'Type one more character to search the site.'
+              : 'No eligible users match this search.'
+          "
+          aria-describedby="account-suspension-user-help"
+          @update:open="pickerOpen = $event"
+        >
+          <template #item-prefix="{ item }"
+            ><Avatar :image="item.image" :label="item.label" size="sm"
+          /></template>
+          <template #footer>
+            <Button
+              v-if="candidateCursor"
+              variant="ghost"
+              class="w-full"
+              :loading="searching"
+              @click="search(candidateCursor)"
+            >
+              Load more users
+            </Button>
+          </template>
+        </Combobox>
+        <Button :disabled="!chosen" @click="edit({ user: chosen })">Suspend account</Button>
+        <Button v-if="chosen" @click="showHistory({ user: chosen })">View history</Button>
+      </div>
+      <p id="account-suspension-user-help" class="text-base text-ink-gray-6">
+        Browse users or search the entire site by name or email (at least 2 characters).
+      </p>
     </div>
-    <Button
-      v-if="pickerOpen && candidateCursor"
-      :loading="searching"
-      @click="search(candidateCursor)"
-      >Load more users</Button
-    >
     <ErrorMessage
       v-if="error"
       :message="extractServerMessage(error) || 'Could not load suspensions'"
@@ -90,7 +106,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   Avatar,
   Button,
@@ -135,17 +151,22 @@ type HistoryItem = {
 type Page<T> = { items: T[]; has_more: boolean; next_cursor: string }
 type Candidate = { name: string; full_name: string; user_image?: string }
 const history = ref<HistoryItem[]>([])
+let candidateViewport: HTMLElement | null = null
 let searchRequest = 0
 let timer: ReturnType<typeof setTimeout>
 watch([query, pickerOpen], () => {
   const request = ++searchRequest
   clearTimeout(timer)
+  searching.value = false
+  candidateViewport = null
   options.value = []
   candidateCursor.value = ''
   if (pickerOpen.value && query.value.trim().length !== 1)
     timer = setTimeout(() => search('', request), query.value ? 250 : 0)
 })
 async function search(after = '', request = searchRequest) {
+  const viewport = after ? candidateViewport : null
+  const scrollTop = viewport?.scrollTop || 0
   searching.value = true
   try {
     const data = await call<Page<Candidate>>('gameplan.restriction_queries.candidates', {
@@ -160,6 +181,13 @@ async function search(after = '', request = searchRequest) {
     }))
     options.value = after ? [...options.value, ...result] : result
     candidateCursor.value = data.next_cursor
+    if (viewport) {
+      // Remove after upgrading to a release containing frappe/frappe-ui#1341.
+      await nextTick()
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      if (request === searchRequest && pickerOpen.value && viewport.isConnected)
+        viewport.scrollTop = scrollTop
+    }
   } catch (e) {
     if (request === searchRequest) error.value = e
   } finally {
@@ -224,15 +252,16 @@ function moreCandidatesOnScroll(event: Event) {
   const element = event.target
   if (
     !pickerOpen.value ||
-    searching.value ||
-    !candidateCursor.value ||
     !(element instanceof HTMLElement) ||
-    !element.querySelector('[role="option"]')
+    !element.hasAttribute('data-reka-combobox-viewport')
   )
     return
+  candidateViewport = element
+  if (searching.value || !candidateCursor.value) return
   if (element.scrollHeight - element.scrollTop - element.clientHeight < 48)
     search(candidateCursor.value)
 }
+
 onMounted(() => {
   load()
   document.addEventListener('scroll', moreCandidatesOnScroll, true)

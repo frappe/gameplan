@@ -66,4 +66,69 @@ describe('Timed moderation restrictions', () => {
       cy.contains('button', 'Suspend account').should('not.exist')
     })
   })
+  it('keeps paged users mounted and searches beyond the loaded page', () => {
+    resetData('onboarded')
+    cy.intercept('POST', '**/gameplan.restriction_queries.candidates', (req) => {
+      const { query = '', after = '' } = req.body
+      const start = after ? Number(after.replace(/\D/g, '')) : 0
+      const items =
+        query && query !== 'Scale'
+          ? [
+              {
+                name: 'remote-49999@example.invalid',
+                full_name: 'Remote user outside the loaded page',
+              },
+            ]
+          : Array.from({ length: 20 }, (_, index) => ({
+              name: `scale-${String(start + index + 1).padStart(5, '0')}@example.invalid`,
+              full_name: `Scale person ${start + index + 1}`,
+            }))
+      const result = {
+        items,
+        has_more: !query || query === 'Scale',
+        next_cursor: query && query !== 'Scale' ? '' : `scale-${start + 20}@example.invalid`,
+      }
+      req.alias =
+        query === 'Scale'
+          ? after
+            ? 'scaleNext'
+            : 'scaleFirst'
+          : query === 'al'
+            ? 'slowCandidates'
+            : query
+              ? 'remoteCandidates'
+              : after
+                ? 'nextCandidates'
+                : 'firstCandidates'
+      req.reply({ delay: query === 'al' ? 800 : 150, body: { message: result, data: result } })
+    })
+    cy.visit('/g/moderation?scope=site')
+    cy.get('input[placeholder="Name or email"]').click()
+    cy.wait('@firstCandidates')
+    cy.get('[role="option"]').should('have.length', 20)
+    cy.get('[data-reka-combobox-viewport]').scrollTo('bottom')
+    cy.wait('@nextCandidates')
+    cy.get('[role="option"]').should('have.length', 40)
+    cy.get('[data-reka-combobox-viewport]').invoke('scrollTop').should('be.greaterThan', 0)
+    cy.contains('button', 'Load more users').click()
+    cy.wait('@nextCandidates')
+    cy.get('[role="option"]').should('have.length', 60)
+    cy.get('input[placeholder="Name or email"]').type('Scale')
+    cy.wait('@scaleFirst')
+    cy.get('[role="option"]').should('have.length', 20)
+    cy.get('[data-reka-combobox-viewport]').scrollTo('bottom')
+    cy.wait('@scaleNext')
+    cy.get('[role="option"]').should('have.length', 40)
+    cy.get('[data-reka-combobox-viewport]').invoke('scrollTop').should('be.greaterThan', 100)
+    cy.get('input[placeholder="Name or email"]').clear().type('far')
+    cy.wait('@remoteCandidates').its('request.body').should('include', { query: 'far', after: '' })
+    cy.contains('[role="option"]', 'Remote user outside the loaded page').should('be.visible')
+    cy.get('input[placeholder="Name or email"]').clear().type('al')
+    cy.get('[data-slot="loading"]').should('be.visible')
+    cy.get('input[placeholder="Name or email"]').type('{backspace}')
+    cy.contains('Type one more character to search the site.').should('be.visible')
+    cy.wait('@slowCandidates')
+    cy.get('[data-slot="loading"]').should('not.exist')
+    cy.contains('Type one more character to search the site.').should('be.visible')
+  })
 })
