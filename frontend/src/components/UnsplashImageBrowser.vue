@@ -31,7 +31,10 @@
             class="h-[50px] w-[200px] overflow-hidden rounded-4 hover:opacity-80"
             @click="$emit('select', image.urls.raw)"
           >
-            <img :src="image.urls.raw + '&w=200&h=50&fit=crop&crop=entropy,faces,focalpoint'" />
+            <img
+              :src="image.urls.raw + '&w=200&h=50&fit=crop&crop=entropy,faces,focalpoint'"
+              :alt="image.alt_description || 'Unsplash photo'"
+            />
           </button>
         </div>
         <div class="mt-2 text-center text-sm text-ink-gray-4">
