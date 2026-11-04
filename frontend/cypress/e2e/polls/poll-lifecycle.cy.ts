@@ -288,13 +288,14 @@ describe('Poll lifecycle', () => {
     cy.contains('button', 'Stop Poll').should('not.exist')
     pollChoice('Yes').should('be.disabled')
 
+    cy.iconButton('Show results').click()
+    cy.contains('[role="dialog"]', 'Poll results').should('be.visible')
+    cy.get('body').type('{esc}')
+
     cy.iconButton('Poll Options').click()
-    cy.get('[role="menuitem"]:visible').contains('Show results').should('be.visible')
     cy.get('[role="menuitem"]:visible').contains('Copy link').should('be.visible')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Retract vote')
     cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Delete')
-    cy.get('[role="menuitem"]:visible').contains('Show results').click()
-    cy.contains('[role="dialog"]', 'Poll results').should('be.visible')
     cy.get('body').type('{esc}')
 
     cy.selectDropdownOption('Poll Options', 'Copy link')
