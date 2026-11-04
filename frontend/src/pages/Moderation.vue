@@ -5,28 +5,27 @@
   <PageHeader class="hidden sm:flex">
     <Breadcrumbs :items="[{ label: 'Moderation', route: { name: 'Moderation' } }]" />
   </PageHeader>
-  <div class="mx-auto w-full max-w-6xl px-4 py-6 text-ink-gray-9 sm:px-8">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <p class="text-base text-ink-gray-6">
-        Review content and manage participation across your Communities.
-      </p>
-      <Select
-        v-if="options.length && !siteWide"
-        v-model="selected"
-        label="Community"
-        class="w-full sm:w-64"
-        :options="options"
+  <div class="flex min-h-0 flex-1 flex-col text-ink-gray-9">
+    <div
+      v-if="isGlobalAdmin(useSessionUser())"
+      class="border-b border-outline-gray-2 px-4 py-3 sm:px-8"
+    >
+      <TabButtons
+        v-model="scope"
+        :options="[
+          { label: 'Community moderation', value: 'community' },
+          { label: 'Account suspensions', value: 'site' },
+        ]"
       />
     </div>
-    <div v-if="isGlobalAdmin(useSessionUser())" class="mb-5 flex gap-2">
-      <Button :variant="siteWide ? 'subtle' : 'solid'" @click="setView(false)"
-        >Community moderation</Button
-      ><Button :variant="siteWide ? 'solid' : 'subtle'" @click="setView(true)"
-        >Account suspensions</Button
-      >
-    </div>
-    <AccountSuspensions v-if="siteWide" />
-    <CommunityModeration v-else-if="selected" :key="selected" :community-id="selected" />
+    <ScrollArea v-if="siteWide" class="min-h-0 flex-1" viewport-class="px-4 py-5 sm:px-8"
+      ><AccountSuspensions
+    /></ScrollArea>
+    <CommunityModeration v-else-if="selected" :key="selected" :community-id="selected">
+      <template #sidebar>
+        <Select v-model="selected" label="Community" :options="options" />
+      </template>
+    </CommunityModeration>
     <p v-else class="py-12 text-center text-base text-ink-gray-6">
       Only Community moderators can open this page.
     </p>
@@ -40,7 +39,8 @@ import {
   PageHeader,
   PageHeaderBackButton,
   PageHeaderMobile,
-  Button,
+  TabButtons,
+  ScrollArea,
   Select,
 } from 'frappe-ui'
 import { communities } from '@/data/communities'
@@ -51,9 +51,11 @@ import AccountSuspensions from '@/components/AccountSuspensions.vue'
 const route = useRoute()
 const router = useRouter()
 const siteWide = computed(() => route.query.scope === 'site' && isGlobalAdmin(useSessionUser()))
-function setView(site: boolean) {
-  router.replace({ name: 'Moderation', query: site ? { scope: 'site' } : {} })
-}
+const scope = computed({
+  get: () => (siteWide.value ? 'site' : 'community'),
+  set: (value) =>
+    router.replace({ name: 'Moderation', query: value === 'site' ? { scope: 'site' } : {} }),
+})
 const options = computed(() =>
   (communities.data || [])
     .filter((community) => canModerateCommunity(community, useSessionUser()))

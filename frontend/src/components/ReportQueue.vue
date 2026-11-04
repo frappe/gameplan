@@ -1,15 +1,19 @@
 <template>
-  <Select
-    v-model="status"
-    class="my-4 max-w-xs"
-    label="Review status"
-    :options="['Pending', 'Resolved']"
-  />
+  <div class="my-4 flex flex-wrap gap-4">
+    <Select
+      v-model="status"
+      class="w-full max-w-xs"
+      label="Review status"
+      :options="['Pending', 'Resolved']"
+    />
+    <Select v-model="sortBy" class="w-full max-w-xs" label="Sort by" :options="sortOptions" />
+  </div>
   <div v-if="status === 'Pending'" class="my-4 flex flex-wrap items-center gap-3">
-    <Button :disabled="!items.length || selected.size + unselected.length > 50" @click="selectPage"
-      >Select this page</Button
+    <Button
+      :disabled="!pageSelected && (!items.length || selected.size + unselected.length > 50)"
+      @click="togglePageSelection"
+      >{{ pageSelected ? 'Clear selection' : 'Select this page' }}</Button
     >
-    <Button :disabled="!selected.size" @click="selected.clear()">Clear selection</Button>
     <span role="status" class="text-base text-ink-gray-6">{{ selected.size }} of 50 selected</span>
     <Button :disabled="!selected.size" variant="solid" @click="showBulk = true"
       >Review selected</Button
@@ -48,9 +52,13 @@
         >
           {{ item.discussion_title }}
         </p>
+        <p v-if="item.report_reasons.length" class="mt-1 text-p-sm text-ink-gray-6">
+          {{ item.report_reasons.map(({ reason, count }) => `${reason}: ${count}`).join(' · ') }}
+        </p>
         <p class="mt-1 text-base text-ink-gray-5">
+          {{ item.report_count }} {{ item.report_count === 1 ? 'report' : 'reports' }} ·
           {{ item.decision || 'Pending review' }} ·
-          {{ dayjsLocal(item.creation).format('D MMM YYYY [at] h:mm A') }}
+          {{ dayjsLocal(item.last_reported_at).format('D MMM YYYY [at] h:mm A') }}
         </p>
       </div>
       <Button @click="openReview(item)">Review</Button>
@@ -109,8 +117,8 @@
             class="mt-4"
             :loading="evidenceLoading"
             :disabled="resolving"
-            @click="loadReview(activeReport.name)"
-            >View reported version</Button
+            @click="view === 'reported' ? (view = 'current') : loadReview(activeReport.name)"
+            >{{ view === 'reported' ? 'View current version' : 'View reported version' }}</Button
           >
         </section>
         <div v-if="reportStart || details.has_more" class="flex gap-2">
@@ -148,7 +156,6 @@
           {{ useUser(details.current.owner).full_name }}
         </p>
         <div class="flex gap-2">
-          <Button v-if="view === 'reported'" @click="view = 'current'">Current post</Button>
           <Button
             :route="{
               name: 'Discussion',
@@ -212,6 +219,7 @@ const props = defineProps<{ communityId: string }>()
 const selected = ref(new Set<string>())
 const showBulk = ref(false)
 const unselected = computed(() => items.value.filter((item) => !selected.value.has(item.name)))
+const pageSelected = computed(() => items.value.length > 0 && unselected.value.length === 0)
 function toggleSelection(name: string, checked: boolean) {
   if (!checked) selected.value.delete(name)
   else if (selected.value.size < 50) selected.value.add(name)
@@ -220,17 +228,29 @@ function selectPage() {
   if (selected.value.size + unselected.value.length > 50) return
   for (const item of items.value) selected.value.add(item.name)
 }
+function togglePageSelection() {
+  if (pageSelected.value) {
+    for (const item of items.value) selected.value.delete(item.name)
+  } else {
+    selectPage()
+  }
+}
 function bulkComplete() {
   selected.value.clear()
   reloadDiscussionLists()
   load()
 }
 const status = ref('Pending'),
+  sortBy = ref('recent'),
   start = ref(0),
   hasMore = ref(false),
   loading = ref(false)
 const items = ref<Review[]>([]),
   error = ref<unknown>(null)
+const sortOptions = [
+  { label: 'Recent', value: 'recent' },
+  { label: 'Most reported', value: 'most_reported' },
+]
 const selectedReport = ref('')
 const view = ref('current')
 const evidenceLoading = ref(false)
@@ -280,6 +300,7 @@ async function load() {
     const result = await call<{ items: Review[]; has_more: boolean }>('gameplan.reporting.queue', {
       community: props.communityId,
       status: status.value,
+      sort_by: sortBy.value,
       start: start.value,
     })
     if (current === request) {
@@ -303,6 +324,10 @@ watch(
   },
   { immediate: true },
 )
+watch(sortBy, () => {
+  start.value = 0
+  load()
+})
 function changePage(delta: number) {
   start.value += delta
   load()

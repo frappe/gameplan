@@ -2,7 +2,10 @@
   <!-- usersReady, not users.isFinished: a mid-session reload of the user list would flip
        isFinished back to false and unmount the entire shell — the app blanks out. -->
   <div class="relative flex h-full flex-col" v-if="usersReady">
-    <DesktopShell class="gameplan-desktop-shell h-full flex-1 standalone:border-t">
+    <DesktopShell
+      :scroll="effectiveRoute.name !== 'Moderation'"
+      class="gameplan-desktop-shell h-full flex-1 standalone:border-t"
+    >
       <template #rail>
         <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
       </template>
@@ -52,13 +55,12 @@ const effectiveRoute = computed(() => {
   return router.resolve(settingsBackgroundPath.value || getHomeRoute())
 })
 
-const ownRestriction = computed(
-  () =>
-    useSessionUser().community_restrictions?.find(
-      (r) =>
-        r.community === effectiveRoute.value.params.communityId &&
-        (!r.expires_at || Date.parse(r.expires_at) > Date.now()),
-    ),
+const ownRestriction = computed(() =>
+  useSessionUser().community_restrictions?.find(
+    (r) =>
+      r.community === effectiveRoute.value.params.communityId &&
+      (!r.expires_at || Date.parse(r.expires_at) > Date.now()),
+  ),
 )
 
 const onCommunityRoute = computed(() => {
