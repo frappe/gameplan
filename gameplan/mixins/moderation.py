@@ -1,4 +1,5 @@
 import frappe
+from frappe.query_builder import functions as fn
 
 from gameplan.utils.document import with_stored_document
 
@@ -102,12 +103,6 @@ class Moderatable:
 			ignore_permissions=True
 		)
 		frappe.db.after_commit.add(lambda: update_doc_index(doc))
-		if doc.doctype == "GP Discussion":
-			frappe.enqueue(
-				"gameplan.moderation.reindex_discussion_replies",
-				discussion=doc.name,
-				enqueue_after_commit=True,
-			)
 		doc._notify_moderation_change()
 
 	@frappe.whitelist(methods=["POST"])
@@ -135,38 +130,63 @@ class Moderatable:
 		return {"comment" if self.doctype == "GP Comment" else "discussion": str(self.name)}
 
 	def _check_moderated_files(self):
-		targets = [(self.doctype, str(self.name))]
+		File = frappe.qb.DocType("File")
+		Poll = frappe.qb.DocType("GP Poll")
+		polls = frappe.qb.from_(Poll).select(fn.Cast_(Poll.name, "varchar"))
+		attachments = (File.attached_to_doctype == self.doctype) & (File.attached_to_name == str(self.name))
 		if self.doctype == "GP Discussion":
-			for doctype, filters in [
-				("GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}),
-				("GP Poll", {"discussion": self.name}),
-			]:
-				targets.extend(
-					(doctype, str(name)) for name in frappe.get_all(doctype, filters=filters, pluck="name")
+			Comment = frappe.qb.DocType("GP Comment")
+			comment_names = (
+				frappe.qb.from_(Comment)
+				.select(fn.Cast_(Comment.name, "varchar"))
+				.where(
+					(Comment.reference_doctype == self.doctype) & (Comment.reference_name == str(self.name))
 				)
-		elif self.doctype == "GP Comment":
-			targets.extend(
-				("GP Poll", str(name))
-				for name in frappe.get_all("GP Poll", filters={"comment": self.name}, pluck="name")
 			)
-		for doctype, name in targets:
-			if doctype == "GP Poll":
-				Share = frappe.qb.DocType("DocShare")
-				shares = (
-					frappe.qb.from_(Share)
-					.select(Share.name)
-					.where((Share.share_doctype == doctype) & (Share.share_name == name))
-					.where((Share.read == 1) | (Share.write == 1) | (Share.share == 1) | (Share.submit == 1))
-					.limit(1)
-					.for_update()
-					.run()
-				)
-				if shares:
-					frappe.throw("Remove this poll's document shares before removing its content")
-			if frappe.db.exists(
-				"File", {"attached_to_doctype": doctype, "attached_to_name": name, "is_private": 0}
-			):
-				frappe.throw("Make this content's attached files private before removing it")
+			attachments |= (File.attached_to_doctype == "GP Comment") & File.attached_to_name.isin(
+				comment_names
+			)
+			polls = polls.where(Poll.discussion == str(self.name))
+		elif self.doctype == "GP Comment":
+			polls = polls.where(Poll.comment == str(self.name))
+		public_files = (
+			frappe.qb.from_(File)
+			.select(File.name)
+			.where(attachments & (File.is_private == 0))
+			.limit(1)
+			.for_update()
+			.run()
+		)
+		if public_files:
+			frappe.throw("Make this content's attached files private before removing it")
+
+		Share = frappe.qb.DocType("DocShare")
+		shares = (
+			frappe.qb.from_(Share)
+			.select(Share.name)
+			.where((Share.share_doctype == "GP Poll") & Share.share_name.isin(polls))
+			.where((Share.read == 1) | (Share.write == 1) | (Share.share == 1) | (Share.submit == 1))
+			.limit(1)
+			.for_update()
+			.run()
+		)
+		if shares:
+			frappe.throw("Remove this poll's document shares before removing its content")
+
+		poll_files = (
+			frappe.qb.from_(File)
+			.select(File.name)
+			.where(
+				(File.attached_to_doctype == "GP Poll")
+				& File.attached_to_name.isin(polls)
+				& (File.is_private == 0)
+			)
+			.limit(1)
+			.for_update()
+			.run()
+		)
+		if poll_files:
+			frappe.throw("Make this content's attached files private before removing it")
 
 	def _notify_moderation_change(self):
 		if self.doctype == "GP Discussion":
