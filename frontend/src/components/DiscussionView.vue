@@ -180,7 +180,10 @@
             <Reactions
               doctype="GP Discussion"
               :name="discussion.doc.name"
-              :read-only-mode="readOnlyMode"
+              :read-only-mode="
+                readOnlyMode ||
+                Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+              "
             />
           </div>
         </div>
@@ -189,7 +192,9 @@
           :name="discussion.doc.name"
           :space="space"
           :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
-          :read-only-mode="readOnlyMode"
+          :read-only-mode="
+            readOnlyMode || Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+          "
           :disable-new-comment="Boolean(discussion.doc.closed_at)"
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
@@ -322,9 +327,25 @@
       />
     </div>
   </div>
+  <SlowModeDialog
+    v-if="showSlowMode && discussion.doc"
+    v-model:open="showSlowMode"
+    :discussion="String(discussion.doc.name)"
+    @saved="discussion.reload()"
+  />
+  <ReportDialog
+    v-if="showReport && discussion.doc"
+    v-model:open="showReport"
+    doctype="GP Discussion"
+    :name="String(discussion.doc.name)"
+  />
 </template>
 
 <script setup lang="ts">
+import ReportDialog from './ReportDialog.vue'
+import SlowModeDialog from './SlowModeDialog.vue'
+import { canReport } from '@/data/reporting'
+import { call as moderationCall } from 'frappe-ui'
 import {
   ref,
   computed,
@@ -363,11 +384,11 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { copyToClipboard, extractServerMessage, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
-import { useDiscussion } from '@/data/discussions'
+import { reloadDiscussionLists, useDiscussion } from '@/data/discussions'
 import { provideThreadReactions } from '@/data/reactions'
 import { useDraftSync } from '@/data/useDraftSync'
 import { tags } from '@/data/tags'
@@ -377,10 +398,17 @@ import { provideRichQuotes } from '@/components/RichQuoteExtension/useRichQuotes
 import QuoteBacklinksPopover from '@/components/RichQuoteExtension/QuoteBacklinksPopover.vue'
 import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
-import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
+import {
+  canDeleteContent,
+  canModerateSpace,
+  canEditContent,
+  canMoveOrPinContent,
+  canMoveContentToSpace,
+} from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 const props = defineProps<{
   postId: string
@@ -499,11 +527,14 @@ const pinDialog = reactive<{
   show: false,
   pinToCategory: false,
 })
+const showSlowMode = ref(false)
 const showRevisionsDialog = ref(false)
 
 // While the post is being edited, its title/body live in an auto-saved draft instead of
 // being mutated on discussion.doc directly. The draft survives reloads and navigation, and
 // silently restores if the edit is reopened. Dormant until editingPost flips true.
+const originalEdit = ref<{ title: string; content: string; modified: string } | null>(null)
+const savingWatchedEdit = ref(false)
 const postDraft = useDraftSync({
   identity: () => ({
     type: 'Discussion',
@@ -513,8 +544,8 @@ const postDraft = useDraftSync({
   }),
   enabled: editingPost,
   initialPayload: () => ({
-    title: discussion.doc?.title ?? '',
-    content: discussion.doc?.content ?? '',
+    title: originalEdit.value?.title ?? discussion.doc?.title ?? '',
+    content: originalEdit.value?.content ?? discussion.doc?.content ?? '',
   }),
 })
 const postDraftData = postDraft.data
@@ -599,6 +630,7 @@ async function scrollToUnread() {
 
   let doc = discussion.doc
   if (
+    !isAnonymousVisitor() &&
     route.name === 'Discussion' &&
     !route.query.comment &&
     !route.query.poll &&
@@ -620,7 +652,7 @@ async function scrollToUnread() {
     }
   }
 
-  if (route.name === 'Discussion' && route.params.postId === doc?.name) {
+  if (!isAnonymousVisitor() && route.name === 'Discussion' && route.params.postId === doc?.name) {
     discussion.trackVisit
       .submit()
       .then(() => {
@@ -712,10 +744,19 @@ function currentPostContent() {
   return postEditor.value?.editor?.getHTML() ?? discussion.doc?.content ?? ''
 }
 
-function startEditingPost() {
+async function startEditingPost() {
+  try {
+    originalEdit.value = await moderationCall('gameplan.watched_word_edits.original', {
+      doctype: 'GP Discussion',
+      name: props.postId,
+    })
+  } catch (e) {
+    toast.error(extractServerMessage(e) || 'Could not open this edit')
+    return
+  }
   editSnapshot.value = {
-    title: discussion.doc?.title ?? '',
-    content: currentPostContent(),
+    title: originalEdit.value?.title ?? discussion.doc?.title ?? '',
+    content: originalEdit.value?.content ?? currentPostContent(),
   }
   editingPost.value = true
   // The options dropdown restores focus to its trigger as it closes, which would
@@ -757,32 +798,34 @@ function cancelEdit() {
   }
 }
 
-function updatePost() {
-  if (!editingPost.value || !canSavePost.value) return
-  // Show the new title at once instead of the old one until the server answers.
-  const title = postDraftData.value?.title
-  const previousTitle = discussion.doc?.title
-  if (discussion.doc && title) discussion.doc.title = title
-  discussion.setValue
-    .submit({
-      title,
+async function updatePost() {
+  if (!editingPost.value || !canSavePost.value || savingWatchedEdit.value) return
+  savingWatchedEdit.value = true
+  try {
+    const draftName = await postDraft.flush()
+    const result = await moderationCall<{ doctype: string }>('gameplan.watched_word_edits.submit', {
+      doctype: 'GP Discussion',
+      name: props.postId,
+      expected_modified: originalEdit.value?.modified,
+      title: postDraftData.value?.title,
       content: postDraftData.value?.content,
+      draft: draftName || '',
     })
-    .then(
-      async () => {
-        // Content is saved onto the post; migrate the draft's attachments and delete it.
-        await postDraft.commit()
-        tags.reload()
-      },
-      () => {
-        // The save failed: put the old title back, unless something newer replaced it.
-        const doc = discussion.doc
-        if (doc && doc.title === title && previousTitle !== undefined) doc.title = previousTitle
-        toast.error('Could not save the discussion')
-      },
-    )
-  editingPost.value = false
-  editSnapshot.value = null
+    if (result.doctype === 'GP Submission') {
+      await postDraft.forget()
+      toast.success('Edit submitted for moderator approval. Find it in My submissions.')
+    } else {
+      await postDraft.commit()
+    }
+    editingPost.value = false
+    editSnapshot.value = null
+    tags.reload()
+    await discussion.reload()
+  } catch (e) {
+    toast.error(extractServerMessage(e) || 'Could not save the post')
+  } finally {
+    savingWatchedEdit.value = false
+  }
 }
 
 // Runs once per visit, when the doc resolves — so if the URL is not ours at that moment,
@@ -844,7 +887,10 @@ const currentSpaceId = computed(() => {
 })
 
 const spaceOptions = useGroupedSpaceOptions({
-  filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
+  filterFn: (target) =>
+    !target.archived_at &&
+    target.name !== discussion.doc?.project &&
+    canMoveContentToSpace(space.value, target, useSessionUser()),
 })
 
 // Edit and close/re-open change the post itself, so they follow the same business
@@ -859,7 +905,78 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
+function moderateDiscussion(spam = false) {
+  const restore = !spam && Boolean(discussion.doc?.hidden_at || discussion.doc?.spam_removed_at)
+  const label = restore ? 'Restore discussion' : spam ? 'Delete spam' : 'Hide discussion'
+  dialog.prompt({
+    title: label,
+    message: restore
+      ? 'Make this discussion visible again?'
+      : 'This discussion and its replies will be unavailable to ordinary readers. You can restore it from Removed content.',
+    fields: restore ? [] : [{ name: 'reason', label: 'Reason', type: 'textarea', required: true }],
+    confirmLabel: label,
+    onConfirm: async ({ values, close }) => {
+      await moderationCall(
+        `/api/v2/document/GP Discussion/${props.postId}/method/${
+          restore ? 'restore' : spam ? 'delete_spam' : 'hide'
+        }`,
+        restore ? {} : { reason: values.reason },
+      )
+      reloadDiscussionLists()
+      await discussion.reload()
+      close()
+      await router.push({
+        name: 'CommunityModeration',
+        params: { communityId: space.value?.team },
+        query: { tab: 'removed' },
+      })
+    },
+  })
+}
+
+const showReport = ref(false)
 const actions = computed(() => [
+  {
+    label: 'Report',
+    icon: 'lucide-flag',
+    onClick: () => {
+      showReport.value = true
+    },
+    condition: () => canReport(discussion.doc, space.value),
+  },
+  {
+    label: 'Slow mode',
+    icon: 'lucide-timer',
+    onClick: () => (showSlowMode.value = true),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
+    label: 'Moderation history',
+    icon: 'lucide-history',
+    onClick: () =>
+      router.push({
+        name: 'CommunityModeration',
+        params: { communityId: space.value?.team },
+        query: { tab: 'history', kind: 'discussion', target: String(discussion.doc?.name) },
+      }),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
+    label:
+      discussion.doc?.hidden_at || discussion.doc?.spam_removed_at
+        ? 'Restore discussion'
+        : 'Hide discussion',
+    icon: 'lucide-eye-off',
+    onClick: () => moderateDiscussion(),
+    condition: () => canModerateSpace(space.value, useSessionUser()),
+  },
+  {
+    label: 'Delete spam',
+    icon: 'lucide-trash',
+    onClick: () => moderateDiscussion(true),
+    condition: () =>
+      canModerateSpace(space.value, useSessionUser()) && !discussion.doc?.spam_removed_at,
+  },
   {
     label: 'Edit',
     icon: 'lucide-edit',

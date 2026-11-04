@@ -205,4 +205,6 @@ def get_document_revisions(doctype, name, fieldname="content"):
 				"new_value": change[2] or "",
 			}
 		)
-	return response
+	from gameplan.watched_word_payload import clean, community_for_target
+
+	return clean(response, community_for_target(doctype, name))

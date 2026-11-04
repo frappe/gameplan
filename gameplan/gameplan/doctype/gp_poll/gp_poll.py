@@ -14,7 +14,9 @@ from gameplan.permissions import (
 	content_has_permission,
 	poll_query_conditions,
 )
+from gameplan.public_payload import for_viewer
 from gameplan.utils.document import with_stored_document
+from gameplan.visibility import is_anonymous_eligible_discussion, require_admin_to_publish
 
 from .gp_poll_attributes import GPPollAttributes
 
@@ -61,6 +63,23 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 
 	on_delete_set_null = ["GP Discussion", "GP Notification"]
 
+	def as_dict(self, *args, **kwargs):
+		return for_viewer(self.doctype, super().as_dict(*args, **kwargs))
+
+	def validate_share(self, share):
+		if not any(share.get(right) for right in ("read", "write", "share", "submit")):
+			return
+		from gameplan.mixins.moderation import is_removed
+
+		discussion = (
+			frappe.get_doc("GP Discussion", self.discussion, for_update=True) if self.discussion else None
+		)
+		comment = frappe.get_doc("GP Comment", self.comment, for_update=True) if self.comment else None
+		if (discussion and is_removed(discussion)) or (
+			comment and (is_removed(comment) or comment.deleted_at)
+		):
+			frappe.throw("Removed content cannot be shared", frappe.PermissionError)
+
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
 		self.check_comment()
@@ -103,6 +122,12 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def validate(self):
 		self.check_comment_unchanged()
 		self.check_results_unchanged()
+		before = self.get_doc_before_save()
+		if before and self.has_value_changed("discussion"):
+			require_admin_to_publish(
+				is_anonymous_eligible_discussion(before.discussion),
+				is_anonymous_eligible_discussion(self.discussion),
+			)
 		self.total_votes = len(self.votes)
 
 	def check_comment_unchanged(self):
@@ -232,6 +257,9 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.save(ignore_permissions=True)
 
 	def check_can_participate(self):
+		from gameplan.community_bans import require_participation
+
+		require_participation(self)
 		if not can_view_content(frappe.session.user, self):
 			frappe.throw(_("You do not have access to this poll"), frappe.PermissionError)
 

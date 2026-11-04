@@ -68,6 +68,8 @@ jobs:
         env:
           BEFORE: ${{ env.GITHUB_EVENT_PATH.before }}
           AFTER: ${{ env.GITHUB_EVENT_PATH.after }}
+          # As in ui-test.yml: public spaces are readable without signing in.
+          GAMEPLAN_PUBLIC_ACCESS: "1"
 
       # Mirrors ui-test.yml exactly. A repeat lane that ran a different site, port or server
       # would find flakes the PR lane cannot hit and miss the ones it can.

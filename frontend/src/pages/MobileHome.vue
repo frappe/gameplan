@@ -31,7 +31,7 @@
         {{ community.title }}
         <template #trailing>
           <span
-            v-if="editMode && community.is_private"
+            v-if="editMode && isMemberAccess(community.visibility)"
             class="size-4 shrink-0 text-ink-gray-4 lucide-lock"
             aria-hidden="true"
           />
@@ -70,6 +70,7 @@ import MobileListRow from '@/components/MobileListRow.vue'
 import { activeCommunities, availableCommunities, communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
+import { isMemberAccess } from '@/utils/visibility'
 
 const router = useRouter()
 const editMode = ref(false)

@@ -8,6 +8,7 @@ export type Scenario =
   | 'search_page'
   | 'two_communities'
   | 'unread_discussion'
+  | 'public_space'
 
 export interface SeedIds {
   community?: string
@@ -19,6 +20,8 @@ export interface SeedIds {
   discussion?: string
   discussion_slug?: string
   public_discussion?: string
+  /** A discussion nobody signed out may read, in a space that is not public. */
+  hidden_discussion?: string
   communities?: string[]
   spaces?: string[]
 }

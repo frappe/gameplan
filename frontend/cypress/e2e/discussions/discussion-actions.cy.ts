@@ -91,7 +91,7 @@ describe('Discussion actions', () => {
   })
 
   it('adds a comment to a discussion', () => {
-    cy.intercept('POST', '/api/v2/document/GP%20Comment').as('comment')
+    cy.intercept('POST', '/api/method/gameplan.approvals.submit').as('comment')
     visitSeededDiscussion()
 
     cy.button('Add a comment').click()
@@ -102,7 +102,7 @@ describe('Discussion actions', () => {
     cy.button('Submit').click()
 
     cy.wait('@comment')
-      .its('response.body.data')
+      .its('response.body.message')
       .then((comment: { name: string }) => {
         cy.get(`div[data-id="${comment.name}"]`).should('exist')
       })

@@ -2,18 +2,27 @@
   <!-- usersReady, not users.isFinished: a mid-session reload of the user list would flip
        isFinished back to false and unmount the entire shell — the app blanks out. -->
   <div class="relative flex h-full flex-col" v-if="usersReady">
-    <DesktopShell class="gameplan-desktop-shell h-full flex-1 standalone:border-t">
+    <DesktopShell
+      :scroll="effectiveRoute.name !== 'Moderation'"
+      class="gameplan-desktop-shell h-full flex-1 standalone:border-t"
+    >
       <template #rail>
         <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
       </template>
       <template #sidebar>
-        <AppSidebar v-if="onCommunityRoute" />
+        <AppSidebar v-if="onCommunityRoute" :public-view="publicVisitor" />
+        <!-- Keep the Teleport target mounted while settings changes the background route. -->
+        <div
+          v-show="effectiveRoute.name === 'Moderation'"
+          id="moderation-sidebar"
+          class="h-full shrink-0"
+        />
       </template>
 
       <ReadOnlyBanner v-if="readOnlyMode" class="mb-3" />
       <slot />
     </DesktopShell>
-    <CommandPalette />
+    <CommandPalette v-if="!publicVisitor" />
   </div>
 </template>
 <script setup lang="ts">
@@ -28,9 +37,11 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { usersReady } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { getHomeRoute } from '@/router'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const route = useRoute()
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 
 // While the settings dialog is open the URL is /settings/*, but the page it was
 // opened over stays rendered behind the overlay (see App.vue's displayedRoute).

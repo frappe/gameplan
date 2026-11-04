@@ -14,6 +14,7 @@ from gameplan.tests.fixtures import (
 	create_space,
 	create_task,
 )
+from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
 
 
 class ArchivedSpaceTestCase(GameplanTestCase):
@@ -287,7 +288,7 @@ class TestArchivedContentReadsAndRecovery(ArchivedSpaceTestCase):
 		private_space = create_space(
 			"Archived Private Space",
 			self.community,
-			is_private=1,
+			visibility=VISIBILITY_MEMBER_ACCESS,
 			members=[self.member],
 		)
 		private_page = create_page("Private Space Page", private_space, owner=self.member)

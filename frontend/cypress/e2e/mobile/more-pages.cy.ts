@@ -47,15 +47,19 @@ describe('Mobile More-menu pages', () => {
     cy.loginAs('admin')
 
     openMore()
-    cy.button('Tasks').click()
+    cy.contains('button', /^Tasks$/).click()
     cy.iconButton('Add task').should('be.visible')
 
     openMore()
-    cy.button('People').click()
+    cy.contains('button', /^People$/)
+      .scrollIntoView()
+      .click()
     cy.iconButton('Invite').should('be.visible')
 
     openMore()
-    cy.button('Pages').click()
+    cy.contains('button', /^Pages$/)
+      .scrollIntoView()
+      .click()
     // Sort control moves into the right slot of the mobile header (default order
     // is "Date Updated").
     cy.get('header').filter(':visible').contains('Date Updated').should('be.visible')
@@ -65,7 +69,9 @@ describe('Mobile More-menu pages', () => {
     // Community settings is desktop-only; the mobile More menu must not expose a
     // "Manage" entry.
     openMore()
-    cy.button('People').should('be.visible')
+    cy.contains('button', /^People$/)
+      .scrollIntoView()
+      .should('be.visible')
     cy.contains('button', 'Manage').should('not.exist')
   })
 
