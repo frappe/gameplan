@@ -11,6 +11,10 @@
   "column_break_2",
   "team",
   "is_private",
+  "visibility",
+  "visibility_set_by",
+  "visibility_set_at",
+  "is_anonymous_readable",
   "section_break_5",
   "description",
   "readme",
@@ -94,9 +98,41 @@
   },
   {
    "default": "0",
+   "description": "Replaced by Visibility. Kept only so a rollback needs no data restore; nothing reads or writes it.",
    "fieldname": "is_private",
    "fieldtype": "Check",
-   "label": "Is Private"
+   "hidden": 1,
+   "label": "Is Private (Legacy)",
+   "read_only": 1
+  },
+  {
+   "description": "Anonymous: anyone with the link, no account needed. General: any signed-in Gameplan user. Member Access: only people on the member list.",
+   "fieldname": "visibility",
+   "fieldtype": "Select",
+   "label": "Visibility",
+   "options": "General\nMember Access\nAnonymous"
+  },
+  {
+   "fieldname": "visibility_set_by",
+   "fieldtype": "Link",
+   "label": "Visibility Set By",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "visibility_set_at",
+   "fieldtype": "Datetime",
+   "label": "Visibility Set At",
+   "read_only": 1
+  },
+  {
+   "default": "0",
+   "description": "Computed: set when this space and its community are both on the Anonymous tier and neither is archived. Never edited directly.",
+   "fieldname": "is_anonymous_readable",
+   "fieldtype": "Check",
+   "label": "Is Anonymous Readable",
+   "read_only": 1,
+   "search_index": 1
   }
  ],
  "index_web_pages_for_search": 1,
@@ -110,7 +146,7 @@
    "link_fieldname": "project"
   }
  ],
- "modified": "2024-12-15 00:46:16.394764",
+ "modified": "2026-10-01 06:12:56.974120",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Project",
@@ -162,6 +198,11 @@
    "role": "Gameplan Guest",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Guest",
+   "select": 1
   }
  ],
  "show_title_field_in_link": 1,

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useList } from 'frappe-ui'
+import { session } from './session'
 
 /** A row from `get_my_drafts` — a new-discussion draft or a new-comment draft on a
  *  discussion, already resolved to everything needed to render and route it. */
@@ -14,7 +15,7 @@ export interface DraftRow {
   space: string | null
   space_title: string | null
   community: string | null
-  is_private: boolean | number
+  visibility: string | null
   /** For comment drafts, the parent discussion to open; null for discussion drafts. */
   discussion: string | null
   scheduled_at?: string | null
@@ -42,7 +43,7 @@ export const drafts = useList<DraftRow>({
   limit: 999,
   // get_my_drafts is owner-scoped. frappe-ui namespaces its cache to the session user.
   cacheKey: 'drafts',
-  immediate: true,
+  immediate: session.isLoggedIn,
 })
 
 export const draftCount = computed(() => drafts.data?.length ?? 0)

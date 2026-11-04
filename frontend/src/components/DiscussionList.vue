@@ -33,6 +33,12 @@
       />
     </List>
     <div class="px-2 sm:px-0">
+      <a
+        v-if="isAnonymousVisitor() && publicPageStart() > 0"
+        :href="publicPageLink(-1)"
+        class="underline"
+        >Previous page</a
+      >
       <EmptyStateBox class="mx-3" v-if="!discussions.loading && discussions.data?.length === 0">
         <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
         No discussions
@@ -40,10 +46,14 @@
       <div class="flex items-center justify-center p-3" v-if="showLoadMoreButton">
         <Button
           icon-left="lucide-refresh-cw"
-          @click="discussions.next"
+          :href="isAnonymousVisitor() ? publicPageLink(1) : undefined"
+          target="_self"
+          @click="!isAnonymousVisitor() && discussions.next()"
           :loading="discussions.loading"
         >
-          {{ discussions.loading ? 'Loading...' : 'Load more' }}
+          {{
+            discussions.loading ? 'Loading...' : isAnonymousVisitor() ? 'Next page' : 'Load more'
+          }}
         </Button>
       </div>
     </div>
@@ -52,6 +62,7 @@
 
 <script setup lang="ts">
 import { computed, toValue } from 'vue'
+import { isAnonymousVisitor, publicPageStart, publicPageLink } from '@/utils/publicAccess'
 import type { OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
 import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
@@ -81,6 +92,7 @@ const listClass = 'max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4'
 
 const discussions = useDiscussions({
   filters: props.filters,
+  start: publicPageStart(),
   orderBy: props.orderBy,
   cacheKey: props.cacheKey,
 })

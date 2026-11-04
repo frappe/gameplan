@@ -1,9 +1,18 @@
 <template>
   <div>
     <div>
-      <PageHeaderMobile class="sm:hidden" title="Search" />
+      <PageHeaderMobile class="sm:hidden" title="Search">
+        <template v-if="publicVisitor" #prefix>
+          <PageHeaderBackButton
+            v-if="communityState.id"
+            :to="{ name: 'Discussions', params: { communityId: communityState.id } }"
+          />
+        </template>
+        <template v-if="publicVisitor" #suffix><PublicLoginButtons /></template>
+      </PageHeaderMobile>
       <PageHeader class="hidden sm:flex">
         <Breadcrumbs :items="[{ label: 'Search', route: { name: 'Search' } }]" />
+        <PublicLoginButtons v-if="publicVisitor" />
       </PageHeader>
       <div class="body-container">
         <!-- Sticky search + filter toolbar; results scroll beneath it. Bled out
@@ -15,6 +24,7 @@
               class="flex-1"
               placeholder="Start typing to Search"
               aria-label="Search"
+              :maxlength="publicVisitor ? 200 : undefined"
               v-focus
               :model-value="query"
               @update:model-value="updateQuery"
@@ -44,6 +54,7 @@
             <div class="flex gap-2 items-center">
               <!-- Authors Filter -->
               <MultiSelect
+                v-if="!publicVisitor"
                 :options="authorsFilterOptions"
                 :model-value="activeFilters.owner || []"
                 @update:model-value="(values) => updateFilter('owner', values)"
@@ -142,6 +153,7 @@
 
               <!-- Tags Filter -->
               <MultiSelect
+                v-if="!publicVisitor"
                 variant="outline"
                 :options="tagsFilterOptions"
                 :model-value="activeFilters.tags || []"
@@ -204,7 +216,10 @@
           </div>
 
           <!-- Inline Feedback Section -->
-          <div v-if="visibleSearchResults.length && !feedbackGiven" class="flex items-center gap-2">
+          <div
+            v-if="!publicVisitor && visibleSearchResults.length && !feedbackGiven"
+            class="flex items-center gap-2"
+          >
             <span class="text-ink-gray-6">Helpful?</span>
             <div class="flex items-center gap-1">
               <Tooltip text="Yes, results were helpful">
@@ -277,6 +292,7 @@ import { useRouter, useRoute } from 'vue-router'
 import {
   PageHeader,
   PageHeaderMobile,
+  PageHeaderBackButton,
   Avatar,
   Breadcrumbs,
   Button,
@@ -298,6 +314,9 @@ import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
 import { users } from '@/data/users'
 import { vFocus } from '@/directives'
+import PublicLoginButtons from '@/components/Public/PublicLoginButtons.vue'
+import { communityState } from '@/data/communityState'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 // Type Definitions
 interface SearchSummary {
@@ -374,6 +393,7 @@ const searchInput = useTemplateRef<typeof TextInput>('searchInput')
 
 // Composables and External Data
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 const route = useRoute()
 const groupedSpaces = useGroupedSpaceOptions()
 const visibleSearchResults = computed(() => {
@@ -503,11 +523,15 @@ const doctypesFilterOptions = computed(() => {
     { value: 'GP Comment', label: 'Comment' },
   ]
 
-  return doctypeMapping.map((doctype) => ({
-    value: doctype.value,
-    label: doctype.label,
-    count: doctypeCounts.get(doctype.value) || 0,
-  }))
+  return doctypeMapping
+    .filter(
+      (doctype) => !publicVisitor.value || ['GP Discussion', 'GP Comment'].includes(doctype.value),
+    )
+    .map((doctype) => ({
+      value: doctype.value,
+      label: doctype.label,
+      count: doctypeCounts.get(doctype.value) || 0,
+    }))
 })
 
 const tagsFilterOptions = computed(() => {
@@ -675,6 +699,8 @@ function getStorageKey(query: string) {
 }
 
 function loadSearchState(searchQuery: string) {
+  // Public results must be checked again after a tier change, move, or archive.
+  if (publicVisitor.value) return false
   const saved = localStorage.getItem(getStorageKey(searchQuery))
   if (saved) {
     const state = JSON.parse(saved)
@@ -695,6 +721,7 @@ function loadSearchState(searchQuery: string) {
 }
 
 function saveSearchState(searchQuery: string, results: SearchResponse) {
+  if (publicVisitor.value) return
   const state = {
     results,
     filters: activeFilters.value,
