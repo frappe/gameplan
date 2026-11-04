@@ -307,9 +307,10 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 		self.assertEqual(self.anonymous_search()["results"], [])
 
 	def test_public_results_have_a_fixed_cap_and_batched_live_queries(self):
+		# Four visibility/profile reads plus one batch read for censor rules.
 		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
 			response = self.anonymous_search()
-		self.assertLessEqual(queries.call_count, 4)
+		self.assertLessEqual(queries.call_count, 5)
 		self.assertLessEqual(len(response["results"]), MAX_PUBLIC_RESULTS)
 		extra = [
 			create_discussion(
@@ -324,7 +325,7 @@ class TestPublicSearch(IsolatedSearchIndex, GameplanTestCase):
 		with patch.object(frappe.db, "sql", wraps=frappe.db.sql) as queries:
 			response = self.anonymous_search()
 		self.assertEqual(len(response["results"]), MAX_PUBLIC_RESULTS)
-		self.assertLessEqual(queries.call_count, 4)
+		self.assertLessEqual(queries.call_count, 5)
 
 	def test_signed_in_members_keep_private_search_and_author_filters(self):
 		private = self.spaces[(VISIBILITY_MEMBER_ACCESS, VISIBILITY_MEMBER_ACCESS)]

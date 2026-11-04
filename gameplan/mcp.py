@@ -24,7 +24,7 @@ Gameplan is an async discussions app. The UI says Community for GP Team and Spac
 - Gameplan admins invite people with call_method gameplan.api.invite_by_email, args {"emails": "<comma separated emails>", "role": "Gameplan Member"}.
 - Do not create or edit GP Reaction, GP Bookmark, GP Unread Record, GP Discussion Visit or GP Notification. They hold each person's own state.
 - Watched words: Community/global admins manage Block, Censor, Require approval and Flag rules through gameplan.watched_words.rules/add/remove. Use gameplan.watched_words.upload with a private File ID to preview CSV; pass its returned expected token to apply it. Never write GP Watched Word directly. Use gameplan.watched_word_edits.original to load an authorized original, then gameplan.watched_word_edits.submit with doctype, name, expected_modified, content, and discussion title to save or queue an edit. A GP Submission result means the published version remains unchanged until approval.
-"""  # noqa: E501
+""".strip()  # noqa: E501
 AGENT_INSTRUCTIONS_HEADING = AGENT_INSTRUCTIONS.splitlines()[0]
 
 

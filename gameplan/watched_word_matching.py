@@ -17,6 +17,19 @@ def rules_for(community, action):
 	)
 
 
+@request_cache
+def censor_rules_for(communities):
+	result = {}
+	for rule in frappe.get_all(
+		"GP Watched Word",
+		filters={"community": ["in", list(communities)], "action": "Censor"},
+		fields=["community", "word", "case_sensitive"],
+		limit_page_length=2000 * len(communities),
+	):
+		result.setdefault(rule.community, []).append(rule)
+	return result
+
+
 @lru_cache(maxsize=8192)
 def pattern(word, case_sensitive=False, inside_words=False):
 	# fnmatch uses atomic groups for internal wildcards, avoiding exponential backtracking.
@@ -47,10 +60,11 @@ def matches(community, action, title, content):
 	]
 
 
-def censor(community, text, *, html=False):
+def censor(community, text, *, html=False, rules=None):
 	if not text:
 		return text
-	rules = rules_for(community, "Censor")
+	if rules is None:
+		rules = rules_for(community, "Censor")
 	if not rules:
 		return text
 

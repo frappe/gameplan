@@ -1,15 +1,29 @@
 import frappe
 
+from gameplan.watched_word_matching import censor_rules_for
+
 
 class ResponseScopes:
-	"""Resolve all post scopes in a response with at most three batch reads."""
+	"""Resolve post scopes in three batch reads and load censor rules in one batch."""
 
-	def __init__(self, payload):
+	def __init__(self, payload, *, verified=False, community=None):
 		self.comments = {}
 		self.discussions = {}
 		self.projects = {}
+		self.rules = {}
 		comment_names, discussion_names, projects = set(), set(), set()
 		for row in self.rows(payload):
+			# Search supplies scope from its live permission-checked joins.
+			if verified and row.get("project") and row.get("team"):
+				project = str(row["project"])
+				self.projects[project] = row["team"]
+				if row.get("doctype") == "GP Discussion":
+					self.discussions[str(row["name"])] = project
+				elif row.get("doctype") == "GP Comment" and row.get("reference_doctype") == "GP Discussion":
+					parent = str(row["reference_name"])
+					self.comments[str(row["name"])] = parent
+					self.discussions[parent] = project
+				continue
 			doctype = row.get("_watched_doctype") or row.get("doctype")
 			if name := row.get("name"):
 				if doctype == "GP Comment":
@@ -21,7 +35,7 @@ class ResponseScopes:
 					discussion_names.add(str(name))
 			if name := row.get("discussion"):
 				discussion_names.add(str(name))
-			if project := row.get("_watched_project") or row.get("project"):
+			if isinstance(project := row.get("_watched_project") or row.get("project"), str | int):
 				projects.add(str(project))
 		if comment_names:
 			for row in frappe.get_all(
@@ -45,6 +59,12 @@ class ResponseScopes:
 					"GP Project", filters={"name": ["in", list(projects)]}, fields=["name", "team"]
 				)
 			}
+
+		communities = set(self.projects.values())
+		if community:
+			communities.add(community)
+		if communities:
+			self.rules = censor_rules_for(tuple(sorted(communities)))
 
 	def target(self, doctype, name):
 		name = str(name)

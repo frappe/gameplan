@@ -1,3 +1,7 @@
+from types import SimpleNamespace
+from unittest import TestCase
+from unittest.mock import patch
+
 import frappe
 
 from gameplan.mcp import AGENT_INSTRUCTIONS, AGENT_INSTRUCTIONS_HEADING, sync_agent_instructions
@@ -36,3 +40,22 @@ class TestAgentInstructions(GameplanTestCase):
 			self.get_instructions(),
 			f"Frappe CRM tracks sales.\n\n{AGENT_INSTRUCTIONS}\n\nAlways answer in English.",
 		)
+
+
+class TestAgentInstructionSync(TestCase):
+	def test_repeated_sync_preserves_admin_text_without_growing_blank_lines(self):
+		state = {
+			"text": f"CRM instructions.\n\n{AGENT_INSTRUCTIONS_HEADING}\n- Old rule.\n\nAdmin instructions."
+		}
+		db = SimpleNamespace(
+			get_single_value=lambda *_: state["text"],
+			set_single_value=lambda _doctype, _field, text: state.update(text=text),
+		)
+		framework = SimpleNamespace(
+			db=db,
+			get_meta=lambda _: SimpleNamespace(has_field=lambda _: True),
+		)
+		with patch("gameplan.mcp.frappe", framework):
+			sync_agent_instructions()
+			sync_agent_instructions()
+		self.assertEqual(state["text"], f"CRM instructions.\n\n{AGENT_INSTRUCTIONS}\n\nAdmin instructions.")
