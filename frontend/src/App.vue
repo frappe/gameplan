@@ -29,6 +29,7 @@ import { useCursorStyle } from '@/utils/useCursorStyle'
 import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
 import SettingsDialog from './components/Settings/SettingsDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
+import { isSettingsRoute } from './components/Settings/overlayHistory'
 import { getHomeRoute } from '@/router'
 
 const isMobileViewport = useIsMobile()
@@ -50,8 +51,7 @@ users.fetch()
 
 // Only desktop layers settings over a background page. On a phone the settings
 // route renders its own page, so it is treated like any other route here.
-const isSettingsOverlay = (r) =>
-  !isMobileViewport.value && r.matched.some((record) => record.meta?.settingsOverlay)
+const isSettingsOverlay = (r) => !isMobileViewport.value && isSettingsRoute(r)
 
 // A resolved-but-never-navigated route still holds its lazy `() => import()`
 // components unresolved, which <router-view :route> renders as "[object Promise]"
