@@ -2,18 +2,35 @@
   <!-- usersReady, not users.isFinished: a mid-session reload of the user list would flip
        isFinished back to false and unmount the entire shell — the app blanks out. -->
   <div class="relative flex h-full flex-col" v-if="usersReady">
-    <DesktopShell class="gameplan-desktop-shell h-full flex-1 standalone:border-t">
+    <DesktopShell
+      :scroll="effectiveRoute.name !== 'Moderation'"
+      class="gameplan-desktop-shell h-full flex-1 standalone:border-t"
+    >
       <template #rail>
         <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
       </template>
       <template #sidebar>
-        <AppSidebar v-if="onCommunityRoute" />
+        <AppSidebar v-if="onCommunityRoute" :public-view="publicVisitor" />
+        <!-- Keep the Teleport target mounted while settings changes the background route. -->
+        <div
+          v-show="effectiveRoute.name === 'Moderation'"
+          id="moderation-sidebar"
+          class="h-full shrink-0"
+        />
       </template>
 
       <ReadOnlyBanner v-if="readOnlyMode" class="mb-3" />
+      <p
+        v-if="ownRestriction"
+        role="status"
+        class="m-3 rounded border border-outline-gray-3 bg-surface-gray-1 p-3 text-base text-ink-gray-8"
+      >
+        You cannot participate in this Community: {{ ownRestriction.reason }}.
+        {{ expiryLabel(ownRestriction.expires_at) }}.
+      </p>
       <slot />
     </DesktopShell>
-    <CommandPalette />
+    <CommandPalette v-if="!publicVisitor" />
   </div>
 </template>
 <script setup lang="ts">
@@ -25,12 +42,15 @@ import AppSidebar from './AppSidebar.vue'
 import CommandPalette from './CommandPalette/CommandPalette.vue'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { usersReady } from '@/data/users'
+import { usersReady, useSessionUser } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { getHomeRoute } from '@/router'
+import { expiryLabel } from '@/data/restrictions'
+import { isPublicVisitor } from '@/utils/publicAccess'
 
 const route = useRoute()
 const router = useRouter()
+const publicVisitor = computed(() => isPublicVisitor())
 
 // While the settings dialog is open the URL is /settings/*, but the page it was
 // opened over stays rendered behind the overlay (see App.vue's displayedRoute).
@@ -40,6 +60,14 @@ const effectiveRoute = computed(() => {
   if (!route.matched.some((record) => record.meta?.settingsOverlay)) return route
   return router.resolve(settingsBackgroundPath.value || getHomeRoute())
 })
+
+const ownRestriction = computed(() =>
+  useSessionUser().community_restrictions?.find(
+    (r) =>
+      r.community === effectiveRoute.value.params.communityId &&
+      (!r.expires_at || Date.parse(r.expires_at) > Date.now()),
+  ),
+)
 
 const onCommunityRoute = computed(() => {
   return effectiveRoute.value.matched.some((record) => record.meta?.communityScope)

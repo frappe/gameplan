@@ -1,0 +1,18 @@
+{
+ "doctype": "DocType",
+ "name": "GP Watched Word",
+ "module": "Gameplan",
+ "autoname": "hash",
+ "engine": "InnoDB",
+ "field_order": ["community", "action", "word", "case_sensitive", "rule_key"],
+ "fields": [
+  {"fieldname": "community", "fieldtype": "Link", "options": "GP Team", "label": "Community", "reqd": 1},
+  {"fieldname": "action", "fieldtype": "Select", "options": "Block\nCensor\nRequire approval\nFlag", "label": "Action", "reqd": 1},
+  {"fieldname": "word", "fieldtype": "Data", "label": "Word or phrase", "reqd": 1, "length": 100},
+  {"fieldname": "case_sensitive", "fieldtype": "Check", "label": "Case sensitive"},
+  {"fieldname": "rule_key", "fieldtype": "Data", "label": "Rule key", "unique": 1, "reqd": 1}
+ ],
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC"
+}

@@ -29,6 +29,8 @@ import { activeCommunities } from '@/data/communities'
 import { spaces as spacesList, useSpace } from '@/data/spaces'
 import { useDoctype } from 'frappe-ui'
 import { GPProject } from '@/types/doctypes'
+import { useSessionUser } from '@/data/users'
+import { canMoveContentToSpace } from '@/utils/permissions'
 
 const props = defineProps<{
   spaceId: string
@@ -37,12 +39,16 @@ const props = defineProps<{
 const show = defineModel<boolean>()
 const space = useSpace(() => props.spaceId)
 const spaces = useDoctype<GPProject>('GP Project')
+const sessionUser = useSessionUser()
 
 const teamOptions = computed(() => {
-  return activeCommunities.value.map((team) => ({
-    label: team.title,
-    value: team.name,
-  }))
+  return activeCommunities.value
+    .filter(
+      (team) =>
+        space.value &&
+        canMoveContentToSpace(space.value, { ...space.value, team: team.name }, sessionUser),
+    )
+    .map((team) => ({ label: team.title, value: team.name }))
 })
 
 const selectedTeam = ref<string | null>(null)

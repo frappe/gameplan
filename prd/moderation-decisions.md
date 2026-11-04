@@ -1,0 +1,240 @@
+# Moderation decisions
+
+Owner: Ebrahim. Decisions updated: 2026-11-02.
+
+This log records choices Ebrahim confirmed in this chat.
+The roadmap describes sequencing and contains proposals for later features.
+A recommendation becomes a decision only after Ebrahim accepts it.
+
+## Confirmed decisions
+
+| ID | Decision | Consequence |
+| --- | --- | --- |
+| D01 | Ebrahim owns moderation end to end, including product decisions, backend, and frontend. | No separate maintainer decision gate or documentation-only contract PR is required. Normal code review still applies. |
+| D02 | Migration is a later workstream. | Production inventory, mappings, importer changes, historical data, and cutover do not block moderation development. |
+| D03 | Use grill-me whenever planning moderation work. | Discuss the next concrete slice in focused rounds. Ebrahim makes the decisions. |
+| D04 | Prefer implementation PRs below 1,000 changed lines. | Include tests in the size estimate. Split larger changes into useful pieces. |
+| D05 | The first version appoints moderators per Community, covering its Spaces. | Individual Space appointments and groups are deferred. |
+| D06 | Community admins and global admins appoint and remove moderators. | Community admins act only within their own Community. Global admins can act across Communities. |
+| D07 | Moderator status grants no membership administration, Community settings access, or authority to appoint moderators. | Moderator assignment remains separate from Community administration. Existing admin authority stays intact. |
+| D08 | Moderators need existing access to a private Space before moderating its content. | Appointment does not reveal private Spaces or their content. |
+| D09 | Only existing Community members can be appointed. | Add a person to the Community before appointing them. Removing membership removes moderator authority. |
+| D10 | The first implementation covers assignment/removal, a shared backend permission check, a small assignment UI, and tests. | Hide/remove actions, reports, sanctions, and changes to ordinary editing rights follow separately. |
+| D11 | Bundle moderator assignment and manual reply Hide/Restore in one PR. Push to Ebrahim's fork without opening the PR yet. | This replaces D10's separate PR boundary. |
+| D12 | Hiding affects only the selected reply. | Copied quotations remain independent content and require separate moderation. |
+| D13 | Readers and the author see a neutral placeholder. Authorized moderators can preview the stored body and restore it. | Appointment does not grant private-Space access. Hidden text is excluded from search and ordinary revision access. |
+| D14 | Complete T27 (moderation core: hide, ban, delete spam) within the existing PR #621. | This expands the reply-only scope. D15–D20 define discussion hiding, Community bans, and reversible spam deletion. |
+| D15 | Include discussion Hide/Restore as well as reply Hide/Restore. | A hidden discussion and its replies are unavailable to ordinary readers. Authorized moderators with existing Space access can inspect and restore them. |
+| D16 | Community moderators can ban participation within their Community. | Banned users can still read otherwise-accessible content and participate elsewhere. Only global admins can disable accounts site-wide. |
+| D17 | Delete spam is reversible. | Remove spam from ordinary lists, search, and access while preserving restricted originals that authorized moderators can restore. Permanent destruction remains a separate admin operation. |
+| D18 | Community bans last until manually lifted and survive leaving and rejoining. | Block creating, editing, deleting, reactions, voting, and invitations in that Community. Preserve reading and membership. Staff must lose their Community role before being banned; global admins are exempt. |
+| D19 | Add a moderator-only Removed content view per Community with preview and Restore. | Ordinary feeds/search omit removed discussions; direct access shows a neutral unavailable message. Hidden replies show placeholders; spam-removed replies disappear from the thread and remain restorable. Private-Space restrictions still apply. |
+| D20 | Delete spam requires a reason and affects only the selected reply or discussion. | Preserve descendants/files and closed/pinned state for restoration without new notifications. Do not automatically ban the author or remove other posts. Ordinary Delete remains separate. |
+| D21 | Build T26 moderation history in a separate PR after the T27 review fixes. | Reuse the immutable log for discussion/reply action history and Community-scoped user ban/unban history. Include actor, time, reason, pagination, existing moderator/private-Space access rules, frontend, and tests. |
+| D22 | History uses a tab in Community moderation, filters for posts or users, and links in post menus. | Show action, actor, time, reason, and target. Original hidden text stays behind existing restricted Preview. Retain permanent, read-only records. |
+| D23 | Post history follows current target access after moves. | Moderators need current Community and private-Space access. Permanently deleted targets disappear from Community history while their logs remain restricted for global admins. Hidden/spam-removed targets remain visible to authorized moderators. |
+| D24 | Push the T26 branch now and open its separate upstream PR after #621 merges. | Keep T26 out of #621 and avoid including its unmerged foundation in the new PR diff. |
+| D25 | Start T16 reporting and a basic Pending/Resolved moderator queue with manual decisions. | Discussion and reply reporting ships end to end. Automatic hiding, trust weighting, and migration remain separate. |
+| D26 | Members and invited Guests may report accessible content unless banned from participating in its Community. | Anonymous reports, self-reports, and reports on already hidden/removed targets are excluded. |
+| D27 | Report reasons are Spam, Abuse/inappropriate, Off-topic, AI-generated, and Other. | Notes are optional, limited to 500 characters, and required for Other. Reasons trigger manual review only. |
+| D28 | One pending review groups reports for each target. | Each authenticated reporter has at most one active report per target. Moderators review the reports together. |
+| D29 | Review decisions are Dismiss, Uphold while keeping visible, Hide, and Delete spam. | Require a decision note, resolve the grouped reports together, reuse existing moderation actions, and never automatically ban the author. |
+| D30 | Each report preserves the reported title/body version. | Only authorized moderators with current Space access may see identities, notes, and snapshots. Authors and other reporters cannot read the evidence. |
+| D31 | A new report after resolution opens a fresh review, including for previous reporters. | Limit new reports to 10 per account per hour across the site. Duplicate reports in an active review reuse the existing report without consuming quota. |
+| D32 | Implement T25 as bulk review of pending reports in a separate branch above T16. | Reuse D29’s four decisions and require one shared note. Keep remove-all-by-author and automatic bans separate. |
+| D33 | Keep selection across pages within one Community, capped at 50 reviews. | Include Select this page and Clear selection. Clear selection when the Community or review-status filter changes. |
+| D34 | Each review resolves independently. | One failure does not undo successful decisions. Show per-item outcomes, never retry destructive actions automatically, and require fresh review before retry. |
+| D35 | Preview each target’s current title/text excerpt and report-reason summary before confirmation. | Link to the full review. Recheck permissions and content versions when applying each action; skip changed, inaccessible, deleted, or already-resolved items. |
+| D36 | Implement Community-level, opt-in approval for new discussions and replies. | Existing published content stays published. Community/global admins configure the policy. Reviewing moderators still need current Space access. |
+| D37 | Require approval until a contributor has N accepted contributions in that Community. | N is configurable, with 3 suggested. Community moderators/admins and global admins are exempt. No automated trust engine is required. |
+| D38 | Count approved discussions and replies together, separately for each Community. | Pending, rejected, and withdrawn submissions earn no credit. Later hiding or deletion does not reduce earned credit. |
+| D39 | Include existing published contributions when establishing approval eligibility. | Established contributors do not all start from zero. Existing posts remain published when the policy is enabled. |
+| D40 | Reaching the threshold or disabling approval affects future submissions. | Already-pending submissions still need an explicit decision or author withdrawal. |
+| D41 | Build per-discussion slow mode (T18) next, before watched-word filtering. | Moderators choose a reply cooldown, the server enforces it, and readers see when they can reply again. Settle detailed rules in the next planning round. |
+| D42 | Community moderators/admins and global admins control slow mode on discussions they can already access. | Ordinary authors cannot enable, change, or disable it. Existing private-Space access still applies. |
+| D43 | Slow mode is off by default and remains active until staff disable it. | Allowed intervals: 30 seconds, 1 minute, 5 minutes, 15 minutes, 1 hour, and 1 day. Automatic expiry is deferred. |
+| D44 | Enforce one cooldown per person per discussion, including Members and Guests. | That Community's moderators/admins and global admins are exempt; no trust-level exemptions are added. |
+| D45 | An accepted reply submission starts the cooldown whether published or held for approval. | Count it once. Approval later neither charges again nor waits on the author's cooldown. Failed submissions consume no time. |
+| D46 | Slow mode restricts new replies only. | Existing editing, reaction, and voting policies remain. Deletion, withdrawal, and rejection do not reset the cooldown. |
+| D47 | Every slow-mode setting change requires a reason and appears in existing moderation history. | Record actor, time, and old/new interval. |
+| D48 | Calculate the wait from the latest accepted reply submission, including submissions before enablement. | Disabling removes the wait; changing or re-enabling uses the retained timestamp. |
+| D49 | Show a countdown and refresh status on focus, accepted replies, and setting changes. | Other viewers pick up staff changes on focus or their next submission. Server checks always enforce current settings. |
+| D50 | Include Block, Require approval, Flag, and Censor in watched words. | Apply rules to discussion titles, bodies, replies, and edits. |
+| D51 | Community/global admins manage Community word lists. | Moderators enforce rules but cannot change them. |
+| D52 | CSV imports add rules after a preview. | Skip duplicates. Reject the whole import for invalid rows. Preserve existing rules. |
+| D53 | Match whole words or phrases, ignoring case by default. Censor also matches inside words and masks the containing word. | Support * wildcards and optional case sensitivity. Do not accept arbitrary regex. |
+| D54 | Community staff and global admins bypass Block, Require approval, and Flag. | Censor still applies to displayed staff posts. |
+| D55 | Preserve code and working URLs. | Check prose, link labels, and destinations for write actions. Censor visible prose only. |
+| D56 | Hold approval-triggering edits privately while the published version stays visible. | Approval updates the same post. Reject stale proposals after published changes. |
+| D57 | Block takes priority over Require approval, then Flag. | Censor remains independent. Approval does not flag the reviewed version again. |
+| D58 | Include manual entry and CSV controls. | Choose an action. Use headerless CSV: word/phrase, unused column, optional true/false case sensitivity. Include list, deletion, sample, download, and Test. |
+| D59 | Censor ordinary reads without changing stored originals, including existing posts. | Cover pages, API responses, search, and notifications. Authors can edit originals. Authorized moderators can inspect them. |
+| D60 | Block identifies matched entries to the author. Keep full lists admin-only. | Limit each action to 2,000 rules per Community, entries to 100 characters, and CSV files to 1 MB. Show invalid row numbers. |
+| D61 | Apply Block, Require approval, and Flag to future writes. | Do not scan old posts. Recheck Block at approval. Approval satisfies the other review actions for that version. |
+
+
+
+
+
+D05–D07 were confirmed in the first answer accepting scope and assignment authority.
+D08–D10 were confirmed in the next answer accepting private access, eligibility, and the first PR boundary.
+
+## First-slice implementation notes
+
+These describe the implementation. They are not additional product decisions confirmed through grilling.
+
+- The appointment uses `GP Member.is_moderator` on a Community membership row.
+- Assignment and removal use the existing Community member menu.
+- `can_moderate_space()` combines existing Space access with Community moderator or admin authority.
+- Removing or leaving the Community deletes the appointment with the membership row.
+- Rejoining creates an ordinary membership and does not restore the appointment.
+- A Community merge does not copy moderator appointments into the destination Community.
+- Role display prioritizes Community Admin when a member also has a moderator appointment.
+- Verification passed: 17 moderator tests, 28 existing Community tests, and one browser test.
+- Verification used the new disposable site `moderation-test.localhost`. Existing sites were not migrated or reset.
+
+Implementation: `gameplan/gameplan/doctype/gp_team/gp_team.py`, `gameplan/permissions.py`, and the Community member UI.
+Tests: `gameplan/tests/features/test_moderators.py` and `frontend/cypress/e2e/communities/moderators.cy.ts`.
+
+## Hide/Restore implementation notes
+
+- These are implementation choices, not additional confirmed product decisions.
+- Hide requires a reason of at most 500 characters. Restore needs no new reason.
+- A restricted, immutable `GP Moderation Log` stores the original text, action, actor, time, and hide reason. Global admins can read the log; scoped moderators preview the current hidden body through the reply action.
+- The reply row stores a placeholder while hidden. Ordinary saves cannot hide, restore, edit, or move a hidden reply.
+- Repeated Hide or Restore requests are idempotent. Restoring does not send new mention notifications.
+- Private attachments follow the hidden reply's permissions. A reply with public attachments must have those files made private before Hide succeeds; public static URLs cannot enforce reply permissions.
+- Search excludes hidden reply results and disables shared-vocabulary spelling corrections because that vocabulary retains removed words.
+- This first slice covered discussion replies. D15–D20 extend the same PR to complete T27.
+- Combined verification: 140 backend tests, two browser tests, Ruff, Prettier, and a production frontend build passed on 2026-10-17.
+
+## T27 implementation notes
+
+- Discussion and reply Hide/Restore share one implementation. Delete spam records a separate, reversible state.
+- Removal stores a placeholder on the live row and preserves the original in restricted moderation history.
+- Discussion removal protects replies, polls, revisions, search results, and attachments through the parent discussion.
+- Removed content has a paginated moderator view. Private-Space access still applies to each result and action.
+- Community bans use immutable Ban/Unban history, independent of membership. Community staff must lose their role before a ban.
+- Server checks cover content writes, reactions, votes, moves, invitations, and attached uploads. Banned readers retain access.
+- The current user's ban list drives the read-only UI. A user-scoped realtime event refreshes that list after a ban changes.
+- Frappe's supported File controller override applies the moderation policy to downloads, ZIP reads, and file mutations, including uploader/share access.
+- Public attachments must become private before removal. Existing independent copies and previously downloaded bytes remain outside removal.
+- Embedded polls follow their reply's removal state for reads, lists, voting, public HTML, and private attachments. Explicit poll shares must be removed before moderation; removed polls cannot receive new shares.
+- Discussion removal and restoration notify affected users' other tabs after commit, including read notification lists whose unread count stays unchanged.
+- Restoration preserves descendants, closed/pinned state, and existing notification records. It queues reply reindexing without new mention notifications.
+- Reports, trust levels, automatic filtering, bulk actions, moderation history UI, and migration remain separate tasks.
+
+## Decisions still open
+
+Plan these when their implementation slice is next. Roadmap recommendations do not settle them.
+
+- Ordinary members' editing rights and whether a Community can opt into forum-specific rules.
+- Separate silence behavior; timed Community bans and site suspensions are settled below.
+- Flood limits and automatic slow-mode expiry.
+- Bulk actions outside report review, background processing, and batch undo behavior.
+
+## Keeping this log current
+
+Add confirmed decisions after each planning round.
+Record later changes against the original decision ID with the date and replacement decision.
+Keep unresolved questions and implementation choices distinct from confirmed product decisions.
+
+## T16 implementation notes
+
+- GP Review groups reports by discussion/reply and records one immutable resolution. GP Report preserves each reporter's original evidence and note.
+- Submission is session-bound, deduplicated, and limited to 10 reports per rolling hour across the site. Indexed locking reads serialize account quotas and target review decisions.
+- Queue and evidence access follow current Community/Space permissions. Pages contain at most 40 reviews/reports, and each response includes only one selected evidence body.
+- Resolving a review checks the content version and current scope before applying existing Hide/Delete spam actions. Dismiss and Uphold preserve content state. Conflicting decisions require refresh.
+- The UI includes report dialogs, Pending/Resolved queues, current author/content, reported versions, and a link to the full discussion. No automatic hiding, banning, notifications, or trust weighting is added.
+- Fresh installation, migration, 71 backend tests, and eight browser tests passed. Four MariaDB concurrency tests are included but skipped on the local SQLite site; they require MariaDB CI.
+
+## Review integrity implementation notes
+
+- These are implementation choices that enforce the existing ban and review rules.
+- A Community ban also blocks Space management, including moves, merges, and permanent deletion. Reading and management elsewhere remain available.
+- Pending reports block permanent deletion of their target, including parent cascades, and moving replies outside discussions. Resolve the reports before either operation.
+- Review versions include embedded poll questions, options, and voting settings. Poll votes do not invalidate a content review.
+## T29 implementation notes
+
+- The accepted first-N policy is implemented with separate restricted GP Submission records and durable per-user/Community GP Approval Counter records.
+- Existing-contributor credit is initialized lazily from current published discussions/replies on the first eligibility check. Credit earned afterward is retained across content removal and policy changes.
+- First-release choices: immutable submitted snapshots, author withdrawal, required rejection feedback up to 500 characters, optional approval feedback, and at most five pending submissions per account in one Community.
+- Source drafts are removed only after the snapshot and referenced private attachments have been preserved. Approving creates the published record under its original author and records the reviewer separately.
+- Raw document creation is rejected when approval is required. Draft and scheduled publication enter the queue; the normal composer uses the same server rule.
+- Individual Space policies, edits to already-published posts, trust promotion, bulk approval, automatic filtering, and migration are separate work.
+- Submission destination IDs do not create deletion-blocking links. Removed targets leave restricted records. Deleting a Community or account clears its approval progress.
+
+## T26 implementation notes
+
+- Community moderation has a History tab and post-menu links, with target-type and exact post/user filters.
+- A scoped read-only endpoint returns action metadata in deterministic pages of 40 records. It never returns stored bodies or original titles.
+- User filtering covers Community Ban/Unban history. Discussion/reply history uses the target's current Space permissions, including after moves.
+- Missing targets remain in restricted log storage and do not consume Community history pages. Existing raw-log permissions remain unchanged.
+- Verified on the disposable site: 68 backend tests, seven browser tests, formatting, lint, and frontend build.
+## T25 implementation notes
+
+- Bulk review reuses T16's Pending queue and four decisions. Moderators select up to 50 reviews across pages, inspect current excerpts and reason counts, and apply one shared note. Full review opens the existing evidence dialog.
+- Preview checks current Community and private-Space access without holding write locks across the batch. It returns no evidence or reporter identities.
+- Each decision uses a separate request through the existing resolver. Permissions, current content, removal state, and review status are checked again. Successful decisions remain committed when another item fails.
+- The dialog shows progress and per-item results. Failed items require selection and a fresh preview before retry. Leaving the page stops unsent requests; there is no background resume. An in-flight decision can still finish.
+- Verification passed: seven bulk-review backend tests, 12 existing reporting tests, three bulk-review browser tests, four existing reporting browser tests, formatting/lint, and the frontend build. Local verification uses the disposable SQLite site; MariaDB concurrency remains covered by the existing CI suite.
+
+## T18 implementation notes
+
+- Slow mode is stored per discussion. A restricted per-user/discussion record retains the latest accepted reply time, including while slow mode is off.
+- Existing stored replies and submissions seed missing clocks, including before a reply is deleted. Earlier permanently deleted content is not reconstructed.
+- Account and discussion locks serialize submissions. The server applies the same check to direct reply creation and held submissions.
+- Publishing an approved submission skips a second charge. Invalid submissions roll back their clock updates with the request.
+- The existing moderation history records setting transitions and required reasons. Generic discussion saves cannot change the protected setting.
+- The new branch includes all six moderation PRs. Combining history, reports, and approvals preserves all moderation-page tabs.
+- Verification passed: nine slow-mode tests on SQLite and MariaDB, a MariaDB concurrency test, 22 browser tests, focused existing moderation suites, lint, and a production build.
+
+## Watched-word implementation notes
+
+- Reuse Frappe File uploads and CSV parsing/export, with frappe-ui upload and dialog controls.
+- Store rules in restricted GP Watched Word records. Keep proposed edits in existing GP Submission records.
+- Review access follows the target's current Community and Space. Removed and archived posts cannot queue edits.
+- Censor post text at response boundaries and search, revision, SEO, and digest output. Keep code and URL destinations unchanged.
+- Named document/list APIs return censored content. Raw framework export, print, scalar, and grouped post queries are restricted while censor rules exist.
+- This extends T29's first release to proposed edits. Migration remains a later workstream.
+
+- Verification: 17 watched-word tests, 136 existing backend checks, and 26 browser tests passed. Migration, build, and lint passed.
+- The existing linked-user projection test still fails locally because Frappe returns an `api_key: null` field. This failure was reproduced before this feature.
+
+- Backported forum integration fixes: edit saves use the draft API return value across both draft implementations. Censor also covers notification messages and email descriptions. Verified with 18 watched-word tests, 27 digest tests, and six browser tests on a fresh standalone site.
+## Forum-scale moderation and review usability — November 2
+
+Confirmed by Ebrahim:
+- Design all moderation features for a forum with millions of discussions. Bound list responses and batch permission/scope reads.
+- Put moderation in the app sidebar, with access across the user's moderated Communities. Remove the Community feed button.
+- Keep the reporter's reason and note visible beside scrolling post content. Load historical reported bodies only when opened.
+- Improve moderation layout and dark-mode contrast using Frappe UI patterns.
+- Removed content must not accept reactions, including reactions by staff viewing originals.
+- Apply shared fixes to source feature branches and the combined forum branch.
+
+## Timed restrictions — November 3, 2026
+
+Confirmed by Ebrahim after grilling:
+- Extend Community bans with optional expiry. Preserve reading, membership, and leave/rejoin protection.
+- Global admins may suspend an entire account across all Frappe apps on the site, including sessions and API access.
+- Presets: 1 hour, 1 day (24 hours), 1 week (168 hours), 30 days (720 hours), indefinite, or a custom timezone-labeled datetime. Each expiry represents one absolute instant and displays locally.
+- Retain Community staff protections. Global admin roles must be removed before site suspension. Never permit self-suspension or restriction of Administrator.
+- Require reasons for impose/change/lift. Record actor, time, old/new expiry. Show reason/expiry to the subject, not other ordinary users.
+- Global-only Account suspensions view has no Community filter. Community bans remain in their existing tab.
+- Email on impose/change/manual lift. Delivery failure cannot undo the restriction. No automatic expiry email.
+- Preserve existing published content and pending submissions; staff can still review them.
+- Expiry takes effect on the next access check, without cron. Independently disabled accounts stay disabled.
+- Record automatic expiry once, attributed to the system, with the actual deadline even when recording happens later.
+- Existing bans remain indefinite. Forum-scale operation and timezone correctness are required.
+
+Implementation choice: store indexed current restriction state separately from immutable action history and from User.enabled. Auth hooks check deadlines; bounded cleanup records expiries afterward.
+
+- PR timing: push this feature and integrate it into `forum-features`. Do not open a draft PR yet; Ebrahim will open the watched-words PR first.
+
+## Moderation navigation — November 4, 2026
+
+Confirmed by Ebrahim:
+- Reuse the existing Frappe UI sidebar components in the shell sidebar position, at full viewport height.
+- Keep the standard page header over the content area.
+- Put Account suspensions under Site administration in the sidebar, visible only to global admins. Remove the separate scope switcher.
+- Open Approvals by default. Preserve explicit section links.

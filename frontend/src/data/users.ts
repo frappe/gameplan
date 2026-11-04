@@ -1,5 +1,5 @@
 import { computed, reactive, readonly, ref, watch } from 'vue'
-import { useCall } from 'frappe-ui'
+import { call, useCall } from 'frappe-ui'
 import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadPinnedSpaces } from './pinnedSpaces'
@@ -7,6 +7,7 @@ import { loadQuickReactionSlots } from './reactionPreferences'
 import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
 import { session } from './session'
 import { onSocketEvent } from '@/socket'
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 
 export type EmailDigestFrequency = 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
 export type EmailDigestDayOfWeek =
@@ -18,9 +19,13 @@ export type EmailDigestDayOfWeek =
   | 'Saturday'
   | 'Sunday'
 
+let restrictionExpiryTimer: ReturnType<typeof setTimeout> | undefined
+
 let usersByName = reactive<Record<string, UserInfo>>({})
 
 export interface UserInfo {
+  banned_communities?: string[]
+  community_restrictions?: { community: string; reason: string; expires_at?: string }[]
   name: string
   email: string
   enabled: number
@@ -68,6 +73,15 @@ function mergeUserInfo(user: UserInfo) {
     usersByName[user.name] = user
   }
   if (user.name === session.user) {
+    clearTimeout(restrictionExpiryTimer)
+    const deadlines = (user.community_restrictions || [])
+      .flatMap((r) => (r.expires_at ? [Date.parse(r.expires_at)] : []))
+      .filter((d) => d > Date.now())
+    if (deadlines.length)
+      restrictionExpiryTimer = setTimeout(
+        () => refreshOwnRestrictions(),
+        Math.min(Math.min(...deadlines) - Date.now() + 100, 2147483647),
+      )
     setCommunityOrder(user.community_order)
     loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
@@ -114,6 +128,15 @@ const firstFetchSettled = ref(false)
  */
 export const usersReady = readonly(firstFetchSettled)
 
+/**
+ * Start the app without the user list, for someone who is not signed in. `get_user_info`
+ * is closed to them; the authors on a public page are looked up one by one instead (see
+ * `requestPublicProfile`).
+ */
+export function settleUsersWithoutFetching() {
+  firstFetchSettled.value = true
+}
+
 // Latched from `isFinished` rather than from the onSuccess/onError hooks so it cannot
 // drift from what "the request has settled" means: onSuccess is skipped for a response
 // with no body, which would strand the flag at false. Never stopped, by design — this
@@ -132,7 +155,7 @@ watch(
 // that would race that first fetch on the same instance. After a failed first fetch this
 // does allow a reload, which is wanted — it is the one path that can recover the list.
 onSocketEvent('gameplan:users_changed', () => {
-  if (usersReady.value) users.reload()
+  if (usersReady.value && !isAnonymousVisitor()) users.reload()
 })
 
 export function updateUserInfo(user: UserInfo) {
@@ -167,7 +190,66 @@ export function useUser(...args: [] | [email: string | null | undefined]): UserI
   if (!usersByName[email]) {
     usersByName[email] = getPlaceholderUser(email, email.split('@')[0])
   }
+  if (usersByName[email].isPlaceholder && isAnonymousVisitor()) requestPublicProfile(email)
   return usersByName[email]
+}
+
+// For someone who is not signed in, a user id is a profile handle (the server never sends
+// them an email address). Each handle seen is looked up once, batched per tick, and the
+// name and avatar merged into its placeholder. A handle the server will not describe (its
+// owner wrote nothing public) keeps the placeholder.
+const requestedHandles = new Set<string>()
+const pendingHandles = new Set<string>()
+let publicProfileTimer: number | null = null
+
+function requestPublicProfile(handle: string) {
+  if (requestedHandles.has(handle)) return
+  requestedHandles.add(handle)
+  pendingHandles.add(handle)
+  publicProfileTimer ??= window.setTimeout(fetchPublicProfiles, 0)
+}
+
+interface PublicProfile {
+  handle: string
+  full_name: string
+  image: string | null
+  image_background_color: string | null
+  is_image_background_removed: number
+}
+
+async function fetchPublicProfiles() {
+  publicProfileTimer = null
+  // Match the server's 100-profile cap without dropping the rest of a long thread.
+  const handles = [...pendingHandles].slice(0, 100)
+  handles.forEach((handle) => pendingHandles.delete(handle))
+  await fetchPublicProfileBatch(handles)
+  if (pendingHandles.size) publicProfileTimer ??= window.setTimeout(fetchPublicProfiles, 0)
+}
+
+async function fetchPublicProfileBatch(handles: string[]) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const profiles = await call<PublicProfile[]>('gameplan.api.get_public_user_info', { handles })
+      for (const profile of profiles) {
+        Object.assign(usersByName[profile.handle] ?? useUser(profile.handle), {
+          full_name: profile.full_name,
+          user_image: profile.image || '',
+          image_background_color: profile.image_background_color || '',
+          is_image_background_removed: profile.is_image_background_removed || 0,
+          user_profile: profile.handle,
+          isPlaceholder: false,
+        })
+      }
+      return
+    } catch (error) {
+      if (attempt === 2) {
+        handles.forEach((handle) => requestedHandles.delete(handle))
+        console.error('Could not load public profiles', error)
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000 * (attempt + 1)))
+      }
+    }
+  }
 }
 
 function getPlaceholderUser(email: string, full_name: string) {
@@ -211,3 +293,22 @@ export function useSessionUser() {
 export function isGameplanAdmin(user: UserInfo = useSessionUser()) {
   return user.name === 'Administrator' || user.role === 'Gameplan Admin'
 }
+
+async function refreshOwnRestrictions() {
+  if (!session.user || session.user === 'Guest') return
+  try {
+    const restrictions = await call<NonNullable<UserInfo['community_restrictions']>>(
+      'gameplan.restriction_queries.my_bans',
+    )
+    const user = useSessionUser()
+    mergeUserInfo({
+      ...user,
+      community_restrictions: restrictions,
+      banned_communities: restrictions.map((r) => r.community),
+    })
+  } catch (error) {
+    console.warn('Could not refresh account restrictions', error)
+  }
+}
+onSocketEvent('gameplan:restrictions_changed', refreshOwnRestrictions)
+window.addEventListener('focus', refreshOwnRestrictions)

@@ -23,8 +23,9 @@ export type NewActivityEvent = {
 export type GameplanSocketEvents = {
   'gameplan:unread_counts_changed': void
   /** `count` is the recipient's unread notification count after the change. */
-  'gameplan:notification_count_changed': { count: number }
+  'gameplan:notification_count_changed': { count: number; force_refresh?: boolean }
   'gameplan:users_changed': void
+  'gameplan:restrictions_changed': void
 }
 
 type SocketEventName = keyof GameplanSocketEvents
@@ -35,6 +36,7 @@ const GAMEPLAN_SOCKET_EVENTS = [
   'gameplan:unread_counts_changed',
   'gameplan:notification_count_changed',
   'gameplan:users_changed',
+  'gameplan:restrictions_changed',
 ] as const satisfies readonly SocketEventName[]
 
 let socket: Socket | null = null

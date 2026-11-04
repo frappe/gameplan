@@ -10,8 +10,9 @@ from frappe.query_builder.functions import Count
 from frappe.utils import add_to_date, get_datetime, get_url, getdate, now_datetime, nowdate
 from frappe.utils.verified_command import get_signed_params, verify_request
 
-from gameplan.permissions import apply_accessible_project_filter
+from gameplan.permissions import apply_accessible_project_filter, visible_discussion_criterion
 from gameplan.utils import html_to_text_preview
+from gameplan.watched_word_matching import censor
 
 EMAIL_DIGEST_FREQUENCY_DAYS = {
 	"Weekly": 7,
@@ -160,7 +161,7 @@ def open_digest_preferences(
 
 
 def get_unread_notifications(user: str):
-	return frappe.qb.get_query(
+	rows = frappe.qb.get_query(
 		"GP Notification",
 		fields=[
 			"name",
@@ -183,6 +184,10 @@ def get_unread_notifications(user: str):
 		order_by="creation desc",
 		limit=MAX_DIGEST_ITEMS,
 	).run(as_dict=True)
+
+	from gameplan.mixins.moderation import discussion_is_removed
+
+	return [row for row in rows if not discussion_is_removed(row.discussion)]
 
 
 def get_unread_discussions(user: str):
@@ -216,6 +221,7 @@ def get_unread_discussions(user: str):
 		.where((UnreadRecord.user == user) & (UnreadRecord.is_unread == 1) & Project.archived_at.isnull())
 		.groupby(Discussion.name)
 	)
+	query = query.where(visible_discussion_criterion(Discussion))
 	query = apply_accessible_project_filter(query, Discussion.project, user)
 	return get_popular_discussions(query.run(as_dict=True))
 
@@ -372,8 +378,14 @@ def format_notification_group(notifications, avatar_map, user: str):
 
 
 def format_notification_item(notification, avatar_map, user: str):
-	title = notification.discussion_title or notification.task_title or notification.type
-	description = html_to_text_preview(notification.message, 160) or notification.type
+	title = (
+		censor(notification.team, notification.discussion_title)
+		if notification.discussion_title
+		else notification.task_title or notification.type
+	)
+	description = (
+		censor(notification.team, html_to_text_preview(notification.message, 160)) or notification.type
+	)
 	metadata = location_text(notification.team_title, notification.project_title)
 	return {
 		"title": title or "Untitled",
@@ -419,7 +431,7 @@ def format_discussion_groups(discussions, avatar_map, user: str):
 def format_discussion_item(discussion, avatar_map, user: str):
 	metadata = activity_text(discussion.project_title, discussion.comments_count, discussion.reactions_count)
 	return {
-		"title": discussion.title or "Untitled",
+		"title": censor(discussion.team, discussion.title) or "Untitled",
 		"description": "",
 		"metadata": metadata,
 		"unread_label": f"{discussion.unread_count} unread",
