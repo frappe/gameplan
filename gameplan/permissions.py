@@ -527,7 +527,10 @@ def comment_query_conditions(user=None, **kwargs):
 
 
 def activity_query_conditions(user=None, **kwargs):
-	return referenced_content_query_conditions("GP Activity", user)
+	Activity = frappe.qb.DocType("GP Activity")
+	hide_references = criterion_sql(Activity.action != "Discussion Referenced")
+	conditions = referenced_content_query_conditions("GP Activity", user)
+	return f"({conditions}) and {hide_references}" if conditions else hide_references
 
 
 def referenced_content_query_conditions(doctype, user=None):
@@ -611,7 +614,7 @@ def activity_has_permission(doc, ptype="read", user=None, **kwargs):
 	if not hasattr(doc, "doctype"):
 		return True
 	if ptype in READ_PERMISSIONS:
-		return can_view_content(user, doc)
+		return get_doc_value(doc, "action") != "Discussion Referenced" and can_view_content(user, doc)
 	if ptype == "delete":
 		return is_delete_cascade(doc) or is_global_admin(user)
 	if ptype in {"create", "write"}:

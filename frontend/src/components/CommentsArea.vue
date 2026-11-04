@@ -221,7 +221,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useCall, useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -384,6 +384,18 @@ const activities = useList<GPActivity>({
   },
 })
 
+const referenceActivities = useCall<GPActivity[]>({
+  url: computed(
+    () => `/api/v2/document/GP Discussion/${props.name}/method/get_reference_activities`,
+  ),
+  immediate: props.doctype === 'GP Discussion',
+})
+
+function reloadActivities() {
+  activities.reload()
+  if (props.doctype === 'GP Discussion') referenceActivities.reload()
+}
+
 // The timeline normally updates live via the `new_activity` socket event (see
 // onMounted). Independent of that server round trip, the user who just
 // renamed/closed/moved the discussion should see their own action recorded at once.
@@ -393,7 +405,7 @@ const activities = useList<GPActivity>({
 watch(
   () => props.activityVersion,
   (next, prev) => {
-    if (prev !== undefined && next !== prev) activities.reload()
+    if (prev !== undefined && next !== prev) reloadActivities()
   },
 )
 
@@ -447,6 +459,11 @@ const timelineItems = computed(() => {
   }
   if (activities.data?.length) {
     items = items.concat(activities.data)
+  }
+  if (referenceActivities.data?.length) {
+    items = items.concat(
+      referenceActivities.data.map((activity) => ({ ...activity, doctype: 'GP Activity' })),
+    )
   }
   if (polls.data?.length) {
     items = items.concat(polls.data.filter((poll) => !poll.comment))
@@ -804,7 +821,7 @@ onMounted(() => {
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
-      activities.reload()
+      reloadActivities()
     }
   })
 })

@@ -16,6 +16,10 @@
         v-else-if="activity.action === 'Discussion Moved'"
       />
       <span class="lucide-edit-3 h-4 w-4" v-else-if="activity.action === 'Task Value Changed'" />
+      <span
+        class="lucide-corner-down-right h-4 w-4"
+        v-else-if="activity.action === 'Discussion Referenced'"
+      />
     </div>
     <p>
       <UserProfileLink class="font-medium text-ink-gray-7 hover:text-ink-gray-5" :user="user.name">
@@ -25,6 +29,18 @@
       <span v-if="activity.action == 'Discussion Reopened'"> reopened this discussion</span>
       <span v-if="activity.action == 'Discussion Pinned'"> pinned this discussion</span>
       <span v-if="activity.action == 'Discussion Unpinned'"> unpinned this discussion</span>
+      <span v-if="activity.action == 'Discussion Referenced'">
+        referenced this discussion in
+        <router-link
+          :to="{
+            path: `/space/${activity.data.project}/discussion/${activity.data.discussion}`,
+            query: { comment: activity.data.comment },
+          }"
+          class="text-ink-gray-8 hover:text-ink-gray-5"
+        >
+          {{ activity.data.title }}
+        </router-link>
+      </span>
       <span v-if="activity.action == 'Discussion Title Changed'">
         changed the title from
         <span class="text-ink-gray-8">{{ activity.data.old_title }}</span> to
@@ -138,6 +154,10 @@ interface Activity {
     field_label?: string
     old_value?: string
     new_value?: string
+    discussion?: string
+    comment?: string
+    title?: string
+    project?: string
   }
 }
 

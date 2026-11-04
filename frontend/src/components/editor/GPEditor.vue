@@ -12,6 +12,7 @@ import {
   type MenuItem,
 } from 'frappe-ui/editor'
 import { uploadFile } from './config'
+import LinkToolbar from './LinkToolbar.vue'
 
 // Shared gameplan editor layout, built on the v1 <Editor> via its #default
 // (L3) slot so gameplan keeps full control of editor-class, the scroll container,
@@ -99,6 +100,7 @@ function updateScrollFades() {
       <slot name="top" :editor="e" />
       <EditorBubbleMenu v-if="bubbleMenu" :editor="e" :items="bubbleMenu" />
       <EditorTableMenu :editor="e" />
+      <LinkToolbar v-if="editable && e" :editor="e" />
       <EditorFloatingMenu v-if="floatingMenu" :editor="e" :items="floatingMenu" />
       <EditorFixedMenu
         v-if="fixedMenu && fixedMenuPosition === 'top'"

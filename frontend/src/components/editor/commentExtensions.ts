@@ -9,9 +9,17 @@ import {
   Highlight,
   TextAlign,
 } from 'frappe-ui/editor'
-import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
+import {
+  gameplanHeadingLevels,
+  suggestionConfig,
+  richQuoteExtensions,
+  DiscussionLinkPasteExtension,
+  discussionLinkExtension,
+} from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
 import { CustomEmojiExtension } from './customEmojiExtension'
+import { DiscussionCardExtension } from '@/components/DiscussionCard/discussion-card-extension'
+import { LinkCardExtension } from '@/components/LinkCard/link-card-extension'
 import { PollBlockExtension } from '@/components/PollBlock/poll-block-extension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
 
@@ -59,6 +67,10 @@ export function commentExtensions(
     // renders them left-aligned and the next edit saves the alignment away.
     TextAlign,
     CustomEmojiExtension,
+    discussionLinkExtension(),
+    DiscussionCardExtension,
+    LinkCardExtension,
+    DiscussionLinkPasteExtension,
     PollBlockExtension,
     // Collapsible sections load here too, so a section written in a discussion
     // body still renders and edits when that body is reopened in CommentEditor.
