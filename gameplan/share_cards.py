@@ -3,6 +3,7 @@
 import hashlib
 import io
 import json
+import subprocess
 from functools import lru_cache
 
 import frappe
@@ -30,7 +31,7 @@ def image(discussion: str, v: str = ""):
 			"replies": post.comments_count or 0,
 		}
 	key = (
-		"gameplan:share-card:v1:"
+		"gameplan:share-card:v2:"
 		+ hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 	)
 	content = frappe.cache.get_value(key)
@@ -45,6 +46,45 @@ def font(weight, size):
 	return ImageFont.truetype(
 		frappe.get_app_path("frappe", "public", "css", "fonts", "inter", f"Inter-{weight}.woff2"), size
 	)
+
+
+@lru_cache(maxsize=4096)
+def supports(face, character):
+	if character.isspace():
+		return True
+	missing = face.getmask(chr(0x10FFFF))
+	glyph = face.getmask(character)
+	return glyph.size != missing.size or bytes(glyph) != bytes(missing)
+
+
+@lru_cache(maxsize=128)
+def fallback_font(codepoints, size):
+	try:
+		match = subprocess.run(
+			["fc-match", "-f", "%{file}", ":charset=" + " ".join(f"{code:x}" for code in codepoints)],
+			capture_output=True,
+			text=True,
+			timeout=2,
+			check=True,
+		)
+		return load_fallback_font(match.stdout.strip(), size)
+	except (OSError, ValueError, subprocess.SubprocessError):
+		return None
+
+
+@lru_cache(maxsize=16)
+def load_fallback_font(path, size):
+	return ImageFont.truetype(path, size)
+
+
+def text_font(text, weight, size):
+	face = font(weight, size)
+	missing = tuple(sorted({ord(char) for char in text if not supports(face, char)}))
+	if missing:
+		fallback = fallback_font(missing, size)
+		if fallback and all(supports(fallback, char) for char in text):
+			face = fallback
+	return "".join(char if supports(face, char) else "?" for char in text), face
 
 
 def lines(draw, text, face, width, limit):
@@ -92,18 +132,21 @@ def render_card(title, description, space, author, replies):
 	draw.text((140, 61), "Gameplan", font=font("SemiBold", 35), fill="#242424")
 	draw.text((72, 165), "COMMUNITY DISCUSSION", font=font("SemiBold", 20), fill="#a75c00")
 	y = 215
-	for line in lines(draw, title, font("SemiBold", 62), 1040, 3):
-		draw.text((72, y), line, font=font("SemiBold", 62), fill="#171717")
+	title, title_font = text_font(title, "SemiBold", 62)
+	for line in lines(draw, title, title_font, 1040, 3):
+		draw.text((72, y), line, font=title_font, fill="#171717")
 		y += 76
-	for line in lines(draw, description, font("Regular", 27), 1030, 1 if y >= 430 else 2):
-		draw.text((74, y + 18), line, font=font("Regular", 27), fill="#646464")
+	description, description_font = text_font(description, "Regular", 27)
+	for line in lines(draw, description, description_font, 1030, 1 if y >= 430 else 2):
+		draw.text((74, y + 18), line, font=description_font, fill="#646464")
 		y += 37
 	draw.line((72, 516, 1128, 516), fill="#e6e3dd", width=2)
 	footer = [space, *([f"@{author}"] if author else [])]
 	footer.append(f"{replies} {'response' if replies == 1 else 'responses'}")
-	footer_text = lines(draw, "  ·  ".join(footer), font("Medium", 25), 1056, 1)
+	footer, footer_font = text_font("  ·  ".join(footer), "Medium", 25)
+	footer_text = lines(draw, footer, footer_font, 1056, 1)
 	if footer_text:
-		draw.text((72, 548), footer_text[0], font=font("Medium", 25), fill="#616161")
+		draw.text((72, 548), footer_text[0], font=footer_font, fill="#616161")
 	output = io.BytesIO()
 	image.save(output, format="PNG", optimize=True)
 	return output.getvalue()
