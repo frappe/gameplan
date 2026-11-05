@@ -72,6 +72,14 @@ class TestPublicSEO(GameplanTestCase):
 			with self.assertRaises(frappe.DoesNotExistError):
 				share_image(str(self.post.name))
 
+	def test_share_image_cannot_be_read_after_space_becomes_private(self):
+		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			share_image(str(self.post.name))
+		self.space.set_visibility(VISIBILITY_MEMBER_ACCESS)
+		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			with self.assertRaises(frappe.DoesNotExistError):
+				share_image(str(self.post.name))
+
 	def test_share_image_changes_when_public_content_changes(self):
 		before = self.page(discussion_path(self.post)).image_url
 		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):

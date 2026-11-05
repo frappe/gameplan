@@ -30,7 +30,7 @@ def image(discussion: str, v: str = ""):
 			"replies": post.comments_count or 0,
 		}
 	key = (
-		"gameplan:share-card:"
+		"gameplan:share-card:v1:"
 		+ hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 	)
 	content = frappe.cache.get_value(key)
@@ -100,7 +100,7 @@ def render_card(title, description, space, author, replies):
 		y += 37
 	draw.line((72, 516, 1128, 516), fill="#e6e3dd", width=2)
 	footer = [space, *([f"@{author}"] if author else [])]
-	footer.append(f"{replies} {'reply' if replies == 1 else 'replies'}")
+	footer.append(f"{replies} {'response' if replies == 1 else 'responses'}")
 	footer_text = lines(draw, "  ·  ".join(footer), font("Medium", 25), 1056, 1)
 	if footer_text:
 		draw.text((72, 548), footer_text[0], font=font("Medium", 25), fill="#616161")
