@@ -29,6 +29,22 @@ def discussion_is_removed(name):
 	)
 
 
+def notification_is_removed(notification):
+	"""A notification is hidden while its discussion or its reply is removed."""
+	if discussion_is_removed(notification.get("discussion")):
+		return True
+	comment = notification.get("comment")
+	return bool(
+		comment
+		and is_removed(
+			frappe._dict(
+				frappe.db.get_value("GP Comment", comment, ["hidden_at", "spam_removed_at"], as_dict=True)
+				or {}
+			)
+		)
+	)
+
+
 def content_is_removed(doc):
 	if is_removed(doc) or discussion_is_removed(parent_discussion(doc)):
 		return True
@@ -189,15 +205,15 @@ class Moderatable:
 			frappe.throw("Make this content's attached files private before removing it")
 
 	def _notify_moderation_change(self):
-		if self.doctype == "GP Discussion":
-			from gameplan.realtime import notify_notification_count_changed, notify_unread_counts_changed
+		from gameplan.realtime import notify_notification_count_changed, notify_unread_counts_changed
 
+		if self.doctype == "GP Discussion":
 			notify_unread_counts_changed(
 				frappe.get_all("GP Unread Record", filters={"discussion": self.name}, pluck="user")
 			)
-			for user in set(
-				frappe.get_all("GP Notification", filters={"discussion": self.name}, pluck="to_user")
-			):
+		field = {"GP Discussion": "discussion", "GP Comment": "comment"}.get(self.doctype)
+		if field:
+			for user in set(frappe.get_all("GP Notification", filters={field: self.name}, pluck="to_user")):
 				notify_notification_count_changed(user, force_refresh=True)
 		frappe.publish_realtime(
 			"new_activity",
