@@ -2,7 +2,12 @@
   <div class="relative flex h-full flex-col" v-if="postId">
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
-        <PageHeaderUpButton :to="spaceRoute" />
+        <PageHeaderUpButton
+          :to="{
+            name: 'SpaceDiscussions',
+            params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
+          }"
+        />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -336,7 +341,7 @@ import {
   watch,
   useTemplateRef,
 } from 'vue'
-import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   PageHeaderMobile,
   PageHeader,
@@ -826,15 +831,6 @@ const currentSpaceId = computed(() => {
   if (typeof route.params.spaceId === 'string') return route.params.spaceId
   return ''
 })
-// The document's Space wins, because the URL can be stale for a moved discussion. The URL is
-// the only answer until the document loads, and when it cannot load (private or deleted).
-const spaceRoute = computed<RouteLocationRaw>(() => ({
-  name: 'SpaceDiscussions',
-  params: {
-    communityId: space.value?.team ?? routeParam(route.params.communityId),
-    spaceId: space.value?.name ?? routeParam(route.params.spaceId),
-  },
-}))
 
 const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,
