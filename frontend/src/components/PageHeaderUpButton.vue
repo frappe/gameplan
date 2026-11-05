@@ -23,7 +23,9 @@ const router = useRouter()
 // Unlike PageHeaderBackButton, this goes to the parent page wherever the user came from.
 // It must not add a history entry, or the back gesture would return to the page just left.
 async function goUp() {
-  const parentPath = router.resolve(props.to).path
+  // Read at tap time: a pop that lands elsewhere can change what the page passes as `to`.
+  const parent = props.to
+  const parentPath = router.resolve(parent).path
   const previous = router.options.history.state.back
 
   // Popping also keeps the parent's query, and avoids two entries for the same page.
@@ -35,9 +37,9 @@ async function goUp() {
 
   // A page still loading rewrites its own query (CommentsArea drops ?comment=first_post),
   // which cancels this navigation if the parent's chunk has not arrived yet.
-  const failure = await router.replace(props.to)
+  const failure = await router.replace(parent)
   if (isNavigationFailure(failure, NavigationFailureType.cancelled)) {
-    await router.replace(props.to)
+    await router.replace(parent)
   }
 }
 
