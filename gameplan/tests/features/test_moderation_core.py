@@ -266,6 +266,58 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 		for user, engine in [(self.outsider.name, search), ("Guest", PublicGameplanSearch())]:
 			with self.as_user(user):
 				self.assertEqual(engine.search("Original")["results"], [])
+		with self.as_user(self.outsider):
+			summary = search.search("Original")["summary"]
+		self.assertEqual((summary["total_matches"], summary["filtered_matches"]), (0, 0))
+
+	def test_notifications_about_a_removed_reply_return_only_after_restore(self):
+		from gameplan.email_digest import get_unread_notifications
+		from gameplan.realtime import unread_notification_count
+
+		notification = frappe.get_doc(
+			doctype="GP Notification",
+			to_user=self.outsider.name,
+			discussion=self.discussion.name,
+			comment=self.reply.name,
+			type="Mention",
+			message="Outsider mentioned you in a post",
+		).insert(ignore_permissions=True)
+
+		def visible():
+			with self.as_user(self.outsider):
+				return (
+					len(frappe.get_list("GP Notification", filters={"name": notification.name})),
+					frappe.get_doc("GP Notification", notification.name).has_permission("read"),
+					unread_notification_count(self.outsider.name),
+					len(get_unread_notifications(self.outsider.name)),
+				)
+
+		with patch("gameplan.realtime.notify_notification_count_changed") as notify:
+			self.reply.delete_spam("Spam")
+		notify.assert_any_call(self.outsider.name, force_refresh=True)
+		self.assertEqual(visible(), (0, False, 0, 0))
+		self.reply.restore()
+		self.assertEqual(visible(), (1, True, 1, 1))
+
+	def test_restoring_a_discussion_keeps_a_separately_removed_reply_removed(self):
+		self.reply.delete_spam("Spam reply")
+		self.discussion.hide("Off topic")
+		self.discussion.restore()
+		self.reply.reload()
+		self.assertTrue(self.reply.spam_removed_at)
+		self.assertEqual(self.reply.get_hidden_content(), "Original reply")
+
+	def test_moderation_history_cannot_be_changed_or_deleted(self):
+		self.reply.hide("Off topic")
+		log = frappe.get_last_doc("GP Moderation Log", filters={"comment": self.reply.name})
+		log.reason = "Rewritten"
+		with self.assertRaises(frappe.PermissionError):
+			log.save(ignore_permissions=True)
+		with self.assertRaises(frappe.PermissionError):
+			frappe.delete_doc("GP Moderation Log", log.name, ignore_permissions=True)
+		with self.as_user(self.second_member):
+			self.assertFalse(frappe.has_permission("GP Moderation Log", "write", log.name))
+			self.assertFalse(frappe.has_permission("GP Moderation Log", "delete", log.name))
 
 	def test_notifications_about_removed_discussions_return_only_after_restore(self):
 		notification = frappe.get_doc(
