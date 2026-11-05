@@ -55,6 +55,7 @@ ANONYMOUS_RATE_LIMITS = {
 	"gameplan.public_lists.polls": 120,
 	"gameplan.api.get_public_user_info": 60,
 	"gameplan.api.public_file": 600,
+	"gameplan.share_cards.image": 120,
 	"document": 120,
 }
 RATE_LIMIT_WINDOW_SECONDS = 60

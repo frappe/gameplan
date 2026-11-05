@@ -2,12 +2,15 @@
 # See license.txt
 
 from html import escape
+from io import BytesIO
 from unittest.mock import patch
 
 import frappe
+from PIL import Image
 
 from gameplan import public_sitemap
 from gameplan.public_seo import discussion_path, get_public_page, space_path
+from gameplan.share_cards import image as share_image
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
 	create_comment,
@@ -47,11 +50,38 @@ class TestPublicSEO(GameplanTestCase):
 		self.assertIn("Public SEO title", head)
 		self.assertIn('rel="canonical"', head)
 		self.assertIn('property="og:description"', head)
+		self.assertIn('property="og:image"', head)
+		self.assertIn('name="twitter:card"', head)
 		self.assertIn("Public <b>body</b>", body)
 		self.assertIn("Public reply", body)
 		self.assertNotIn(self.member.name, head + body)
 		self.assertNotIn(self.second_member.name, head + body)
 		self.assertNotIn("Secret", head + body)
+
+	def test_share_image_is_served_only_for_public_discussions(self):
+		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			response = share_image(str(self.post.name))
+			self.assertEqual(response.mimetype, "image/png")
+			self.assertEqual(response.headers["Cache-Control"], "private, no-store")
+			self.assertEqual(Image.open(BytesIO(response.data)).size, (1200, 630))
+			with self.assertRaises(frappe.DoesNotExistError):
+				share_image(str(self.hidden.name))
+
+	def test_share_image_is_disabled_with_public_access(self):
+		with public_access(False), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			with self.assertRaises(frappe.DoesNotExistError):
+				share_image(str(self.post.name))
+
+	def test_share_image_changes_when_public_content_changes(self):
+		before = self.page(discussion_path(self.post)).image_url
+		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			first = share_image(str(self.post.name)).data
+		frappe.db.set_value("GP Discussion", self.post.name, "content", "<p>New public content</p>")
+		after = self.page(discussion_path(self.post)).image_url
+		with public_access(), self.as_request("/api/method/gameplan.share_cards.image", user="Guest"):
+			second = share_image(str(self.post.name)).data
+		self.assertNotEqual(before, after)
+		self.assertNotEqual(first, second)
 
 	def test_signed_in_private_pages_have_no_public_payload(self):
 		self.assertIsNone(self.page(discussion_path(self.hidden), user=self.admin.name))

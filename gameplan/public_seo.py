@@ -3,6 +3,7 @@
 
 """Public HTML uses the same permissions and field cleaning as anonymous API reads."""
 
+import hashlib
 import re
 from contextlib import contextmanager
 from urllib.parse import quote, unquote, urlencode
@@ -45,6 +46,18 @@ def get_public_page():
 			seo.url = get_url(seo.path)
 			seo.title = f"{seo.title} — Gameplan" + (f" — Page {page}" if page > 1 else "")
 			seo.description = text_preview(seo.get("description") or seo.title)
+			if seo.discussion:
+				card_values = [
+					seo.title,
+					seo.description,
+					seo.breadcrumbs,
+					seo.discussion.get("comments_count"),
+				]
+				version = hashlib.sha256(frappe.as_json(card_values).encode()).hexdigest()[:16]
+				seo.image_url = get_url(
+					"/api/method/gameplan.share_cards.image?"
+					+ urlencode({"discussion": seo.discussion.name, "v": version})
+				)
 			seo.previous = page_path(seo.base_path, page - 1) if page > 1 else None
 			seo.next = page_path(seo.base_path, page + 1) if seo.has_next else None
 			seo.login = "/login?" + urlencode({"redirect-to": seo.path})
