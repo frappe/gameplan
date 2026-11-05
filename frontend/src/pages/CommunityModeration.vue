@@ -9,9 +9,10 @@
             aria-label="Moderation sections"
             class="hidden sm:flex"
           >
+            <SidebarHeader title="Moderation" :show-logo="false" />
             <div class="p-3"><slot name="sidebar" /></div>
             <ScrollArea class="min-h-0 flex-1" viewport-class="px-2 pt-0.5 pb-10">
-              <SidebarLabel>Moderation</SidebarLabel>
+              <SidebarLabel>Community moderation</SidebarLabel>
               <div class="mt-0.5 space-y-0.5">
                 <SidebarItem
                   v-for="option in sections"
@@ -29,107 +30,106 @@
           <slot name="sidebar" />
           <Select v-model="tab" aria-label="Moderation section" :options="sections" />
         </div>
-        <ScrollArea class="min-h-0 min-w-0 flex-1" viewport-class="px-4 py-5 sm:px-8">
-          <div
-            class="flex flex-wrap items-center justify-between gap-3 border-b border-outline-gray-2 pb-4"
-          >
-            <h2 class="text-lg-semibold text-ink-gray-9">
-              {{ sections.find((option) => option.value === tab)?.label }}
-            </h2>
-          </div>
-          <ErrorMessage
-            v-if="error"
-            class="mt-4"
-            :message="extractServerMessage(error) || 'Could not load moderation data'"
-          />
-          <template v-if="tab === 'removed'">
-            <Select
-              v-model="doctype"
-              class="my-4 max-w-xs"
-              aria-label="Content type"
-              :options="[
-                { label: 'Discussions', value: 'GP Discussion' },
-                { label: 'Replies', value: 'GP Comment' },
-              ]"
+        <ScrollArea class="min-h-0 min-w-0 flex-1" viewport-class="py-5">
+          <div class="body-container">
+            <ErrorMessage
+              v-if="error"
+              class="mt-4"
+              :message="extractServerMessage(error) || 'Could not load moderation data'"
             />
-            <div v-for="item in items" :key="item.name" class="border-b border-outline-gray-2 py-5">
-              <div class="text-base-medium text-ink-gray-9">{{ item.title }}</div>
-              <p class="mt-1 text-base text-ink-gray-5">
-                {{ item.spam_removed_at ? 'Spam removed' : 'Hidden' }} ·
-                {{ useUser(item.owner).full_name }}
-              </p>
-              <p class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">{{ item.reason }}</p>
-              <div class="mt-3 flex flex-wrap gap-2">
-                <Button @click="preview(item)">Preview</Button>
-                <Button
-                  :route="{
-                    name: 'Discussion',
-                    params: {
-                      communityId,
-                      spaceId: item.project,
-                      postId: item.discussion,
-                      slug: item.slug,
-                    },
-                  }"
-                  >Open discussion</Button
+            <template v-if="tab === 'removed'">
+              <Select
+                v-model="doctype"
+                class="my-4 max-w-xs"
+                aria-label="Content type"
+                :options="[
+                  { label: 'Discussions', value: 'GP Discussion' },
+                  { label: 'Replies', value: 'GP Comment' },
+                ]"
+              />
+              <div
+                v-for="item in items"
+                :key="item.name"
+                class="border-b border-outline-gray-2 py-5"
+              >
+                <div class="text-base-medium text-ink-gray-9">{{ item.title }}</div>
+                <p class="mt-1 text-base text-ink-gray-5">
+                  {{ item.spam_removed_at ? 'Spam removed' : 'Hidden' }} ·
+                  {{ useUser(item.owner).full_name }}
+                </p>
+                <p class="mt-2 whitespace-pre-wrap text-base text-ink-gray-7">{{ item.reason }}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <Button @click="preview(item)">Preview</Button>
+                  <Button
+                    :route="{
+                      name: 'Discussion',
+                      params: {
+                        communityId,
+                        spaceId: item.project,
+                        postId: item.discussion,
+                        slug: item.slug,
+                      },
+                    }"
+                    >Open discussion</Button
+                  >
+                  <Button @click="restore(item)">Restore</Button>
+                </div>
+                <div
+                  v-if="selected === item.name"
+                  class="mt-3 max-h-96 overflow-y-auto rounded-5 border border-outline-gray-2 bg-surface-gray-1 p-4"
                 >
-                <Button @click="restore(item)">Restore</Button>
+                  <CommentEditor :value="previewContent" :editable="false" />
+                </div>
+              </div>
+              <p v-if="!loading && !items.length" class="mt-5 text-base text-ink-gray-5">
+                No removed content.
+              </p>
+              <div class="mt-4 flex gap-2">
+                <Button v-if="start > 0" @click="start -= 40">Previous</Button>
+                <Button v-if="hasMore" @click="start += 40">Next</Button>
+              </div>
+            </template>
+            <template v-else-if="tab === 'bans'">
+              <p class="my-4 text-base text-ink-gray-5">
+                Bans block participation in this Community until lifted. Reading and participation
+                elsewhere stay available.
+              </p>
+              <div class="flex items-end gap-2">
+                <Combobox
+                  v-model="targetUser"
+                  v-model:query="userQuery"
+                  label="User"
+                  placeholder="Name or email"
+                  class="min-w-0 flex-1"
+                  :options="userOptions"
+                  :filterable="false"
+                />
+                <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
               </div>
               <div
-                v-if="selected === item.name"
-                class="mt-3 max-h-96 overflow-y-auto rounded-5 border border-outline-gray-2 bg-surface-gray-1 p-4"
+                v-for="ban in bans"
+                :key="ban.user"
+                class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
               >
-                <CommentEditor :value="previewContent" :editable="false" />
-              </div>
-            </div>
-            <p v-if="!loading && !items.length" class="mt-5 text-base text-ink-gray-5">
-              No removed content.
-            </p>
-            <div class="mt-4 flex gap-2">
-              <Button v-if="start > 0" @click="start -= 40">Previous</Button>
-              <Button v-if="hasMore" @click="start += 40">Next</Button>
-            </div>
-          </template>
-          <template v-else-if="tab === 'bans'">
-            <p class="my-4 text-base text-ink-gray-5">
-              Bans block participation in this Community until lifted. Reading and participation
-              elsewhere stay available.
-            </p>
-            <div class="flex items-end gap-2">
-              <Combobox
-                v-model="targetUser"
-                v-model:query="userQuery"
-                label="User"
-                placeholder="Name or email"
-                class="min-w-0 flex-1"
-                :options="userOptions"
-                :filterable="false"
-              />
-              <Button :disabled="!targetUser" @click="banUser">Ban from Community</Button>
-            </div>
-            <div
-              v-for="ban in bans"
-              :key="ban.user"
-              class="flex items-center justify-between gap-3 border-b border-outline-gray-2 py-5"
-            >
-              <div>
-                <div class="text-base-medium text-ink-gray-9">
-                  {{ useUser(ban.user).full_name }}
+                <div>
+                  <div class="text-base-medium text-ink-gray-9">
+                    {{ useUser(ban.user).full_name }}
+                  </div>
+                  <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
                 </div>
-                <p class="mt-1 whitespace-pre-wrap text-base text-ink-gray-5">{{ ban.reason }}</p>
+                <Button @click="liftBan(ban.user)">Lift ban</Button>
               </div>
-              <Button @click="liftBan(ban.user)">Lift ban</Button>
-            </div>
-            <div class="mt-4 flex gap-2">
-              <Button v-if="start" @click="start -= 40">Previous</Button>
-              <Button v-if="hasMore" @click="start += 40">Next</Button>
-            </div>
-            <p v-if="!loading && !bans.length" class="mt-5 text-base text-ink-gray-5">
-              No active Community bans.
-            </p>
-          </template>
-          <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
-          <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
+              <div class="mt-4 flex gap-2">
+                <Button v-if="start" @click="start -= 40">Previous</Button>
+                <Button v-if="hasMore" @click="start += 40">Next</Button>
+              </div>
+              <p v-if="!loading && !bans.length" class="mt-5 text-base text-ink-gray-5">
+                No active Community bans.
+              </p>
+            </template>
+            <ModerationHistory v-if="tab === 'history'" :communityId="communityId" />
+            <p v-if="loading" role="status" class="mt-4 text-base text-ink-gray-5">Loading…</p>
+          </div>
         </ScrollArea>
       </div>
     </template>
@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { Sidebar, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
+import { Sidebar, SidebarHeader, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -159,6 +159,7 @@ const sections = computed(() => [
 ])
 
 const props = defineProps<{ communityId: string }>()
+const emit = defineEmits<{ 'section-title': [title: string] }>()
 const community = useCommunity(() => props.communityId)
 const canModerate = computed(() => canModerateCommunity(community.value, useSessionUser()))
 const route = useRoute()
@@ -172,6 +173,15 @@ const tab = computed({
     router.replace({ query: { ...route.query, tab: value } })
   },
 })
+watch(
+  [sections, tab],
+  () =>
+    emit(
+      'section-title',
+      sections.value.find((item) => item.value === tab.value)?.label || 'Moderation',
+    ),
+  { immediate: true },
+)
 const doctype = ref('GP Discussion')
 const discussionType = useDoctype('GP Discussion')
 const commentType = useDoctype('GP Comment')
