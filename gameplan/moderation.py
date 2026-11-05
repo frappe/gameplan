@@ -1,5 +1,7 @@
 import frappe
+from frappe.query_builder.functions import Count
 from frappe.utils import cint
+from pypika.terms import ExistsCriterion
 
 from gameplan.community_bans import can_moderate_community
 from gameplan.moderation_logs import latest_logs
@@ -93,11 +95,17 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 	HasRole = frappe.qb.DocType("Has Role")
 	Member = frappe.qb.DocType("GP Member")
 	Log = frappe.qb.DocType("GP Moderation Log")
-	admin_users = (
-		frappe.qb.from_(HasRole)
-		.select(HasRole.parent)
-		.where((HasRole.parenttype == "User") & HasRole.role.isin(["Gameplan Admin", "System Manager"]))
-	)
+
+	def has_role(roles):
+		# Grouping keeps MariaDB from materializing every user's roles before applying the page limit.
+		return ExistsCriterion(
+			frappe.qb.from_(HasRole)
+			.select(HasRole.parent)
+			.where((HasRole.parent == User.name) & (HasRole.parenttype == "User") & HasRole.role.isin(roles))
+			.groupby(HasRole.parent)
+			.having(Count(HasRole.name) > 0)
+		)
+
 	community_staff = (
 		frappe.qb.from_(Member)
 		.select(Member.user)
@@ -111,15 +119,12 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 	)
 	users = (
 		frappe.qb.from_(User)
-		.join(HasRole)
-		.on((HasRole.parent == User.name) & (HasRole.parenttype == "User"))
 		.select(User.name, User.full_name, User.user_image)
-		.where(HasRole.role.isin(["Gameplan Guest", "Gameplan Member"]))
+		.where(has_role(["Gameplan Guest", "Gameplan Member"]))
 		.where(User.name != "Administrator")
-		.where(User.name.notin(admin_users))
+		.where(~has_role(["Gameplan Admin", "System Manager"]))
 		.where(User.name.notin(community_staff))
 		.where(User.name.notin(active_bans))
-		.distinct()
 	)
 	if query:
 		escaped_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
