@@ -2,7 +2,12 @@
   <div class="relative flex h-full flex-col" v-if="postId">
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
-        <PageHeaderBackButton :fallback-route="backRoute" />
+        <PageHeaderUpButton
+          :to="{
+            name: 'SpaceDiscussions',
+            params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
+          }"
+        />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -336,9 +341,8 @@ import {
   watch,
   useTemplateRef,
 } from 'vue'
-import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
-  PageHeaderBackButton,
   PageHeaderMobile,
   PageHeader,
   Combobox,
@@ -358,6 +362,7 @@ import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import DiscussionViewEditor from './editor/DiscussionViewEditor.vue'
+import PageHeaderUpButton from './PageHeaderUpButton.vue'
 import UserProfileLink from './UserProfileLink.vue'
 // Lazy: htmldiff-js + motion-v only load when a viewer opens edit history.
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
@@ -636,22 +641,6 @@ function copyLink() {
   let url = `${location.origin}${location.pathname}`
   copyToClipboard(url)
 }
-
-// Cold-load fallback only: PageHeaderBackButton walks history when there is any.
-// Undefined leaves it with nothing to recover to, which is right for a discussion
-// reached without a community in the URL.
-const backRoute = computed<RouteLocationRaw | undefined>(() => {
-  const communityId = routeParam(route.params.communityId)
-  const spaceId = routeParam(route.params.spaceId)
-
-  if (communityId && spaceId) {
-    return { name: 'SpaceDiscussions', params: { communityId, spaceId } }
-  }
-  if (communityId) {
-    return { name: 'Discussions', params: { communityId } }
-  }
-  return undefined
-})
 
 function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
