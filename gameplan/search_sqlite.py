@@ -198,6 +198,19 @@ class GameplanSearch(SQLiteSearch):
 
 		return {"project": list(set(project_filters))}  # Remove duplicates
 
+	def _removed_discussions(self, projects):
+		Discussion = frappe.qb.DocType("GP Discussion")
+		return [
+			str(name)
+			for name in frappe.qb.from_(Discussion)
+			.select(Discussion.name)
+			.where(
+				Discussion.project.isin(projects)
+				& (Discussion.hidden_at.isnotnull() | Discussion.spam_removed_at.isnotnull())
+			)
+			.run(pluck=True)
+		]
+
 	def _get_accessible_projects(self):
 		"""Get list of projects accessible to current user."""
 		Project = frappe.qb.DocType("GP Project")
@@ -388,56 +401,68 @@ class GameplanSearch(SQLiteSearch):
 		if not accessible_projects:
 			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
 
+		# Rows of removed discussions and their replies can outlive the removal in the index:
+		# replies stay indexed so a restore can reuse them. Index rows store names as numbers
+		# or text depending on the doctype, so compare them as text.
+		placeholders = ",".join(["?"] * len(accessible_projects))
+		removed_list = "(SELECT value FROM json_each(?))"
+		scope = (
+			f"CAST(project AS TEXT) IN ({placeholders}) AND NOT ("
+			f"(doctype IS 'GP Discussion' AND CAST(name AS TEXT) IN {removed_list}) OR "
+			f"(reference_doctype IS 'GP Discussion' AND CAST(reference_name AS TEXT) IN {removed_list}))"
+		)
+		removed = frappe.as_json(self._removed_discussions(accessible_projects))
+		params = [*accessible_projects, removed, removed]
 		conn = self._get_connection(read_only=True)
 		try:
 			# Get authors
-			authors_query = """
+			authors_query = f"""
                 SELECT owner, COUNT(*) as count
                 FROM search_fts
-                WHERE project IN ({})
+                WHERE {scope}
                 GROUP BY owner
                 ORDER BY count DESC
-            """.format(",".join(["?"] * len(accessible_projects)))
-			authors = conn.execute(authors_query, accessible_projects).fetchall()
+            """
+			authors = conn.execute(authors_query, params).fetchall()
 
 			# Get projects
-			projects_query = """
-                SELECT project, COUNT(*) as count
+			projects_query = f"""
+                SELECT CAST(project AS TEXT) as project, COUNT(*) as count
                 FROM search_fts
-                WHERE project IN ({})
-                GROUP BY project
+                WHERE {scope}
+                GROUP BY CAST(project AS TEXT)
                 ORDER BY count DESC
-            """.format(",".join(["?"] * len(accessible_projects)))
+            """
 
-			projects_with_count = conn.execute(projects_query, accessible_projects).fetchall()
+			projects_with_count = conn.execute(projects_query, params).fetchall()
 
 			# Get teams
-			teams_query = """
+			teams_query = f"""
                 SELECT team, COUNT(*) as count
                 FROM search_fts
-                WHERE team IS NOT NULL AND project IN ({})
+                WHERE team IS NOT NULL AND {scope}
                 GROUP BY team
                 ORDER BY count DESC
-            """.format(",".join(["?"] * len(accessible_projects)))
-			teams = conn.execute(teams_query, accessible_projects).fetchall()
+            """
+			teams = conn.execute(teams_query, params).fetchall()
 
 			# Get doctypes
-			doctypes_query = """
+			doctypes_query = f"""
                 SELECT doctype, COUNT(*) as count
                 FROM search_fts
-                WHERE project IN ({})
+                WHERE {scope}
                 GROUP BY doctype
                 ORDER BY count DESC
-            """.format(",".join(["?"] * len(accessible_projects)))
-			doctypes = conn.execute(doctypes_query, accessible_projects).fetchall()
+            """
+			doctypes = conn.execute(doctypes_query, params).fetchall()
 
 			# Get tags - split the tags field and count individual tags
-			tags_query = """
+			tags_query = f"""
                 SELECT tags
                 FROM search_fts
-                WHERE tags IS NOT NULL AND tags != '' AND project IN ({})
-            """.format(",".join(["?"] * len(accessible_projects)))
-			tags_result = conn.execute(tags_query, accessible_projects).fetchall()
+                WHERE tags IS NOT NULL AND tags != '' AND {scope}
+            """
+			tags_result = conn.execute(tags_query, params).fetchall()
 
 		finally:
 			conn.close()
