@@ -54,7 +54,7 @@ describe('Watched words', () => {
       cy.contains('span', 'forbiddenphrase').should('be.visible')
       cy.get('textarea[placeholder="Test words or a post"]').type('SPAMWORD')
       cy.contains('button', /^Test rules$/).click()
-      cy.contains('p', 'Block: spamword').should('be.visible')
+      cy.contains('p', 'Block: spamword').scrollIntoView().should('be.visible')
       cy.request(
         '/api/method/gameplan.watched_words.download?community=' + ids.community + '&action=Block',
       ).then(({ body }) => {
