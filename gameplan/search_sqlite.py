@@ -358,6 +358,11 @@ class GameplanSearch(SQLiteSearch):
 				from gameplan.moderation import filter_removed_search_results
 
 				response["results"] = filter_removed_search_results(response["results"])
+				# Counts come from raw index rows, which can include removed posts.
+				matches = len(response["results"])
+				response["summary"].update(
+					total_matches=matches, returned_matches=matches, filtered_matches=matches
+				)
 			return response
 		finally:
 			del self._requested_projects
