@@ -85,6 +85,8 @@ READ_ONLY_ENDPOINTS = frozenset(
 		"gameplan.public_lists.spaces",
 		"gameplan.public_lists.comments",
 		"gameplan.public_lists.polls",
+		# Renders the share image of one public discussion.
+		"gameplan.share_cards.image",
 		# The counts a visibility confirmation shows. Measures inside a savepoint it rolls back.
 		"gameplan.mixins.visibility.HasVisibility.get_visibility_change_impact",
 		# Profile reads.

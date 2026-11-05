@@ -52,6 +52,7 @@ GUEST_REACHABLE_ENDPOINTS = {
 	"gameplan.public_lists.spaces": "the public view's lists; extends.client.get_list, cleaned",
 	"gameplan.public_lists.comments": "the public view's lists; extends.client.get_list, cleaned",
 	"gameplan.public_lists.polls": "the public view's lists; extends.client.get_list, cleaned",
+	"gameplan.share_cards.image": "share image of one public discussion; nothing else is rendered",
 }
 
 
