@@ -72,6 +72,25 @@ describe('Mobile header goes up', () => {
       tapBack()
       pathIs(communityPath)
     })
+
+    it('reaches the Space when the entry before the discussion has changed', () => {
+      cy.visit(spacePath)
+      cy.contains('a:visible', 'Welcome thread').click()
+      pathIs(discussionPath)
+      cy.contains('Seed content').should('be.visible')
+      cy.go('back')
+      pathIs(spacePath)
+
+      // Going up replaces the Space's entry, but the discussion still records it as previous.
+      tapBack()
+      pathIs(communityPath)
+      cy.go('forward')
+      pathIs(discussionPath)
+      cy.contains('Seed content').should('be.visible')
+
+      tapBack()
+      pathIs(spacePath)
+    })
   })
 
   it('goes to the current Space of a discussion moved elsewhere', () => {
