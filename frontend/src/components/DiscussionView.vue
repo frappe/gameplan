@@ -2,7 +2,7 @@
   <div class="relative flex h-full flex-col" v-if="postId">
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
-        <PageHeaderBackButton :fallback-route="backRoute" />
+        <PageHeaderUpButton :to="spaceRoute" />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -338,7 +338,6 @@ import {
 } from 'vue'
 import { useRouter, useRoute, type RouteLocationRaw } from 'vue-router'
 import {
-  PageHeaderBackButton,
   PageHeaderMobile,
   PageHeader,
   Combobox,
@@ -358,6 +357,7 @@ import Reactions from './Reactions.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import CommentsArea from '@/components/CommentsArea.vue'
 import DiscussionViewEditor from './editor/DiscussionViewEditor.vue'
+import PageHeaderUpButton from './PageHeaderUpButton.vue'
 import UserProfileLink from './UserProfileLink.vue'
 // Lazy: htmldiff-js + motion-v only load when a viewer opens edit history.
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
@@ -637,22 +637,6 @@ function copyLink() {
   copyToClipboard(url)
 }
 
-// Cold-load fallback only: PageHeaderBackButton walks history when there is any.
-// Undefined leaves it with nothing to recover to, which is right for a discussion
-// reached without a community in the URL.
-const backRoute = computed<RouteLocationRaw | undefined>(() => {
-  const communityId = routeParam(route.params.communityId)
-  const spaceId = routeParam(route.params.spaceId)
-
-  if (communityId && spaceId) {
-    return { name: 'SpaceDiscussions', params: { communityId, spaceId } }
-  }
-  if (communityId) {
-    return { name: 'Discussions', params: { communityId } }
-  }
-  return undefined
-})
-
 function routeParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value
 }
@@ -842,6 +826,15 @@ const currentSpaceId = computed(() => {
   if (typeof route.params.spaceId === 'string') return route.params.spaceId
   return ''
 })
+// The document's Space wins, because the URL can be stale for a moved discussion. The URL is
+// the only answer until the document loads, and when it cannot load (private or deleted).
+const spaceRoute = computed<RouteLocationRaw>(() => ({
+  name: 'SpaceDiscussions',
+  params: {
+    communityId: space.value?.team ?? routeParam(route.params.communityId),
+    spaceId: space.value?.name ?? routeParam(route.params.spaceId),
+  },
+}))
 
 const spaceOptions = useGroupedSpaceOptions({
   filterFn: (space) => !space.archived_at && space.name !== discussion.doc?.project,

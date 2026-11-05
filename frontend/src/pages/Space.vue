@@ -23,7 +23,7 @@
         <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
       </button>
       <template #prefix>
-        <PageHeaderBackButton :fallback-route="{ name: 'Discussions', params: { communityId } }" />
+        <PageHeaderUpButton :to="{ name: 'Discussions', params: { communityId } }" />
       </template>
       <template #suffix>
         <Button
@@ -69,14 +69,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  BottomSheet,
-  PageHeaderBackButton,
-  PageHeaderMobile,
-  PageHeaderMobileTitle,
-  PageHeader,
-  Button,
-} from 'frappe-ui'
+import { BottomSheet, PageHeaderMobile, PageHeaderMobileTitle, PageHeader, Button } from 'frappe-ui'
+import PageHeaderUpButton from '@/components/PageHeaderUpButton.vue'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
 import PushPin from '@/components/icons/PushPin.vue'
 import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
