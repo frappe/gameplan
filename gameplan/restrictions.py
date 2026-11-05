@@ -41,10 +41,14 @@ def active_condition(table):
 	return (table.active == 1) & (table.expires_at.isnull() | (table.expires_at > utc_now()))
 
 
+def is_suspended(user):
+	return active(current_state(user))
+
+
 def require_not_suspended(login_manager=None):
 	"""Reject active site suspensions for password, session, API-key and OAuth authentication."""
 	user = login_manager.user if login_manager else frappe.session.user
-	if user and user != "Guest" and active(current_state(user)):
+	if user and user != "Guest" and is_suspended(user):
 		frappe.throw(
 			"Your account is suspended. Check your suspension email for details.", frappe.AuthenticationError
 		)

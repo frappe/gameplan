@@ -60,7 +60,12 @@ def get_due_profiles(today: date | None = None):
 			["email_digest_frequency", "in", list(EMAIL_DIGEST_FREQUENCY_DAYS)],
 		],
 	).run(as_dict=True)
-	return [profile for profile in profiles if is_digest_due(profile, today)]
+	from gameplan.restrictions import is_suspended
+
+	# A suspended account has no access to the site, so it gets no content by email either.
+	return [
+		profile for profile in profiles if is_digest_due(profile, today) and not is_suspended(profile.user)
+	]
 
 
 def is_digest_due(profile, today: date | None = None):

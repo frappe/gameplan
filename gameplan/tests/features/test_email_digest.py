@@ -77,6 +77,16 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertFalse(is_digest_due(monthly, date(2026, 7, 1)))
 		self.assertTrue(is_digest_due(monthly, date(2026, 7, 6)))
 
+	def test_get_due_profiles_skips_suspended_accounts(self):
+		from gameplan.restrictions import set_restriction
+
+		monday = date(2026, 6, 29)
+		self.assertIn(self.profile.name, [profile.name for profile in get_due_profiles(monday)])
+		with patch("frappe.enqueue"):
+			set_restriction(self.user.name, 1, "Account abuse")
+		frappe.local.request_cache.clear()
+		self.assertNotIn(self.profile.name, [profile.name for profile in get_due_profiles(monday)])
+
 	def test_get_due_profiles_ignores_profiles_scheduled_for_another_weekday(self):
 		self.profile.email_digest_day_of_week = "Friday"
 		self.profile.save(ignore_permissions=True)
