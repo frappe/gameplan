@@ -4,7 +4,7 @@ import frappe
 
 from gameplan.community_bans import content_is_banned, is_banned, set_ban
 from gameplan.mixins.moderation import is_removed
-from gameplan.moderation import community_bans, removed_content
+from gameplan.moderation import ban_candidates, community_bans, removed_content
 from gameplan.permissions import can_create_content, can_delete_content, can_view_content, can_write_content
 from gameplan.tests.base import GameplanTestCase
 from gameplan.tests.fixtures import (
@@ -40,6 +40,39 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 	def ban(self):
 		with self.as_user(self.second_member):
 			set_ban(self.community.name, self.outsider.name, 1, "Repeated spam")
+
+	def test_ban_candidate_search_respects_roles_staff_and_active_bans(self):
+		def find(user):
+			return ban_candidates(self.community.name, query=user.name)["items"]
+
+		with self.as_user(self.second_member):
+			self.assertEqual([row.name for row in find(self.outsider)], [self.outsider.name])
+			self.assertEqual([row.name for row in find(self.guest)], [self.guest.name])
+			self.assertEqual(find(self.member), [])
+			self.assertEqual(find(self.second_member), [])
+			self.assertEqual(find(self.admin), [])
+			set_ban(self.community.name, self.outsider.name, 1, "Repeated spam")
+			self.assertEqual(find(self.outsider), [])
+
+	def test_ban_candidate_search_keeps_cursor_pagination(self):
+		for index in range(22):
+			name = f"picker-scale-{index:02}@example.test"
+			frappe.get_doc(doctype="User", name=name, email=name, first_name="Picker").db_insert()
+			frappe.get_doc(
+				doctype="Has Role",
+				parent=name,
+				parenttype="User",
+				parentfield="roles",
+				role="Gameplan Member",
+			).db_insert()
+		with self.as_user(self.second_member):
+			first = ban_candidates(self.community.name, query="picker-scale-")
+			second = ban_candidates(self.community.name, query="picker-scale-", after=first["next_cursor"])
+		self.assertEqual(len(first["items"]), 20)
+		self.assertTrue(first["has_more"])
+		self.assertEqual(len(second["items"]), 2)
+		self.assertFalse(second["has_more"])
+		self.assertFalse({row.name for row in first["items"]} & {row.name for row in second["items"]})
 
 	def test_discussion_removal_and_restore_preserve_content_and_children(self):
 		original = self.discussion.content
