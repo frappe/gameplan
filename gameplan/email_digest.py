@@ -170,6 +170,7 @@ def get_unread_notifications(user: str):
 			"from_user",
 			"from_user.full_name as from_user_full_name",
 			"discussion",
+			"comment",
 			"discussion.title as discussion_title",
 			"discussion.slug as discussion_slug",
 			"task",
@@ -184,9 +185,9 @@ def get_unread_notifications(user: str):
 		limit=MAX_DIGEST_ITEMS,
 	).run(as_dict=True)
 
-	from gameplan.mixins.moderation import discussion_is_removed
+	from gameplan.mixins.moderation import notification_is_removed
 
-	return [row for row in rows if not discussion_is_removed(row.discussion)]
+	return [row for row in rows if not notification_is_removed(row)]
 
 
 def get_unread_discussions(user: str):
