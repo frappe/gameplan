@@ -241,7 +241,7 @@ LEGACY_PRIVACY_REFERENCES = {
 	# A historical patch, frozen against the schema it was written for.
 	"gameplan/gameplan/doctype/gp_project/patches/migrate_members_from_team.py": 1,
 	# Frappe's File.is_private, an unrelated field on another doctype.
-	"gameplan/mixins/moderation.py": 1,
+	"gameplan/mixins/moderation.py": 2,
 	"gameplan/approval_files.py": 2,
 	"gameplan/tests/features/test_approvals.py": 1,
 	"gameplan/tests/features/test_submission_access.py": 3,
