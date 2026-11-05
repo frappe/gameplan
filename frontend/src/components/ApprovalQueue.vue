@@ -1,10 +1,13 @@
 <template>
-  <Select
-    v-model="status"
-    class="my-4 max-w-xs"
-    label="Submission status"
-    :options="['Pending', 'Approved', 'Rejected', 'Withdrawn']"
-  />
+  <div class="my-4 flex flex-wrap items-end justify-between gap-3">
+    <Select
+      v-model="status"
+      class="w-full max-w-xs"
+      label="Submission status"
+      :options="['Pending', 'Approved', 'Rejected', 'Withdrawn']"
+    />
+    <slot name="actions" />
+  </div>
   <p v-if="loading" role="status" class="my-4 text-base">Loading submissions…</p>
   <ErrorMessage
     v-if="error"
