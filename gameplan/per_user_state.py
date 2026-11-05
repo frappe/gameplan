@@ -78,15 +78,33 @@ def notification_criterion(user=None):
 		return NOTHING
 	Notification = frappe.qb.DocType("GP Notification")
 	Discussion = frappe.qb.DocType("GP Discussion")
+	Comment = frappe.qb.DocType("GP Comment")
 	from gameplan.permissions import visible_discussion_criterion
 
 	visible = (
 		frappe.qb.from_(Discussion).select(Discussion.name).where(visible_discussion_criterion(Discussion))
 	)
-	return (Notification.to_user == user) & (
-		Notification.discussion.isnull()
-		| (Notification.discussion == "")
-		| Notification.discussion.isin(visible)
+	# Correlated on the reply's primary key, so it reads only this user's notification rows.
+	removed_reply = (
+		frappe.qb.from_(Comment)
+		.select(Comment.name)
+		.where(
+			(Comment.name == Notification.comment)
+			& (Comment.hidden_at.isnotnull() | Comment.spam_removed_at.isnotnull())
+		)
+	)
+	return (
+		(Notification.to_user == user)
+		& (
+			Notification.discussion.isnull()
+			| (Notification.discussion == "")
+			| Notification.discussion.isin(visible)
+		)
+		& (
+			Notification.comment.isnull()
+			| (Notification.comment == "")
+			| Notification.comment.notin(removed_reply)
+		)
 	)
 
 
@@ -95,10 +113,10 @@ def notification_has_permission(doc, ptype="read", user=None, **kwargs):
 
 	Deliberately no admin exception — nothing in Gameplan reads someone else's bell feed.
 	"""
-	from gameplan.mixins.moderation import discussion_is_removed
+	from gameplan.mixins.moderation import notification_is_removed
 
 	return _belongs_to_user(doc, NOTIFICATION_USER_FIELD, user) and not (
-		hasattr(doc, "doctype") and discussion_is_removed(doc.discussion)
+		hasattr(doc, "doctype") and notification_is_removed(doc)
 	)
 
 
