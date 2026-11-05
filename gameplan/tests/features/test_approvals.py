@@ -60,6 +60,23 @@ class TestApprovals(GameplanTestCase):
 			4,
 		)
 
+	def test_approval_notifies_once_and_rejection_never_notifies(self):
+		mention = (
+			f'<p>Hey <span data-type="mention" data-id="{self.outsider.name}" '
+			'data-label="Outsider">@Outsider</span></p>'
+		)
+
+		def mentions():
+			return frappe.db.count("GP Notification", {"to_user": self.outsider.name, "type": "Mention"})
+
+		rejected = self.submit(reply=True, content=mention)
+		self.decide(rejected, "Reject", "Please rephrase this")
+		approved = self.submit(reply=True, content=mention)
+		self.assertEqual(mentions(), 0)
+		self.decide(approved)
+		self.decide(approved)
+		self.assertEqual(mentions(), 1)
+
 	def test_reject_withdraw_and_retry_do_not_publish_or_earn_credit(self):
 		result = self.submit(key="same-intent")
 		self.assertEqual(self.submit(key="same-intent"), result)
