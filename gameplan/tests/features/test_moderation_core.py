@@ -270,6 +270,28 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 			summary = search.search("Original")["summary"]
 		self.assertEqual((summary["total_matches"], summary["filtered_matches"]), (0, 0))
 
+	def test_search_facets_leave_out_a_removed_discussion_and_its_replies(self):
+		from gameplan.search_sqlite import GameplanSearch
+
+		search = GameplanSearch()
+		search._ensure_fts_table()
+		search._index_documents(
+			[search.prepare_document(self.discussion), search.prepare_document(self.reply)]
+		)
+
+		def counts():
+			with self.as_user(self.second_member):
+				options = search.get_filter_options()
+			return options["authors"].get(self.outsider.name, 0), options["projects"].get(
+				str(self.space.name), 0
+			)
+
+		self.assertEqual(counts(), (2, 2))
+		self.discussion.hide("Spam")
+		self.assertEqual(counts(), (0, 0))
+		self.discussion.restore()
+		self.assertEqual(counts(), (2, 2))
+
 	def test_notifications_about_a_removed_reply_return_only_after_restore(self):
 		from gameplan.email_digest import get_unread_notifications
 		from gameplan.realtime import unread_notification_count
