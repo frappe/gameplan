@@ -64,6 +64,9 @@ class GPTask(HasMentions, HasActivity, Document):
 	def on_trash(self):
 		if not self.flags.from_gameplan_delete_cascade:
 			check_if_space_is_archived(self, action="delete", content_type="tasks")
+
+	def after_delete(self):
+		# Not in on_trash: that runs before the row is deleted, so the count would still include it.
 		self.update_tasks_count()
 
 	def update_tasks_count(self):

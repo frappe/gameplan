@@ -212,6 +212,35 @@ class TestSpaceCommunityMove(GameplanTestCase):
 		self.assertEqual(self._teams(rows), dict.fromkeys(rows, self.origin.name))
 
 
+class TestSpaceContentCounts(GameplanTestCase):
+	"""A Space's discussion and task counts follow its content when that content is deleted."""
+
+	def setUp(self):
+		super().setUp()
+		self.space = create_space("Counted Space", create_community("Counted Community"))
+
+	def _count(self, field):
+		return frappe.db.get_value("GP Project", self.space.name, field)
+
+	def test_deleting_a_discussion_lowers_the_discussion_count(self):
+		discussion = create_discussion("Counted Discussion", self.space)
+		create_discussion("Kept Discussion", self.space)
+		self.assertEqual(self._count("discussions_count"), 2)
+
+		frappe.delete_doc("GP Discussion", discussion.name)
+
+		self.assertEqual(self._count("discussions_count"), 1)
+
+	def test_deleting_a_task_lowers_the_task_count(self):
+		task = create_task("Counted Task", self.space)
+		create_task("Kept Task", self.space)
+		self.assertEqual(self._count("tasks_count"), 2)
+
+		frappe.delete_doc("GP Task", task.name)
+
+		self.assertEqual(self._count("tasks_count"), 1)
+
+
 class TestSpaceCommunityMoveAccess(GameplanTestCase):
 	"""Who may move a Space, and where to.
 
