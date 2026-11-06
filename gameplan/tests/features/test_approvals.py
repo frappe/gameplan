@@ -177,6 +177,30 @@ class TestApprovals(GameplanTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			self.decide(result)
 
+	def test_moderator_queue_lists_posts_and_replies_of_visible_spaces_only(self):
+		from gameplan.visibility import VISIBILITY_MEMBER_ACCESS
+
+		other = create_community("Elsewhere", members=[self.member])
+		other_space = create_space("Elsewhere space", other)
+		private = create_space("Staff only", self.community, visibility=VISIBILITY_MEMBER_ACCESS)
+		set_policy(other.name, 100)
+		visible = [self.submit()["name"], self.submit(reply=True)["name"]]
+		hidden = self.submit()["name"]
+		frappe.db.set_value("GP Submission", hidden, "project", str(private.name))
+		with self.as_user(self.member):
+			elsewhere = submit(
+				"GP Discussion",
+				"elsewhere",
+				"<p>Elsewhere</p>",
+				project=str(other_space.name),
+				title="Elsewhere",
+			)["name"]
+		with self.as_user(self.second_member):
+			names = [row.name for row in queue(self.community.name)["items"]]
+		self.assertCountEqual(names, visible)
+		self.assertNotIn(hidden, names)
+		self.assertNotIn(elsewhere, names)
+
 	def test_embedded_poll_is_created_only_after_approval(self):
 		payload = escape(
 			frappe.as_json({"title": "Held question", "options": [{"title": "Yes"}, {"title": "No"}]}),
