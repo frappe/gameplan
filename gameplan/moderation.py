@@ -1,10 +1,10 @@
 import frappe
 from frappe.query_builder.functions import Count
-from frappe.utils import cint
 from pypika.terms import ExistsCriterion
 
 from gameplan.community_bans import can_moderate_community
 from gameplan.moderation_logs import latest_logs
+from gameplan.paging import page_start
 from gameplan.permissions import moderatable_project_names
 
 BAN_CANDIDATE_PAGE_SIZE = 20
@@ -40,7 +40,7 @@ def removed_content(community: str, doctype: str = "GP Discussion", start: int =
 		.where(Discussion.project.isin(projects))
 		.where(Target.hidden_at.isnotnull() | Target.spam_removed_at.isnotnull())
 		.orderby(Target.modified, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
+		.offset(page_start(start))
 		.limit(41)
 	).run(as_dict=True)
 	field = "comment" if doctype == "GP Comment" else "discussion"
@@ -74,7 +74,7 @@ def community_bans(community: str, start: int = 0):
 		.where((Log.community == community) & (Log.action == "Ban"))
 		.orderby(Log.creation, order=frappe.qb.desc)
 		.orderby(Log.name, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
+		.offset(page_start(start))
 		.limit(41)
 		.run(as_dict=True)
 	)

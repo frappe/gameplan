@@ -4,11 +4,12 @@ from datetime import timedelta
 import frappe
 from frappe.query_builder import Criterion
 from frappe.query_builder.functions import Count
-from frappe.utils import cint, now_datetime
+from frappe.utils import now_datetime
 
 import gameplan
 from gameplan.community_bans import can_moderate_community, require_participation
 from gameplan.mixins.moderation import parent_discussion
+from gameplan.paging import page_start
 from gameplan.permissions import (
 	apply_accessible_project_filter,
 	can_moderate_space,
@@ -154,7 +155,7 @@ def queue(community: str, status: str = "Pending", start: int = 0, sort_by: str 
 	rows = (
 		rows_query.orderby(Review.last_reported_at, order=frappe.qb.desc)
 		.orderby(Review.name, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
+		.offset(page_start(start))
 		.limit(41)
 		.run(as_dict=True)
 	)
@@ -214,7 +215,7 @@ def detail(community: str, review: str, start: int = 0, report: str = ""):
 		filters={"review": review.name},
 		fields=["name", "owner", "creation", "reason", "note", "automatic_rule"],
 		order_by="creation asc, name asc",
-		limit_start=max(0, cint(start)),
+		limit_start=page_start(start),
 		limit_page_length=41,
 	)
 	evidence = (
