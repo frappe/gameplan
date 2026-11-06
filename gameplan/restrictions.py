@@ -94,7 +94,9 @@ def set_restriction(
 	if not isinstance(reason, str) or not reason.strip() or len(reason) > 500:
 		frappe.throw("Enter a reason of at most 500 characters")
 	if community:
-		frappe.get_doc("GP Team", community, for_update=True)
+		# Lock the Community row only: loading the document would read every member.
+		if not frappe.db.get_value("GP Team", community, "name", for_update=True):
+			raise frappe.DoesNotExistError(f"GP Team {community} not found")
 		if not can_moderate_community(community, for_update=True):
 			frappe.throw("You cannot manage this restriction", frappe.PermissionError)
 	if not frappe.db.get_value("User", user, "name", for_update=True) or user == "Guest":

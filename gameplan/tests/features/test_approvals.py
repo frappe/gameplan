@@ -60,6 +60,24 @@ class TestApprovals(GameplanTestCase):
 			4,
 		)
 
+	def test_community_settings_and_bans_never_load_the_whole_community(self):
+		from unittest.mock import patch
+
+		from gameplan.restrictions import set_restriction
+
+		real = frappe.get_doc
+
+		def forbid_community(*args, **kwargs):
+			target = args[0] if args else kwargs.get("doctype")
+			if target == "GP Team":
+				raise AssertionError("Loaded every member of the Community")
+			return real(*args, **kwargs)
+
+		with self.as_user(self.admin), patch("frappe.get_doc", forbid_community):
+			set_policy(self.community.name, 5)
+			set_restriction(self.outsider.name, 1, "Scale check", self.community.name)
+		self.assertEqual(frappe.db.get_value("GP Team", self.community.name, "approval_post_count"), 5)
+
 	def test_approval_notifies_once_and_rejection_never_notifies(self):
 		mention = (
 			f'<p>Hey <span data-type="mention" data-id="{self.outsider.name}" '
