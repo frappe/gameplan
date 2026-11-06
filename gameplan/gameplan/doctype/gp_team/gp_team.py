@@ -223,8 +223,23 @@ class GPTeam(HasVisibility, Archivable, Document):
 		if gameplan.is_anonymous(user) or gameplan.is_guest(user):
 			frappe.throw(_("Only community members can be moderators"))
 
-		member.is_moderator = int(bool(cint(is_moderator)))
-		self.save()
+		is_moderator = int(bool(cint(is_moderator)))
+		if is_moderator and self.is_banned_member(user):
+			frappe.throw("Lift the community ban before appointing this user")
+		# Update the one member row: saving the Community would rewrite every member.
+		frappe.db.set_value("GP Member", member.name, "is_moderator", is_moderator)
+		frappe.db.set_value(
+			"GP Team",
+			self.name,
+			{"modified": frappe.utils.now(), "modified_by": frappe.session.user},
+			update_modified=False,
+		)
+		frappe.clear_document_cache("GP Team", self.name)
+
+	def is_banned_member(self, user):
+		from gameplan.community_bans import is_banned
+
+		return is_banned(self.name, user)
 
 	def get_member(self, user):
 		return next((member for member in self.members if member.user == user), None)
