@@ -1,13 +1,14 @@
 import hashlib
 
 import frappe
-from frappe.utils import cint, now_datetime
+from frappe.utils import now_datetime
 
 from gameplan.approval_access import can_read_submission, read_criterion, submission_project, target_criterion
 from gameplan.approval_files import published_content
 from gameplan.approval_policy import needs_approval, publishing_submission
 from gameplan.community_bans import can_moderate_community, require_participation
 from gameplan.mixins.archivable import check_if_space_is_archived
+from gameplan.paging import page_start
 from gameplan.permissions import can_moderate_space, moderatable_project_names
 from gameplan.reporting import checked_note
 
@@ -156,7 +157,7 @@ def queue(community: str = "", status: str = "Pending", start: int = 0):
 		.where(Submission.status == status)
 		.orderby(Submission.creation, order=frappe.qb.desc)
 		.orderby(Submission.name, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
+		.offset(page_start(start))
 		.limit(41)
 		.run(as_dict=True)
 	)
