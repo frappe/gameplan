@@ -222,6 +222,36 @@ class TestTimedRestrictions(GameplanTestCase):
 		expire_due()
 		self.assertEqual(frappe.db.count("GP User Restriction", {"user": self.outsider.name, "active": 1}), 0)
 
+	def test_permanent_restrictions_do_not_hide_an_expired_one_from_the_job(self):
+		from gameplan.restrictions import restriction_name
+
+		# `<=` on a date matches an empty one too, and they sort first: 100 permanent restrictions
+		# kept the job from ever reaching an expiring one, and it re-queued itself forever.
+		for index in range(100):
+			community = f"permanent-{index}"
+			frappe.get_doc(
+				doctype="GP User Restriction",
+				name=restriction_name(self.outsider.name, community),
+				user=self.outsider.name,
+				community=community,
+				active=1,
+				reason="Permanent",
+			).db_insert()
+		expiring = restriction_name(self.outsider.name, "expiring")
+		frappe.get_doc(
+			doctype="GP User Restriction",
+			name=expiring,
+			user=self.outsider.name,
+			community="expiring",
+			active=1,
+			expires_at=utc_now() - timedelta(seconds=1),
+			reason="Expiring",
+		).db_insert()
+		with patch("frappe.enqueue") as enqueue:
+			expire_due()
+		enqueue.assert_not_called()
+		self.assertEqual(frappe.db.get_value("GP User Restriction", expiring, "active"), 0)
+
 
 class TestRestrictionHTTP(FrappeAPITestCase):
 	def setUp(self):

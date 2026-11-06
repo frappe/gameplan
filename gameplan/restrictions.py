@@ -211,9 +211,11 @@ def write_expiry(row):
 
 def expire_due():
 	"""Record up to 100 due expiries; authorization never waits for this job."""
+	# `<=` on a date also matches an empty one, so permanent restrictions must be left out
+	# explicitly: 100 of them sorted first and the job never reached an expiring one.
 	rows = frappe.get_all(
 		"GP User Restriction",
-		filters={"active": 1, "expires_at": ["<=", utc_now()]},
+		filters=[["active", "=", 1], ["expires_at", "is", "set"], ["expires_at", "<=", utc_now()]],
 		fields=["name", "user"],
 		order_by="expires_at asc, name asc",
 		limit=100,
