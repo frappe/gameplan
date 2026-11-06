@@ -43,14 +43,14 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 	def as_dict(self, *args, **kwargs):
 		d = super().as_dict(*args, **kwargs)
 		last_visit = frappe.db.get_value(
-			"GP Discussion Visit", {"discussion": self.name, "user": frappe.session.user}, "last_visit"
+			"GP Discussion Visit", {"discussion": str(self.name), "user": frappe.session.user}, "last_visit"
 		)
 		if last_visit:
 			result = frappe.db.get_all(
 				"GP Comment",
 				filters={
 					"reference_doctype": self.doctype,
-					"reference_name": self.name,
+					"reference_name": str(self.name),
 					"creation": (">", last_visit),
 				},
 				order_by="creation asc",
@@ -63,14 +63,14 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 
 		polls = frappe.db.get_all(
 			"GP Poll",
-			filters={"discussion": self.name, "creation": (">", last_visit)},
+			filters={"discussion": str(self.name), "creation": (">", last_visit)},
 			order_by="creation asc",
 			limit=1,
 			pluck="name",
 		)
 		d.last_unread_poll = polls[0] if polls else None
 		d.is_bookmarked = self.is_bookmarked_by_current_user()
-		d.views = frappe.db.count("GP Discussion Visit", {"discussion": self.name})
+		d.views = frappe.db.count("GP Discussion Visit", {"discussion": str(self.name)})
 		return for_viewer(self.doctype, d)
 
 	def before_insert(self):
@@ -130,10 +130,10 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		"""Reactions on everything in this thread, for the thread page."""
 		comments = frappe.get_all(
 			"GP Comment",
-			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			filters={"reference_doctype": self.doctype, "reference_name": str(self.name)},
 			pluck="name",
 		)
-		polls = frappe.get_all("GP Poll", filters={"discussion": self.name}, pluck="name")
+		polls = frappe.get_all("GP Poll", filters={"discussion": str(self.name)}, pluck="name")
 		reactions = get_reactions_on({"GP Discussion": [self.name], "GP Comment": comments, "GP Poll": polls})
 		if frappe.session.user == "Guest":
 			return [
@@ -154,7 +154,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		GPUnreadRecord.mark_discussion_as_read_for_user(self.name, frappe.session.user)
 
 		# Keep old system for analytics/backward compatibility
-		values = {"user": frappe.session.user, "discussion": self.name}
+		values = {"user": frappe.session.user, "discussion": str(self.name)}
 		existing = frappe.db.get_value("GP Discussion Visit", values)
 		if existing:
 			visit = frappe.get_doc("GP Discussion Visit", existing)
@@ -263,7 +263,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		(bookmark_has_permission scopes them), so this cascade runs privileged — it is a
 		consequence of an already-authorised discussion delete.
 		"""
-		for name in frappe.get_all("GP Bookmark", filters={"discussion": self.name}, pluck="name"):
+		for name in frappe.get_all("GP Bookmark", filters={"discussion": str(self.name)}, pluck="name"):
 			frappe.delete_doc("GP Bookmark", name, ignore_permissions=True)
 
 	def remove_all_activities(self):
@@ -276,7 +276,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		"""
 		for name in frappe.get_all(
 			"GP Activity",
-			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			filters={"reference_doctype": self.doctype, "reference_name": str(self.name)},
 			pluck="name",
 		):
 			frappe.delete_doc("GP Activity", name, ignore_permissions=True)
@@ -292,7 +292,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		return bool(frappe.db.exists("GP Bookmark", self.opening_post_bookmark_filters()))
 
 	def opening_post_bookmark_filters(self):
-		return {"discussion": self.name, "user": frappe.session.user, "comment": ("is", "not set")}
+		return {"discussion": str(self.name), "user": frappe.session.user, "comment": ("is", "not set")}
 
 	def update_slug(self):
 		self.slug = url_safe_slug(self.title)
@@ -309,7 +309,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 			)
 		)
 		participants.update(
-			frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner", distinct=True)
+			frappe.db.get_all("GP Poll", filters={"discussion": str(self.name)}, pluck="owner", distinct=True)
 		)
 		participants.add(self.owner)
 		self.participants_count = len(participants)
@@ -333,7 +333,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		last_comment = get_last_post(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": str(self.name)}
 		)
-		last_poll = get_last_post("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
+		last_poll = get_last_post("GP Poll", {"discussion": str(self.name), "comment": ("is", "not set")})
 
 		if last_comment and last_poll:
 			latest = last_comment if last_comment.creation > last_poll.creation else last_poll
@@ -356,7 +356,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		comments_count = frappe.db.count(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": str(self.name)}
 		)
-		polls_count = frappe.db.count("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
+		polls_count = frappe.db.count("GP Poll", {"discussion": str(self.name), "comment": ("is", "not set")})
 		self.comments_count = comments_count + polls_count
 
 	def update_discussions_count(self):
