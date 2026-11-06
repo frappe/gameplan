@@ -37,6 +37,10 @@ class GameplanTestCase(FrappeTestCase):
 		# case, which used to leave a half-built persona set sitting in an open transaction
 		# until the next class's setUpClass called frappe.db.commit() and made it permanent
 		# on the site.
+		# Registered first so it runs after the rollback: the rollback restores the database, and
+		# this drops answers cached from it (such as "this user is banned"), which a rollback does
+		# not undo and which would otherwise decide the next test.
+		self.addCleanup(frappe.local.request_cache.clear)
 		self.addCleanup(_restore_session_and_rollback)
 		frappe.set_user("Administrator")
 		# The SQLite search index is a file outside the MariaDB transaction, so a leak
