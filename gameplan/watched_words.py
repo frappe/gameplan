@@ -4,6 +4,7 @@ import frappe
 from frappe.utils import cint
 from frappe.utils.csvutils import build_csv_response, read_csv_content
 
+from gameplan.paging import page_start
 from gameplan.permissions import require_can_manage_community
 from gameplan.watched_word_matching import matches
 
@@ -50,7 +51,7 @@ def rules(community: str, action: str, start: int = 0):
 		filters={"community": community, "action": action},
 		fields=["name", "word", "case_sensitive"],
 		order_by="creation desc, name desc",
-		limit_start=max(0, start),
+		limit_start=page_start(start),
 		limit_page_length=41,
 	)
 	return {"items": rows[:40], "has_more": len(rows) > 40}
