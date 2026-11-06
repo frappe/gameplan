@@ -1,8 +1,8 @@
 import frappe
 from frappe.query_builder import Criterion
-from frappe.utils import cint
 
 from gameplan.community_bans import can_moderate_community
+from gameplan.paging import page_start
 from gameplan.permissions import moderatable_project_names
 
 BAN_HISTORY_USER_PAGE_SIZE = 20
@@ -109,7 +109,7 @@ def history(community: str, kind: str = "all", target: str = "", start: int = 0)
 		.where(criterion)
 		.orderby(Log.creation, order=frappe.qb.desc)
 		.orderby(Log.name, order=frappe.qb.desc)
-		.offset(max(0, cint(start)))
+		.offset(page_start(start))
 		.limit(41)
 	).run(as_dict=True)
 	from gameplan.restrictions import iso_expiry
