@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
+import time
 from datetime import date
 from urllib.parse import quote
 
@@ -37,35 +38,89 @@ GAMEPLAN_LOGO_PATH = "/assets/gameplan/gameplan_logo_256.png"
 REACTION_ICON_PATH = "/assets/gameplan/images/email-digest-reaction.png"
 
 
-def send_due_email_digests():
-	today = getdate(nowdate())
-	for profile in get_due_profiles(today):
+# The daily scheduler job stops after 300 s. Sending to 95,000 profiles takes about an hour, so
+# the job works in slices and continues in a job on the long queue (1,500 s).
+DIGEST_TIME_BUDGET = 240
+CONTINUATION_TIME_BUDGET = 1_200
+PROFILE_BATCH = 2_000
+COMMIT_EVERY = 50
+
+
+def clock():
+	return time.monotonic()
+
+
+def send_due_email_digests(today: str | None = None, after: str = "", budget: int = DIGEST_TIME_BUDGET):
+	"""Send the digests due today. Progress is saved as it goes, so a stopped job loses little and
+	the continuation resumes `after` the last profile it handled."""
+	today = getdate(today) if today else getdate(nowdate())
+	deadline = clock() + budget
+	last, sent = after, 0
+	for profile in due_profiles(today, after):
+		if clock() > deadline:
+			frappe.db.commit()
+			frappe.enqueue(
+				send_due_email_digests,
+				queue="long",
+				today=str(today),
+				after=last,
+				budget=CONTINUATION_TIME_BUDGET,
+			)
+			return
 		send_digest_for_profile(profile, today)
+		last, sent = profile.name, sent + 1
+		if sent % COMMIT_EVERY == 0:
+			frappe.db.commit()
 
 
 def get_due_profiles(today: date | None = None):
-	today = today or getdate(nowdate())
-	profiles = frappe.qb.get_query(
-		"GP User Profile",
-		fields=[
-			"name",
-			"user",
-			"full_name",
-			"email_digest_frequency",
-			"email_digest_day_of_week",
-			"email_digest_last_sent_on",
-		],
-		filters=[
-			["enabled", "=", 1],
-			["email_digest_frequency", "in", list(EMAIL_DIGEST_FREQUENCY_DAYS)],
-		],
-	).run(as_dict=True)
-	from gameplan.restrictions import is_suspended
+	return list(due_profiles(today or getdate(nowdate())))
 
-	# A suspended account has no access to the site, so it gets no content by email either.
-	return [
-		profile for profile in profiles if is_digest_due(profile, today) and not is_suspended(profile.user)
-	]
+
+def due_profiles(today: date, after: str = ""):
+	"""The profiles due a digest on `today`, in name order, scanned in batches."""
+	suspended = suspended_users()
+	while True:
+		batch = frappe.qb.get_query(
+			"GP User Profile",
+			fields=[
+				"name",
+				"user",
+				"full_name",
+				"email_digest_frequency",
+				"email_digest_day_of_week",
+				"email_digest_last_sent_on",
+			],
+			filters=[
+				["enabled", "=", 1],
+				["email_digest_frequency", "in", list(EMAIL_DIGEST_FREQUENCY_DAYS)],
+				["name", ">", after],
+			],
+			order_by="name asc",
+			limit=PROFILE_BATCH,
+		).run(as_dict=True)
+		if not batch:
+			return
+		for profile in batch:
+			if is_digest_due(profile, today) and profile.user not in suspended:
+				yield profile
+		after = batch[-1].name
+
+
+def suspended_users() -> set:
+	"""A suspended account has no access to the site, so it gets no content by email either.
+	Read once: asking about each of 100,000 profiles took most of the time."""
+	from gameplan.restrictions import active_condition
+
+	Restriction = frappe.qb.DocType("GP User Restriction")
+	rows = (
+		frappe.qb.from_(Restriction)
+		.select(Restriction.user, Restriction.kind)
+		.where((Restriction.community == "") & active_condition(Restriction))
+		.run(as_dict=True)
+	)
+	# A silenced account keeps reading access, and its digest.
+	return {row.user for row in rows if row.kind != "Silence"}
 
 
 def is_digest_due(profile, today: date | None = None):

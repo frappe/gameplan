@@ -87,6 +87,40 @@ class TestEmailDigest(GameplanTestCase):
 		frappe.local.request_cache.clear()
 		self.assertNotIn(self.profile.name, [profile.name for profile in get_due_profiles(monday)])
 
+	def test_a_long_digest_run_continues_after_the_last_profile_it_handled(self):
+		from gameplan.email_digest import send_due_email_digests
+
+		mine = {self.profile.name}
+		for index in range(2):
+			user = create_member(f"digest-more-{index}-{frappe.generate_hash(length=6)}@example.com", "More")
+			profile = frappe.get_doc("GP User Profile", {"user": user.name})
+			profile.email_digest_frequency = "Weekly"
+			profile.email_digest_day_of_week = "Monday"
+			profile.save(ignore_permissions=True)
+			mine.add(profile.name)
+		handled = []
+		monday = "2026-06-29"
+		# One profile fits in the first slice; the clock then passes its end.
+		with (
+			patch(
+				"gameplan.email_digest.send_digest_for_profile",
+				side_effect=lambda p, t: handled.append(p.name),
+			),
+			patch("gameplan.email_digest.clock", side_effect=[0, 0, 5]) as clock,
+			patch("frappe.enqueue") as enqueue,
+			patch("frappe.db.commit"),
+		):
+			send_due_email_digests(monday, budget=1)
+			first = list(handled)
+			self.assertEqual(len(first), 1)
+			enqueue.assert_called_once()
+			resume = enqueue.call_args.kwargs
+			self.assertEqual((resume["after"], resume["today"]), (first[-1], monday))
+			clock.side_effect, clock.return_value = None, 0
+			send_due_email_digests(monday, after=resume["after"])
+		self.assertTrue(mine <= set(handled))
+		self.assertEqual(len(handled), len(set(handled)))
+
 	def test_get_due_profiles_ignores_profiles_scheduled_for_another_weekday(self):
 		self.profile.email_digest_day_of_week = "Friday"
 		self.profile.save(ignore_permissions=True)
