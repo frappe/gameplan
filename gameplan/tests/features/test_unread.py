@@ -39,6 +39,53 @@ class TestUnread(GameplanTestCase):
 	user without rolling any of it back.
 	"""
 
+	def test_a_reply_creates_one_record_per_reader_in_bulk_and_none_for_its_author(self):
+		from gameplan.tests.fixtures import create_comment
+
+		community = create_community("Fan out", members=[self.member, self.second_member, self.outsider])
+		space = create_space("Fan out space", community, visibility=VISIBILITY_MEMBER_ACCESS)
+		for user in (self.member, self.second_member, self.outsider):
+			frappe.get_doc(
+				doctype="GP Member",
+				parent=space.name,
+				parenttype="GP Project",
+				parentfield="members",
+				user=user.name,
+			).db_insert()
+		discussion = create_discussion("Fan out thread", space, owner=self.member)
+		frappe.db.delete("GP Unread Record", {"discussion": str(discussion.name)})
+		with self.as_user(self.second_member):
+			reply = create_comment(discussion)
+		rows = frappe.get_all(
+			"GP Unread Record",
+			filters={"discussion": str(discussion.name)},
+			fields=["user", "project", "comment", "is_unread"],
+		)
+		users = [row.user for row in rows]
+		self.assertEqual(len(users), len(set(users)))
+		self.assertTrue({self.member.name, self.outsider.name} <= set(users))
+		self.assertNotIn(self.second_member.name, users)
+		self.assertEqual(
+			{(row.project, row.comment, row.is_unread) for row in rows},
+			{(str(space.name), str(reply.name), 1)},
+		)
+
+	def test_a_large_audience_is_handled_in_a_background_job(self):
+		from gameplan.gameplan.doctype.gp_unread_record import gp_unread_record
+
+		community = create_community("Large audience", members=[self.member])
+		space = create_space("Large space", community)
+		with (
+			patch.object(gp_unread_record, "LARGE_AUDIENCE", 0),
+			patch.object(frappe, "in_test", False),
+			patch("frappe.enqueue") as enqueue,
+		):
+			create_discussion("Large thread", space)
+		jobs = [call for call in enqueue.call_args_list if "create_unread_records" in str(call.args[:1])]
+		self.assertEqual(len(jobs), 1)
+		self.assertFalse(jobs[0].kwargs["now"])
+		self.assertTrue(jobs[0].kwargs["enqueue_after_commit"])
+
 	def test_mark_all_as_read_for_team_marks_accessible_community_projects(self):
 		suffix = frappe.generate_hash(length=8)
 		user = create_member(f"team-unread-member-{suffix}@example.com", "Team Unread Member")
