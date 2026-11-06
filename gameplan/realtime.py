@@ -30,6 +30,11 @@ from gameplan.per_user_state import notification_criterion
 # `gameplan:` namespaces these against frappe's own realtime events (`list_update`,
 # `doc_update`, ...) and against other apps sharing the site.
 UNREAD_COUNTS_CHANGED = "gameplan:unread_counts_changed"
+# One broadcast for a large audience, instead of one event per user. It carries no data, so
+# it reveals nothing; every open tab reloads its own counts after a random delay.
+UNREAD_COUNTS_STALE = "gameplan:unread_counts_stale"
+# More users than this are told with a broadcast.
+BROADCAST_ABOVE = 200
 NOTIFICATION_COUNT_CHANGED = "gameplan:notification_count_changed"
 RESTRICTIONS_CHANGED = "gameplan:restrictions_changed"
 USERS_CHANGED = "gameplan:users_changed"
@@ -39,8 +44,27 @@ def notify_unread_counts_changed(users: str | list[str]):
 	"""Tell each given user that their space and community unread counts moved."""
 	if isinstance(users, str):
 		users = [users]
-	for user in {user for user in users if user}:
+	users = {user for user in users if user}
+	if len(users) > BROADCAST_ABOVE:
+		realtime.publish_realtime(UNREAD_COUNTS_STALE, room=realtime.get_website_room(), after_commit=True)
+		return
+	for user in users:
 		realtime.publish_realtime(UNREAD_COUNTS_CHANGED, user=user, after_commit=True)
+
+
+def notify_notification_counts_refresh(users):
+	"""Tell users to reload their notification list, after moderation changed what it shows.
+
+	Each user's own count is one query, so thousands of users get one broadcast instead."""
+	users = {user for user in users if user}
+	if len(users) > BROADCAST_ABOVE:
+		message = {"count": None, "force_refresh": True}
+		realtime.publish_realtime(
+			NOTIFICATION_COUNT_CHANGED, message=message, room=realtime.get_website_room(), after_commit=True
+		)
+		return
+	for user in users:
+		notify_notification_count_changed(user, force_refresh=True)
 
 
 def notify_notification_count_changed(user: str, *, force_refresh=False):

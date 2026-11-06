@@ -43,6 +43,26 @@ class TestRealtimeEvents(GameplanTestCase):
 			read=read,
 		).insert(ignore_permissions=True)
 
+	def test_a_large_audience_gets_one_broadcast_instead_of_one_event_each(self):
+		from gameplan import realtime as gameplan_realtime
+
+		users = [f"user{i}@example.com" for i in range(gameplan_realtime.BROADCAST_ABOVE + 1)]
+		with patch("frappe.realtime.publish_realtime") as publish:
+			gameplan_realtime.notify_unread_counts_changed(users)
+			gameplan_realtime.notify_notification_counts_refresh(users)
+		self.assertEqual(publish.call_count, 2)
+		self.assertTrue(all(call.kwargs.get("room") for call in publish.call_args_list))
+		self.assertTrue(all("user" not in call.kwargs for call in publish.call_args_list))
+
+	def test_a_small_audience_still_gets_its_own_events(self):
+		from gameplan import realtime as gameplan_realtime
+
+		with patch("frappe.realtime.publish_realtime") as publish:
+			gameplan_realtime.notify_unread_counts_changed(["a@example.com", "b@example.com"])
+		self.assertEqual(
+			{call.kwargs.get("user") for call in publish.call_args_list}, {"a@example.com", "b@example.com"}
+		)
+
 	def test_a_new_notification_tells_its_recipient(self):
 		with patch("frappe.realtime.publish_realtime") as publish_realtime:
 			frappe.get_doc(

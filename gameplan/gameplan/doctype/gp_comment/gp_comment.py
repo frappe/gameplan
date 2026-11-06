@@ -268,3 +268,10 @@ def add_indexes():
 	# returning reference_name. Without it MariaDB full-scans GP Comment as a
 	# per-row dependent subquery — ~18s on large sites vs ~20ms with the index.
 	frappe.db.add_index("GP Comment", ["owner", "reference_doctype", "reference_name"], "owner_reference")
+	# Replies of one discussion, in order: counting them, listing them and finding their authors.
+	# Without it each new reply scanned every reply on the site.
+	frappe.db.add_index("GP Comment", ["reference_doctype", "reference_name", "creation"], "thread_replies")
+	# Removed replies are rare, so the moderator queue finds them through these instead of
+	# reading every reply in modified order.
+	frappe.db.add_index("GP Comment", ["hidden_at"], "hidden_replies")
+	frappe.db.add_index("GP Comment", ["spam_removed_at"], "spam_removed_replies")

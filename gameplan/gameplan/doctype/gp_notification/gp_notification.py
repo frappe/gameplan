@@ -38,3 +38,9 @@ class GPNotification(Document):
 		query.run()
 
 		notify_notification_count_changed(user)
+
+
+def on_doctype_update():
+	# Who has notifications about this discussion or reply: asked when moderation removes it.
+	frappe.db.add_index("GP Notification", ["discussion"], "discussion_notifications")
+	frappe.db.add_index("GP Notification", ["comment"], "comment_notifications")
