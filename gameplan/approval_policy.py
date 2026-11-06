@@ -17,7 +17,10 @@ def set_policy(community: str, count: int):
 	require_can_manage_community(community)
 	if not 0 <= count <= 100:
 		frappe.throw("Choose an approval threshold between 0 and 100")
-	frappe.get_doc("GP Team", community, for_update=True).db_set("approval_post_count", count)
+	# Lock and update the Community row only: loading the document would read every member.
+	if not frappe.db.get_value("GP Team", community, "name", for_update=True):
+		raise frappe.DoesNotExistError(f"GP Team {community} not found")
+	frappe.db.set_value("GP Team", community, "approval_post_count", count)
 	return count
 
 
@@ -26,6 +29,10 @@ def needs_approval(doc):
 	if not project:
 		return False
 	community = frappe.db.get_value("GP Project", project, "team")
+	from gameplan.watched_word_actions import requires_approval
+
+	if requires_approval(doc):
+		return True
 	threshold = cint(frappe.db.get_value("GP Team", community, "approval_post_count"))
 	if not threshold or can_moderate_community(community):
 		return False
