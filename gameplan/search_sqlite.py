@@ -3,6 +3,7 @@
 import hashlib
 import re
 import time
+from collections import Counter
 
 import frappe
 from frappe import _
@@ -25,6 +26,11 @@ INDEX_BUILD_FLAG = "discussions_index_in_progress"
 
 # Fields the search page can filter on. Any other key is refused.
 SEARCH_FILTER_FIELDS = frozenset({"owner", "project", "team", "doctype", "tags"})
+# Filter counts cover the newest rows a member can see, and are kept for a few minutes.
+FACET_SAMPLE_ROWS = 200_000
+FACET_CACHE_SECONDS = 300
+# A filter list longer than this is not usable, and the browser has to download all of it.
+FACET_MAX_OPTIONS = 1000
 
 
 class GameplanSearch(SQLiteSearch):
@@ -405,104 +411,64 @@ class GameplanSearch(SQLiteSearch):
 		if not accessible_projects:
 			return {"authors": {}, "projects": {}, "teams": {}, "doctypes": {}, "tags": {}}
 
+		cache_key = f"gameplan:search_facets:{frappe.session.user}"
+		if self._facet_cache_enabled() and (cached := frappe.cache.get_value(cache_key)):
+			return cached
+
 		# Rows of removed discussions and their replies can outlive the removal in the index:
 		# replies stay indexed so a restore can reuse them. Index rows store names as numbers
-		# or text depending on the doctype, so compare them as text.
-		placeholders = ",".join(["?"] * len(accessible_projects))
+		# or text depending on the doctype, so compare them as text. Both lists go in as JSON,
+		# because SQLite refuses more than 32,766 bound values.
 		removed_list = "(SELECT value FROM json_each(?))"
 		scope = (
-			f"CAST(project AS TEXT) IN ({placeholders}) AND NOT ("
+			"CAST(project AS TEXT) IN (SELECT value FROM json_each(?)) AND NOT ("
 			f"(doctype IS 'GP Discussion' AND CAST(name AS TEXT) IN {removed_list}) OR "
 			f"(reference_doctype IS 'GP Discussion' AND CAST(reference_name AS TEXT) IN {removed_list}))"
 		)
 		removed = frappe.as_json(self._removed_discussions(accessible_projects))
-		params = [*accessible_projects, removed, removed]
+		params = [frappe.as_json([str(project) for project in accessible_projects]), removed, removed]
+		# One pass over the newest rows the member can see. Counting every row took minutes
+		# on millions of posts and ran on each visit to the search page.
+		sample = f"""
+			SELECT owner, CAST(project AS TEXT) AS project, team, doctype, tags
+			FROM search_fts
+			WHERE {scope}
+			ORDER BY rowid DESC
+			LIMIT {FACET_SAMPLE_ROWS}
+		"""
 		conn = self._get_connection(read_only=True)
 		try:
-			# Get authors
-			authors_query = f"""
-                SELECT owner, COUNT(*) as count
-                FROM search_fts
-                WHERE {scope}
-                GROUP BY owner
-                ORDER BY count DESC
-            """
-			authors = conn.execute(authors_query, params).fetchall()
-
-			# Get projects
-			projects_query = f"""
-                SELECT CAST(project AS TEXT) as project, COUNT(*) as count
-                FROM search_fts
-                WHERE {scope}
-                GROUP BY CAST(project AS TEXT)
-                ORDER BY count DESC
-            """
-
-			projects_with_count = conn.execute(projects_query, params).fetchall()
-
-			# Get teams
-			teams_query = f"""
-                SELECT team, COUNT(*) as count
-                FROM search_fts
-                WHERE team IS NOT NULL AND {scope}
-                GROUP BY team
-                ORDER BY count DESC
-            """
-			teams = conn.execute(teams_query, params).fetchall()
-
-			# Get doctypes
-			doctypes_query = f"""
-                SELECT doctype, COUNT(*) as count
-                FROM search_fts
-                WHERE {scope}
-                GROUP BY doctype
-                ORDER BY count DESC
-            """
-			doctypes = conn.execute(doctypes_query, params).fetchall()
-
-			# Get tags - split the tags field and count individual tags
-			tags_query = f"""
-                SELECT tags
-                FROM search_fts
-                WHERE tags IS NOT NULL AND tags != '' AND {scope}
-            """
-			tags_result = conn.execute(tags_query, params).fetchall()
-
+			rows = conn.execute(sample, params).fetchall()
 		finally:
 			conn.close()
 
-		# Process tags - count individual tags from space-separated strings
-		tag_counts = {}
-		for row in tags_result:
-			if row["tags"]:
-				individual_tags = row["tags"].split()
-				for tag in individual_tags:
-					tag_counts[tag] = tag_counts.get(tag, 0) + 1
+		author_counts, project_counts, team_counts, doctype_counts, tag_counts = (Counter() for _ in range(5))
+		for row in rows:
+			author_counts[row["owner"]] += 1
+			project_counts[row["project"]] += 1
+			doctype_counts[row["doctype"]] += 1
+			if row["team"] is not None:
+				team_counts[row["team"]] += 1
+			# Tags are one space-separated string per row.
+			tag_counts.update((row["tags"] or "").split())
 
-		# Get project names for accessible projects with counts
-		projects = []
-		if accessible_projects:
-			project_counts = {p["project"]: p["count"] for p in projects_with_count}
-			project_details = frappe.get_all(
-				"GP Project", filters={"name": ("in", accessible_projects)}, fields=["name", "title"]
-			)
-			for p in project_details:
-				if p.name in project_counts:
-					projects.append({"value": p.name, "label": p.title, "count": project_counts[p.name]})
+		def ranked(counts):
+			return dict(counts.most_common(FACET_MAX_OPTIONS))
 
-		# Create count dictionaries for authors, teams, projects, and doctypes (frontend has the full data)
-		author_counts = {a["owner"]: a["count"] for a in authors}
-		team_counts = {t["team"]: t["count"] for t in teams}
-		project_counts = {p["project"]: p["count"] for p in projects_with_count}
-		doctype_counts = {dt["doctype"]: dt["count"] for dt in doctypes}
-
-		return {
-			"authors": author_counts,
-			"projects": project_counts,
-			"teams": team_counts,
-			"doctypes": doctype_counts,
-			"tags": tag_counts,
+		options = {
+			"authors": ranked(author_counts),
+			"projects": ranked(project_counts),
+			"teams": ranked(team_counts),
+			"doctypes": ranked(doctype_counts),
+			"tags": ranked(tag_counts),
 		}
+		if self._facet_cache_enabled():
+			frappe.cache.set_value(cache_key, options, expires_in_sec=FACET_CACHE_SECONDS)
+		return options
+
+	def _facet_cache_enabled(self):
+		# Tests change the index and read the counts straight away.
+		return not frappe.in_test
 
 
 def content_fingerprint(title, content):

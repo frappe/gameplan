@@ -558,3 +558,11 @@ def _client_error_quota_spent() -> bool:
 def _truncate(value: str, limit: int = CLIENT_ERROR_FIELD_LIMIT) -> str:
 	value = str(value or "")
 	return value if len(value) <= limit else value[:limit] + "… (truncated)"
+
+
+@frappe.whitelist(methods=["POST"])
+def set_community_moderator(community: str, user: str, is_moderator: int):
+	"""Appoint (`is_moderator` 1) or remove (0) a Community moderator. Community admins only."""
+	from gameplan.gameplan.doctype.gp_team.gp_team import set_community_moderator as appoint
+
+	appoint(community, user, is_moderator)
