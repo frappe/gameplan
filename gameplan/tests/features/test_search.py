@@ -621,3 +621,29 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		self.assertEqual(comment_ids_in(other_space), [f"GP Comment:{comment.name}"])
 		self.assertEqual(comment_ids_in(self.space), [])
+
+	def test_filter_counts_cover_only_the_newest_rows_up_to_the_sample_size(self):
+		self.create_discussion("Older Zebrafish note", "Body", self.space)
+		self.create_discussion("Newer Zebrafish note", "Body", self.space)
+		drain_search_index_queue()
+		with self.as_user(self.member):
+			full = self.search.get_filter_options()
+			with patch("gameplan.search_sqlite.FACET_SAMPLE_ROWS", 1):
+				sampled = self.search.get_filter_options()
+		self.assertGreater(sum(full["doctypes"].values()), 1)
+		self.assertEqual(sum(sampled["doctypes"].values()), 1)
+
+	def test_filter_counts_are_kept_for_a_few_minutes_per_member(self):
+		self.create_discussion("Zebrafish counts", "Body", self.space)
+		drain_search_index_queue()
+		key = f"gameplan:search_facets:{self.member}"
+		self.addCleanup(frappe.cache.delete_value, key)
+		with (
+			self.as_user(self.member),
+			patch.object(GameplanSearch, "_facet_cache_enabled", lambda self: True),
+			patch.object(GameplanSearch, "_removed_discussions", return_value=[]) as removed,
+		):
+			first = self.search.get_filter_options()
+			second = self.search.get_filter_options()
+		self.assertEqual(first, second)
+		self.assertEqual(removed.call_count, 1)

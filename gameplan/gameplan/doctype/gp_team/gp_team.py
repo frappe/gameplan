@@ -216,25 +216,7 @@ class GPTeam(HasVisibility, Archivable, Document):
 	@with_stored_document
 	def set_member_moderator(self, user, is_moderator):
 		"""Appoint or remove a moderator from existing Community members."""
-		require_can_manage_community(self)
-		member = self.get_member(user)
-		if not member:
-			frappe.throw(_("Member not found"))
-		if gameplan.is_anonymous(user) or gameplan.is_guest(user):
-			frappe.throw(_("Only community members can be moderators"))
-
-		is_moderator = int(bool(cint(is_moderator)))
-		if is_moderator and self.is_banned_member(user):
-			frappe.throw("Lift the community ban before appointing this user")
-		# Update the one member row: saving the Community would rewrite every member.
-		frappe.db.set_value("GP Member", member.name, "is_moderator", is_moderator)
-		frappe.db.set_value(
-			"GP Team",
-			self.name,
-			{"modified": frappe.utils.now(), "modified_by": frappe.session.user},
-			update_modified=False,
-		)
-		frappe.clear_document_cache("GP Team", self.name)
+		set_community_moderator(self.name, user, is_moderator)
 
 	def is_banned_member(self, user):
 		from gameplan.community_bans import is_banned
@@ -452,3 +434,35 @@ def get_accessible_team_names():
 	)
 
 	return [team.name for team in query.run(as_dict=True)]
+
+
+def set_community_moderator(community, user, is_moderator):
+	"""Appoint or remove a moderator from existing Community members.
+
+	Works on the one member row. Loading the Community document first read every member,
+	about a second for 50,000 of them.
+	"""
+	from gameplan.community_bans import is_banned
+	from gameplan.permissions import require_can_manage_community
+
+	community = str(community)
+	if not frappe.db.exists("GP Team", community):
+		frappe.throw(_("Community not found"), frappe.DoesNotExistError)
+	require_can_manage_community(community)
+	member = frappe.db.get_value("GP Member", {"parent": community, "parenttype": "GP Team", "user": user})
+	if not member:
+		frappe.throw(_("Member not found"))
+	if gameplan.is_anonymous(user) or gameplan.is_guest(user):
+		frappe.throw(_("Only community members can be moderators"))
+
+	is_moderator = int(bool(cint(is_moderator)))
+	if is_moderator and is_banned(community, user):
+		frappe.throw("Lift the community ban before appointing this user")
+	frappe.db.set_value("GP Member", member, "is_moderator", is_moderator)
+	frappe.db.set_value(
+		"GP Team",
+		community,
+		{"modified": frappe.utils.now(), "modified_by": frappe.session.user},
+		update_modified=False,
+	)
+	frappe.clear_document_cache("GP Team", community)
