@@ -73,6 +73,24 @@ class TestCommunityModerators(GameplanTestCase):
 		self.assertFalse(is_community_moderator(self.second_member.name, self.community.name))
 		self.assertFalse(can_moderate_space(self.second_member.name, self.space.name))
 
+	def test_the_api_appoints_without_loading_the_community_and_its_members(self):
+		from gameplan.api import set_community_moderator
+
+		real_get_doc = frappe.get_doc
+
+		def get_doc(*args, **kwargs):
+			if args and args[0] == "GP Team":
+				raise AssertionError("the Community document was loaded")
+			return real_get_doc(*args, **kwargs)
+
+		with self.as_user(self.member), patch("frappe.get_doc", side_effect=get_doc):
+			set_community_moderator(self.community.name, self.second_member.name, 1)
+		self.assertTrue(is_community_moderator(self.second_member.name, self.community.name))
+		with self.as_user(self.second_member.name), self.assertRaises(frappe.PermissionError):
+			set_community_moderator(self.community.name, self.second_member.name, 0)
+		with self.as_user(self.member), self.assertRaises(frappe.ValidationError):
+			set_community_moderator(self.community.name, self.outsider.name, 1)
+
 	def test_global_admin_can_assign_without_community_membership(self):
 		with self.as_user(self.admin):
 			self.community.set_member_moderator(self.second_member.name, 1)
