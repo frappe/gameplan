@@ -10,6 +10,27 @@ from gameplan.permissions import get_audience_roles, users_who_can_view_space
 from gameplan.realtime import notify_unread_counts_changed
 from gameplan.visibility import is_member_access
 
+# Above this many users, creating the records runs in a background job.
+LARGE_AUDIENCE = 1_000
+BULK_CHUNK = 5_000
+
+
+def next_ids(doctype, count):
+	"""Reserve `count` ids of an autoincrement doctype, in one query where the database allows."""
+	if frappe.db.db_type == "mariadb":
+		sequence = frappe.scrub(doctype) + "_id_seq"
+		return [row[0] for row in frappe.db.sql(f"select nextval(`{sequence}`) from seq_1_to_{int(count)}")]
+	return [frappe.db.get_next_sequence_val(doctype) for _ in range(count)]
+
+
+def create_unread_records(discussion, project, author, comment=None):
+	"""Create the unread records of a new discussion or reply, and tell the users they have news."""
+	if not frappe.db.exists("GP Discussion", discussion):
+		return
+	users = [user for user in GPUnreadRecord._get_project_members(project) if user != author]
+	GPUnreadRecord._insert_unread_records(users, discussion, project, comment)
+	notify_unread_counts_changed(users)
+
 
 class GPUnreadRecord(Document):
 	@staticmethod
@@ -18,28 +39,7 @@ class GPUnreadRecord(Document):
 		if frappe.flags.in_migrate or frappe.flags.in_patch:
 			return
 
-		project_members = GPUnreadRecord._get_project_members(discussion_doc.project)
-
-		records = []
-		for user in project_members:
-			if user == discussion_doc.owner:
-				continue
-
-			records.append(
-				frappe.get_doc(
-					{
-						"doctype": "GP Unread Record",
-						"user": user,
-						"discussion": discussion_doc.name,
-						"project": discussion_doc.project,
-						"comment": None,
-						"is_unread": 1,
-					}
-				)
-			)
-
-		GPUnreadRecord._bulk_create_unread_records(records)
-		GPUnreadRecord._notify_unread_counts_changed(record.user for record in records)
+		GPUnreadRecord._fan_out(discussion_doc.name, discussion_doc.project, discussion_doc.owner)
 
 	@staticmethod
 	def create_unread_records_for_comment(comment_doc):
@@ -50,31 +50,65 @@ class GPUnreadRecord(Document):
 		if comment_doc.reference_doctype != "GP Discussion":
 			return
 
-		discussion_doc = frappe.db.get_value(
-			"GP Discussion", comment_doc.reference_name, ["name", "project", "owner"], as_dict=True
+		project = frappe.db.get_value("GP Discussion", comment_doc.reference_name, "project")
+		GPUnreadRecord._fan_out(comment_doc.reference_name, project, comment_doc.owner, comment_doc.name)
+
+	@staticmethod
+	def _fan_out(discussion, project, author, comment=None):
+		"""Create the records now for a small audience, or in a background job for a large one.
+
+		A Space everyone can see has one record per enabled user: 100,000 rows and as many
+		realtime events for a single reply, which kept the request busy for minutes."""
+		frappe.enqueue(
+			"gameplan.gameplan.doctype.gp_unread_record.gp_unread_record.create_unread_records",
+			queue="long",
+			enqueue_after_commit=True,
+			now=frappe.in_test or GPUnreadRecord._audience_size(project) <= LARGE_AUDIENCE,
+			discussion=str(discussion),
+			project=str(project),
+			author=author,
+			comment=str(comment) if comment else None,
 		)
-		project_members = GPUnreadRecord._get_project_members(discussion_doc.project)
 
-		records = []
-		for user in project_members:
-			if user == comment_doc.owner:
-				continue
+	@staticmethod
+	def _audience_size(project):
+		"""A cheap upper bound of how many users get a record, without resolving who they are."""
+		visibility = frappe.db.get_value("GP Project", project, "visibility")
+		if is_member_access(visibility):
+			return frappe.db.count("GP Member", {"parent": project, "parenttype": "GP Project"})
+		return frappe.db.count("GP User Profile", {"enabled": 1})
 
-			records.append(
-				frappe.get_doc(
-					{
-						"doctype": "GP Unread Record",
-						"user": user,
-						"discussion": comment_doc.reference_name,
-						"project": discussion_doc.project,
-						"comment": comment_doc.name,
-						"is_unread": 1,
-					}
-				)
+	@staticmethod
+	def _insert_unread_records(users, discussion, project, comment=None):
+		"""Insert one record per user in chunks, with one query for each chunk's ids."""
+		fields = [
+			"name",
+			"owner",
+			"creation",
+			"modified",
+			"modified_by",
+			"docstatus",
+			"idx",
+			"user",
+			"discussion",
+			"project",
+			"comment",
+			"is_unread",
+		]
+		now, owner = frappe.utils.now(), frappe.session.user
+		for start in range(0, len(users), BULK_CHUNK):
+			chunk = users[start : start + BULK_CHUNK]
+			ids = next_ids("GP Unread Record", len(chunk))
+			frappe.db.bulk_insert(
+				"GP Unread Record",
+				fields,
+				[
+					(ids[i], owner, now, now, owner, 0, 0, user, discussion, project, comment, 1)
+					for i, user in enumerate(chunk)
+				],
+				ignore_duplicates=True,
+				chunk_size=BULK_CHUNK,
 			)
-
-		GPUnreadRecord._bulk_create_unread_records(records)
-		GPUnreadRecord._notify_unread_counts_changed(record.user for record in records)
 
 	@staticmethod
 	def delete_unread_records_for_discussion(discussion: str):
@@ -482,6 +516,9 @@ def on_doctype_update():
 def add_indexes():
 	frappe.db.add_index("GP Unread Record", ["user", "discussion", "is_unread"], "user_discussion_unread")
 	frappe.db.add_index("GP Unread Record", ["user", "project", "is_unread"], "user_project_unread")
+	# Records of one discussion: moving it, hiding it, and telling its readers. Without it each
+	# of those scanned every unread record on the site.
+	frappe.db.add_index("GP Unread Record", ["discussion"], "discussion_records")
 
 
 # Re-exported so the thin whitelisted unread-count endpoints resolve under the

@@ -298,14 +298,21 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 		self.slug = url_safe_slug(self.title)
 
 	def update_participants_count(self):
-		participants = frappe.db.get_all(
-			"GP Comment",
-			filters={"reference_doctype": self.doctype, "reference_name": self.name},
-			pluck="owner",
+		# `reference_name` is text: a number would stop MariaDB using its index. Ask for distinct
+		# authors instead of every reply's author, which grows with the thread.
+		participants = set(
+			frappe.db.get_all(
+				"GP Comment",
+				filters={"reference_doctype": self.doctype, "reference_name": str(self.name)},
+				pluck="owner",
+				distinct=True,
+			)
 		)
-		participants += frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner")
-		participants.append(self.owner)
-		self.participants_count = len(list(set(participants)))
+		participants.update(
+			frappe.db.get_all("GP Poll", filters={"discussion": self.name}, pluck="owner", distinct=True)
+		)
+		participants.add(self.owner)
+		self.participants_count = len(participants)
 
 	def update_last_post(self):
 		def get_last_post(doctype, filters):
@@ -324,7 +331,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 			self.last_post_by = post_data.owner
 
 		last_comment = get_last_post(
-			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
+			"GP Comment", {"reference_doctype": self.doctype, "reference_name": str(self.name)}
 		)
 		last_poll = get_last_post("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 
@@ -347,7 +354,7 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 
 	def update_post_count(self):
 		comments_count = frappe.db.count(
-			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
+			"GP Comment", {"reference_doctype": self.doctype, "reference_name": str(self.name)}
 		)
 		polls_count = frappe.db.count("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
 		self.comments_count = comments_count + polls_count
@@ -365,6 +372,11 @@ class GPDiscussion(Moderatable, HasActivity, HasAttachments, HasMentions, HasRea
 
 def on_doctype_update():
 	frappe.db.add_index("GP Discussion", ["project", "last_post_at"])
+	# Removed discussions are rare: the moderator queue finds them through these.
+	# One author's discussions, for checks such as "has this person posted in this Community".
+	frappe.db.add_index("GP Discussion", ["owner", "project"], "author_discussions")
+	frappe.db.add_index("GP Discussion", ["hidden_at"], "hidden_discussions")
+	frappe.db.add_index("GP Discussion", ["spam_removed_at"], "spam_removed_discussions")
 
 
 def move_discussion(discussion, project):

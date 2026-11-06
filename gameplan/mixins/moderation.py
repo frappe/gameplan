@@ -205,16 +205,18 @@ class Moderatable:
 			frappe.throw("Make this content's attached files private before removing it")
 
 	def _notify_moderation_change(self):
-		from gameplan.realtime import notify_notification_count_changed, notify_unread_counts_changed
+		from gameplan.realtime import notify_notification_counts_refresh, notify_unread_counts_changed
 
 		if self.doctype == "GP Discussion":
+			# Names are text in the link columns: a number would stop MariaDB using their indexes.
 			notify_unread_counts_changed(
-				frappe.get_all("GP Unread Record", filters={"discussion": self.name}, pluck="user")
+				frappe.get_all("GP Unread Record", filters={"discussion": str(self.name)}, pluck="user")
 			)
 		field = {"GP Discussion": "discussion", "GP Comment": "comment"}.get(self.doctype)
 		if field:
-			for user in set(frappe.get_all("GP Notification", filters={field: self.name}, pluck="to_user")):
-				notify_notification_count_changed(user, force_refresh=True)
+			notify_notification_counts_refresh(
+				frappe.get_all("GP Notification", filters={field: str(self.name)}, pluck="to_user")
+			)
 		frappe.publish_realtime(
 			"new_activity",
 			{"reference_doctype": "GP Discussion", "reference_name": str(parent_discussion(self))},
