@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { dialog, Dropdown, useDoctype } from 'frappe-ui'
+import { dialog, Dropdown, useCall, useDoctype } from 'frappe-ui'
 import { communities } from '@/data/communities'
 import type { Community, CommunityMember } from '@/data/communities'
 import { useUser } from '@/data/users'
@@ -23,6 +23,12 @@ const props = defineProps<{
 }>()
 
 const teams = useDoctype<GPTeam>('GP Team')
+// Not a document method: that would load every member of the Community first.
+const setModerator = useCall<unknown, { community: string; user: string; is_moderator: number }>({
+  url: '/api/v2/method/gameplan.api.set_community_moderator',
+  method: 'POST',
+  immediate: false,
+})
 const user = computed(() => useUser(props.member.user))
 const adminCount = computed(() => {
   return props.community.members.filter((member) => member.is_admin).length
@@ -90,13 +96,10 @@ function setCommunityModerator(isModerator: boolean) {
       : `${user.value.full_name} will no longer be a moderator for this community. Their membership stays the same.`,
     confirmLabel: isModerator ? 'Make Moderator' : 'Remove Moderator',
     onConfirm: async () => {
-      await teams.runDocMethod.submit({
-        name: props.community.name,
-        method: 'set_member_moderator',
-        params: {
-          user: props.member.user,
-          is_moderator: isModerator ? 1 : 0,
-        },
+      await setModerator.submit({
+        community: props.community.name,
+        user: props.member.user,
+        is_moderator: isModerator ? 1 : 0,
       })
       await communities.reload()
     },
