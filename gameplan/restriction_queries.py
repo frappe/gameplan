@@ -1,6 +1,6 @@
 import frappe
-from frappe.utils import cint
 
+from gameplan.paging import page_start
 from gameplan.permissions import is_global_admin
 from gameplan.restrictions import active_condition, iso_expiry
 
@@ -31,7 +31,7 @@ def active_rows(community="", start=0, after=""):
 	)
 	if after:
 		query = query.where(Restriction.user > after)
-	rows = query.orderby(Restriction.user).offset(max(0, cint(start))).limit(41).run(as_dict=True)
+	rows = query.orderby(Restriction.user).offset(page_start(start)).limit(41).run(as_dict=True)
 	for row in rows:
 		row.expires_at = iso_expiry(row.expires_at)
 		row.modified = str(row.modified)
