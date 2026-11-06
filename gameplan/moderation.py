@@ -1,4 +1,6 @@
 import frappe
+from frappe.query_builder.functions import Count
+from pypika.terms import ExistsCriterion
 
 from gameplan.community_bans import can_moderate_community
 from gameplan.moderation_logs import latest_logs
