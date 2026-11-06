@@ -57,7 +57,7 @@ class GPTask(HasMentions, HasActivity, Document):
 
 	def update_comments_count(self):
 		comments_count = frappe.db.count(
-			"GP Comment", {"reference_doctype": "GP Task", "reference_name": self.name}
+			"GP Comment", {"reference_doctype": "GP Task", "reference_name": str(self.name)}
 		)
 		self.db_set("comments_count", comments_count)
 
@@ -82,7 +82,7 @@ class GPTask(HasMentions, HasActivity, Document):
 		"""Reactions on everything in this thread, for the thread page."""
 		comments = frappe.get_all(
 			"GP Comment",
-			filters={"reference_doctype": self.doctype, "reference_name": self.name},
+			filters={"reference_doctype": self.doctype, "reference_name": str(self.name)},
 			pluck="name",
 		)
 		return get_reactions_on({"GP Comment": comments})

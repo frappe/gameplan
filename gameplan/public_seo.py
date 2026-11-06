@@ -208,7 +208,7 @@ def discussion_page(name, page):
 	comments, has_next = paginated_rows(
 		"GP Comment",
 		["name", "content", "owner", "creation", "deleted_at"],
-		{"reference_doctype": "GP Discussion", "reference_name": doc.name},
+		{"reference_doctype": "GP Discussion", "reference_name": str(doc.name)},
 		"creation asc, name asc",
 		page,
 		allow_empty=True,
@@ -216,7 +216,7 @@ def discussion_page(name, page):
 	polls, more_polls = paginated_rows(
 		"GP Poll",
 		["name", "title", "creation", {"options": ["title", "percentage"]}],
-		{"discussion": doc.name, "comment": ["is", "not set"]},
+		{"discussion": str(doc.name), "comment": ["is", "not set"]},
 		"creation asc, name asc",
 		page,
 		allow_empty=True,
@@ -227,7 +227,7 @@ def discussion_page(name, page):
 	embedded_polls = public_list(
 		"GP Poll",
 		["name", "title", "creation", {"options": ["title", "percentage"]}],
-		{"discussion": doc.name, "comment": ["in", [c.name for c in comments if not c.deleted_at]]},
+		{"discussion": str(doc.name), "comment": ["in", [str(c.name) for c in comments if not c.deleted_at]]},
 		"creation asc, name asc",
 		0,
 		PAGE_SIZE,
@@ -250,7 +250,7 @@ def discussion_page(name, page):
 
 def linked_reply_page(discussion, default):
 	for parameter, doctype, filters in (
-		("comment", "GP Comment", {"reference_doctype": "GP Discussion", "reference_name": discussion}),
+		("comment", "GP Comment", {"reference_doctype": "GP Discussion", "reference_name": str(discussion)}),
 		("poll", "GP Poll", {"discussion": discussion}),
 	):
 		name = frappe.local.request.args.get(parameter)
@@ -264,7 +264,7 @@ def linked_reply_page(discussion, default):
 		if parameter == "poll":
 			if row.comment:
 				doctype = "GP Comment"
-				filters = {"reference_doctype": "GP Discussion", "reference_name": discussion}
+				filters = {"reference_doctype": "GP Discussion", "reference_name": str(discussion)}
 				rows = public_list(
 					doctype, ["name", "creation"], {**filters, "name": row.comment}, None, 0, 1
 				)
