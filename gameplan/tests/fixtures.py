@@ -38,7 +38,7 @@ def create_user(email, first_name, role=None):
 	return user
 
 
-def create_admin(email="admin@example.com", first_name="Admin"):
+def create_admin(email="gameplan-admin@example.com", first_name="Admin"):
 	return create_user(email, first_name, "Gameplan Admin")
 
 
@@ -46,7 +46,7 @@ def create_member(email="member@example.com", first_name="Member"):
 	return create_user(email, first_name, "Gameplan Member")
 
 
-def create_guest(email="guest@example.com", first_name="Guest"):
+def create_guest(email="gameplan-guest@example.com", first_name="Guest"):
 	return create_user(email, first_name, "Gameplan Guest")
 
 
