@@ -84,6 +84,7 @@ function parseEntry(path: string, source: string): ChangelogEntry {
   const id = path.split('/').pop()!.replace(/\.md$/, '')
   const { fields, body } = splitFrontmatter(source)
   const version = fields.version && fields.version !== 'unreleased' ? fields.version : undefined
+  if (!fields.title) console.warn(`Changelog entry "${id}" has no title; showing its file name`)
 
   return {
     id,
