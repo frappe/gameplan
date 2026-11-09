@@ -8,22 +8,32 @@ from urllib.parse import parse_qs, urlparse
 
 import frappe
 from frappe.email.email_body import get_formatted_html
-from frappe.utils import add_to_date, get_url, now_datetime
+from frappe.utils import add_to_date, get_url, getdate, now_datetime
 from frappe.utils.jinja import get_email_from_template
 
 from gameplan.email_digest import (
 	DIGEST_PREFERENCES_REDIRECT,
 	absolute_image_url,
+	build_digest,
+	get_digest_period_start,
 	get_due_profiles,
 	get_safe_digest_redirect,
-	get_unread_discussions,
 	is_digest_due,
 	is_valid_digest_login_link,
 	open_digest_preferences,
 	send_digest_for_profile,
 )
 from gameplan.tests.base import GameplanTestCase
-from gameplan.tests.fixtures import create_community, create_discussion, create_member, create_space
+from gameplan.tests.fixtures import (
+	create_comment,
+	create_community,
+	create_discussion,
+	create_member,
+	create_space,
+	set_owner,
+)
+
+LONG_AGO = "2022-10-27 12:00:00"
 
 
 class TestEmailDigest(GameplanTestCase):
@@ -39,6 +49,7 @@ class TestEmailDigest(GameplanTestCase):
 		self.profile.email_digest_day_of_week = "Monday"
 		self.profile.email_digest_last_sent_on = None
 		self.profile.save(ignore_permissions=True)
+		self.today = getdate()
 
 	def test_weekly_digest_is_due_after_seven_days(self):
 		profile = frappe._dict(email_digest_frequency="Weekly", email_digest_last_sent_on=date(2026, 6, 1))
@@ -65,18 +76,6 @@ class TestEmailDigest(GameplanTestCase):
 
 		self.assertFalse(is_digest_due(profile, date(2026, 6, 30)))
 
-	def test_longer_digest_frequencies_use_their_intervals(self):
-		fortnightly = frappe._dict(
-			email_digest_frequency="Fortnightly", email_digest_last_sent_on=date(2026, 6, 1)
-		)
-		monthly = frappe._dict(email_digest_frequency="Monthly", email_digest_last_sent_on=date(2026, 6, 1))
-
-		self.assertFalse(is_digest_due(fortnightly, date(2026, 6, 14)))
-		self.assertTrue(is_digest_due(fortnightly, date(2026, 6, 15)))
-		self.assertFalse(is_digest_due(monthly, date(2026, 6, 30)))
-		self.assertFalse(is_digest_due(monthly, date(2026, 7, 1)))
-		self.assertTrue(is_digest_due(monthly, date(2026, 7, 6)))
-
 	def test_get_due_profiles_ignores_profiles_scheduled_for_another_weekday(self):
 		self.profile.email_digest_day_of_week = "Friday"
 		self.profile.save(ignore_permissions=True)
@@ -93,70 +92,134 @@ class TestEmailDigest(GameplanTestCase):
 
 		self.assertNotIn(self.profile.name, [profile.name for profile in due_profiles])
 
-	def test_send_digest_emails_unread_items_and_updates_last_sent_on(self):
-		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
-		author_profile = frappe.get_doc("GP User Profile", {"user": author.name})
-		author_profile.image = "/files/digest-author.png"
-		author_profile.save(ignore_permissions=True)
-		team = create_community("Digest Team")
-		frappe.db.set_value("GP Team", team.name, "image", "/files/digest-team.png", update_modified=False)
-		project = create_space("Digest Space", team.name)
-		discussion = create_discussion("Digest Discussion", project.name)
-		frappe.db.set_value(
-			"GP Discussion",
-			discussion.name,
-			{"owner": author.name, "last_post_by": author.name, "comments_count": 3},
-			update_modified=False,
+	def test_old_popular_discussions_with_no_new_activity_are_left_out(self):
+		"""The report that started this: a weekly digest led with unread review threads from
+		2022 that had hundreds of reactions and no post in years."""
+		project = self.create_project("Digest Reviews")
+		old = self.create_unread_discussion(project, "Reflections for Q2 22", created=LONG_AGO)
+		self.add_reactions("GP Discussion", old.name, 20, created=LONG_AGO)
+		for _index in range(5):
+			self.add_reply(old, created=LONG_AGO)
+		self.create_unread_discussion(project, "Planning this week")
+
+		digest = self.build_digest()
+
+		self.assertEqual([discussion.title for discussion in digest["discussions"]], ["Planning this week"])
+		self.assertIsNone(digest["highlight"])
+
+	def test_discussions_are_ranked_by_this_weeks_activity(self):
+		"""All-time totals do not count. An old thread with a long history and two new replies
+		ranks below a new thread that got three replies this week. A reply counts for more than
+		a reaction, so those two replies also beat a new thread with two reactions."""
+		project = self.create_project("Digest Ranking")
+		revived = self.create_unread_discussion(project, "Old thread with new replies", created=LONG_AGO)
+		self.add_reactions("GP Discussion", revived.name, 30, created=LONG_AGO)
+		self.add_reply(revived)
+		self.add_reply(revived)
+		busy = self.create_unread_discussion(project, "Busy new thread")
+		for _index in range(3):
+			self.add_reply(busy)
+		liked = self.create_unread_discussion(project, "Liked new thread")
+		self.add_reactions("GP Discussion", liked.name, 2)
+		self.create_unread_discussion(project, "Quiet new thread")
+
+		context = self.render_context()
+
+		self.assertEqual(
+			[(item["title"], item["unread_label"]) for item in context["discussions"]],
+			[
+				("Busy new thread", "New"),
+				("Old thread with new replies", "2 new replies"),
+				("Liked new thread", "New"),
+				("Quiet new thread", "New"),
+			],
 		)
-		self.add_discussion_reactions(discussion, 2)
-		frappe.get_doc(
-			{
-				"doctype": "GP Unread Record",
-				"user": self.user.name,
-				"discussion": discussion.name,
-				"project": project.name,
-				"is_unread": 1,
-			}
-		).insert(ignore_permissions=True)
-		other_team = create_community("Digest Other Team")
-		other_project = create_space("Digest Other Space", other_team.name)
-		other_discussion = create_discussion("Digest Other Discussion", other_project.name)
-		frappe.get_doc(
-			{
-				"doctype": "GP Unread Record",
-				"user": self.user.name,
-				"discussion": other_discussion.name,
-				"project": other_project.name,
-				"is_unread": 1,
-			}
-		).insert(ignore_permissions=True)
-		frappe.get_doc(
-			{
-				"doctype": "GP Notification",
-				"to_user": self.user.name,
-				"type": "Mention",
-				"message": "You were mentioned in the digest thread.",
-				"discussion": discussion.name,
-				"project": project.name,
-				"team": team.name,
-				"from_user": author.name,
-			}
-		).insert(ignore_permissions=True)
-		frappe.get_doc(
-			{
-				"doctype": "GP Notification",
-				"to_user": self.user.name,
-				"type": "Mention",
-				"message": "You were mentioned again in the digest thread.",
-				"discussion": discussion.name,
-				"project": project.name,
-				"team": team.name,
-				"from_user": author.name,
-			}
-		).insert(ignore_permissions=True)
+		self.assertEqual(
+			context["discussions"][0]["metadata"], "Digest Ranking Team / Digest Ranking · 3 replies"
+		)
+		self.assertEqual(
+			context["discussions"][1]["metadata"], "Digest Ranking Team / Digest Ranking · 2 replies"
+		)
+
+	def test_most_popular_post_of_the_week_leads_the_digest(self):
+		"""The highlight is the post or reply with the most reactions this week. The reader's
+		own posts are left out, and so is a post with too few reactions to call it popular."""
+		project = self.create_project("Digest Highlight")
+		author = create_member(
+			f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Popular Author"
+		)
+		discussion = self.create_unread_discussion(project, "Launch plan")
+		self.add_reactions("GP Discussion", discussion.name, 3)
+		reply = self.add_reply(discussion, content="<p>We ship on Friday.</p>", owner=author)
+		self.add_reactions("GP Comment", reply.name, 5)
+		own_post = self.create_unread_discussion(project, "My own post")
+		set_owner(own_post, self.user.name)
+		frappe.db.delete("GP Unread Record", {"user": self.user.name, "discussion": own_post.name})
+		self.add_reactions("GP Discussion", own_post.name, 9)
+		barely = self.create_unread_discussion(project, "Barely noticed")
+		self.add_reactions("GP Discussion", barely.name, 2)
+
+		context = self.render_context()
+
+		highlight = context["highlight"]
+		self.assertEqual(highlight["title"], "Launch plan")
+		self.assertEqual(highlight["description"], "We ship on Friday.")
+		self.assertEqual(
+			highlight["metadata"], "Popular Author · Digest Highlight Team / Digest Highlight · 5 reactions"
+		)
+		self.assert_signed_digest_url(
+			highlight["url"],
+			f"/g/community/{project.team}/space/{project.name}/discussion/{discussion.name}/{discussion.slug}"
+			f"?comment={reply.name}",
+		)
+		# The highlight's discussion is not repeated in the list below it.
+		self.assertNotIn("Launch plan", [item["title"] for item in context["discussions"]])
+
+	def test_only_this_weeks_mentions_and_quotes_are_included(self):
+		project = self.create_project("Digest Notifications")
+		discussion = create_discussion("Digest Notification Discussion", project.name)
+		old = self.add_notification(discussion, project, "An old mention.")
+		self.backdate("GP Notification", old.name, LONG_AGO)
+		self.add_notification(discussion, project, "A mention this week.")
+		self.add_notification(discussion, project, "A quote this week.", type="Rich Quote")
+		self.add_notification(discussion, project, "A reaction this week.", type="Reaction")
+
+		digest = self.build_digest()
+
+		self.assertEqual(
+			sorted(row.message for row in digest["notifications"]),
+			["A mention this week.", "A quote this week."],
+		)
+		# The mention already points at the discussion, so the list does not repeat it.
+		self.assertNotIn(discussion.name, [row.name for row in digest["discussions"]])
+
+	def test_send_digest_skips_email_when_nothing_is_new_this_week(self):
+		project = self.create_project("Digest Quiet")
+		self.create_unread_discussion(project, "Unread but old", created=LONG_AGO)
 
 		with patch("frappe.sendmail") as sendmail:
-			send_digest_for_profile(self.profile, date(2026, 6, 30))
+			send_digest_for_profile(self.profile, self.today)
+
+		sendmail.assert_not_called()
+		self.assertEqual(
+			frappe.db.get_value("GP User Profile", self.profile.name, "email_digest_last_sent_on"),
+			self.today,
+		)
+
+	def test_send_digest_emails_this_weeks_items_and_updates_last_sent_on(self):
+		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
+		frappe.db.set_value("GP User Profile", {"user": author.name}, "image", "/files/digest-author.png")
+		project = self.create_project("Digest Space")
+		discussion = self.create_unread_discussion(project, "Digest Discussion")
+		set_owner(discussion, author)
+		self.add_reply(discussion)
+		self.add_reactions("GP Discussion", discussion.name, 2)
+		mentioned_in = create_discussion("Digest Mention Discussion", project.name)
+		self.add_notification(mentioned_in, project, "You were mentioned in the digest thread.", author)
+		self.add_notification(mentioned_in, project, "You were mentioned again in the digest thread.", author)
+
+		with patch("frappe.sendmail") as sendmail:
+			send_digest_for_profile(self.profile, self.today)
 
 		sendmail.assert_called_once()
 		email = sendmail.call_args.kwargs
@@ -165,160 +228,54 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertEqual(email["template"], "email_digest")
 		self.assertEqual(len(email["args"]["notifications"]), 1)
 		self.assertEqual(email["args"]["notifications"][0]["description"].count("sent 2 updates"), 1)
-		self.assertEqual(email["args"]["discussion_groups"][0]["title"], "Digest Team")
 
 		message, text_content = get_email_from_template(email["template"], email["args"])
-		self.assertIn("Digest Discussion", message)
-		self.assertIn("You were mentioned", message)
-		discussions_markup = message.split("Unread discussions", 1)[1]
-		self.assertIn("gp-email-digest__brand", message)
-		self.assertIn("gp-email-digest__brand-logo", message)
-		self.assertIn("gp-email-digest__brand-name", message)
-		self.assertIn("Gameplan", message)
-		self.assertIn("/assets/gameplan/gameplan_logo_256.png", message)
+		discussions_markup = message.split("New this week", 1)[1]
 		self.assertIn("Your weekly digest", message)
 		self.assertIn("Your weekly digest", text_content)
-		self.assertNotIn("Your Weekly Gameplan digest", message)
-		self.assertIn("gp-email-digest__card", message)
-		self.assertIn("gp-email-digest__site-url", message)
+		self.assertIn("/assets/gameplan/gameplan_logo_256.png", message)
 		self.assertIn(get_url(), message)
-		self.assertIn("gp-email-digest__avatar-image", message)
-		self.assertIn("gp-email-digest__avatar-content", message)
-		self.assertNotIn("gp-email-digest__avatar-link", message)
-		self.assertIn("gp-email-digest__content-link", message)
-		self.assertIn(
-			'<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">'
-			"Unread notifications</h3>",
-			message,
-		)
-		self.assertIn("gp-email-digest__section-title--muted", message)
-		self.assertIn("gp-email-digest__group-image", discussions_markup)
-		self.assertIn("/files/digest-team.png", discussions_markup)
+		self.assertIn("Mentions and quotes</h3>", message)
+		self.assertIn("You were mentioned", message)
+		self.assertIn("Digest Discussion", discussions_markup)
 		self.assertIn("gp-email-digest__unread-label", discussions_markup)
-		self.assertIn("2 unread", discussions_markup)
-		self.assertNotIn("gp-email-digest__description", discussions_markup)
-		self.assertNotIn("gp-email-digest__link", message)
-		self.assertIn("Digest Space · 3 comments · 2 reactions", discussions_markup)
+		self.assertIn("Digest Space Team / Digest Space · 1 reply · 2 reactions", discussions_markup)
+		self.assertIn(get_url("/files/digest-author.png"), discussions_markup)
+		self.assertNotIn("Most popular this week", message)
 		self.assertIn("Open Gameplan", message)
 		self.assertIn("Manage preferences", message)
-		self.assertIn("gameplan.email_digest.open_digest_preferences", message)
-		self.assertIn("_signature=", message)
+		self.assertIn("Digest Discussion", text_content)
+		self.assertIn("New this week", text_content)
+		self.assertNotIn("style=", message)
+		formatted = get_formatted_html(email["subject"], message)
+		self.assertIn("font-family:Inter", formatted)
+		self.assertIn("float:right", formatted)
+		self.assertIn("width:48px", formatted)
 		self.assert_signed_digest_url(email["args"]["open_gameplan_url"], "/g")
 		self.assert_signed_digest_url(
-			email["args"]["notifications"][0]["url"],
-			f"/g/community/{team.name}/space/{project.name}/discussion/{discussion.name}/{discussion.slug}",
+			email["args"]["discussions"][0]["url"],
+			f"/g/community/{project.team}/space/{project.name}/discussion/{discussion.name}/{discussion.slug}",
 		)
-		self.assert_signed_digest_url(
-			email["args"]["discussion_groups"][0]["discussions"][0]["url"],
-			f"/g/community/{team.name}/space/{project.name}/discussion/{discussion.name}/{discussion.slug}",
-		)
-		self.assertIn("Digest Author", message)
-		self.assertIn("/files/digest-author.png", message)
-		self.assertIn("Digest Discussion", text_content)
-		self.assertIn("You were mentioned", text_content)
-		self.assertNotIn("style=", message)
-		self.assertIn("font-family:Inter", get_formatted_html(email["subject"], message))
-		self.assertIn("text-align:center", get_formatted_html(email["subject"], message))
-		self.assertIn("text-align:left", get_formatted_html(email["subject"], message))
-		self.assertIn("padding: 0 16px", get_formatted_html(email["subject"], message))
-		self.assertIn("margin-bottom:16px", get_formatted_html(email["subject"], message))
-		self.assertIn("line-height:24px", get_formatted_html(email["subject"], message))
-		self.assertIn("vertical-align:middle", get_formatted_html(email["subject"], message))
-		self.assertIn("float:right", get_formatted_html(email["subject"], message))
-		self.assertIn("padding:10px 0", get_formatted_html(email["subject"], message))
-		self.assertIn("font-size:15px", get_formatted_html(email["subject"], message))
-		self.assertIn("width:48px", get_formatted_html(email["subject"], message))
-		self.assertIn("height:20px", get_formatted_html(email["subject"], message))
-		self.assertIn("width:20px", get_formatted_html(email["subject"], message))
-		self.assertIn("width:28px", get_formatted_html(email["subject"], message))
-		self.assertIn("border-radius:4px", get_formatted_html(email["subject"], message))
-		self.assertIn("margin:0 8px 0 0", get_formatted_html(email["subject"], message))
-		self.assertIn("border-bottom:1px solid #e5e7eb", get_formatted_html(email["subject"], message))
-		self.assertIn("margin-bottom:8px", get_formatted_html(email["subject"], message))
-		self.assertIn("margin-top:40px", get_formatted_html(email["subject"], message))
-		self.assert_signed_digest_url(
-			email["args"]["preferences_url"], "/g/notifications?settings=notifications"
-		)
+		self.assert_signed_digest_url(email["args"]["preferences_url"], DIGEST_PREFERENCES_REDIRECT)
 		self.assertEqual(
 			frappe.db.get_value("GP User Profile", self.profile.name, "email_digest_last_sent_on"),
-			date(2026, 6, 30),
+			self.today,
 		)
 
 	def test_private_images_are_dropped_so_the_digest_shows_initials(self):
 		"""A mail client fetches images with no session, so a private file answers 403. Without
 		a URL the templates take their initials branch instead of rendering a broken image."""
-		message, discussions_markup = self.render_digest_with_images(
-			"/private/files/digest-author.png", "/private/files/digest-team.png"
-		)
+		message = self.render_digest_with_author_image("/private/files/digest-author.png")
 
 		self.assertNotIn("/private/files/", message)
 		self.assertNotIn("gp-email-digest__avatar-image", message)
-		self.assertNotIn('class="gp-email-digest__group-image"', discussions_markup)
 		self.assertIn("gp-email-digest__avatar-fallback", message)
-		self.assertIn("gp-email-digest__group-fallback", discussions_markup)
 
 	def test_public_images_are_still_rendered_in_the_digest(self):
-		message, discussions_markup = self.render_digest_with_images(
-			"/files/digest-author.png", "/files/digest-team.png"
-		)
+		message = self.render_digest_with_author_image("/files/digest-author.png")
 
-		self.assertIn("gp-email-digest__avatar-image", message)
 		self.assertIn(get_url("/files/digest-author.png"), message)
-		self.assertIn('class="gp-email-digest__group-image"', discussions_markup)
-		self.assertIn(get_url("/files/digest-team.png"), discussions_markup)
 		self.assertNotIn("gp-email-digest__avatar-fallback", message)
-		self.assertNotIn("gp-email-digest__group-fallback", discussions_markup)
-
-	def test_discussions_show_the_author_and_reactions_show_a_reaction_tile(self):
-		"""A discussion row is about the discussion, so it carries its author's photo, not the
-		last replier's. A reaction notification often groups several people, so it shows a
-		reaction tile instead of one sender's initials."""
-		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
-		replier = create_member(f"digest-replier-{frappe.generate_hash(length=8)}@example.com", "Replier")
-		for user, image in ((author, "/files/digest-author.png"), (replier, "/files/digest-replier.png")):
-			frappe.db.set_value("GP User Profile", {"user": user.name}, "image", image)
-		team = create_community("Digest Avatar Team")
-		project = create_space("Digest Avatar Space", team.name)
-		discussion = create_discussion("Digest Avatar Discussion", project.name)
-		frappe.db.set_value(
-			"GP Discussion",
-			discussion.name,
-			{"owner": author.name, "last_post_by": replier.name},
-			update_modified=False,
-		)
-		frappe.get_doc(
-			{
-				"doctype": "GP Unread Record",
-				"user": self.user.name,
-				"discussion": discussion.name,
-				"project": project.name,
-				"is_unread": 1,
-			}
-		).insert(ignore_permissions=True)
-		frappe.get_doc(
-			{
-				"doctype": "GP Notification",
-				"to_user": self.user.name,
-				"type": "Reaction",
-				"message": "Replier reacted to your comment.",
-				"discussion": discussion.name,
-				"project": project.name,
-				"team": team.name,
-				"from_user": replier.name,
-			}
-		).insert(ignore_permissions=True)
-
-		with patch("frappe.sendmail") as sendmail:
-			send_digest_for_profile(self.profile, date(2026, 6, 30))
-
-		email = sendmail.call_args.kwargs
-		message, _text_content = get_email_from_template(email["template"], email["args"])
-		notifications_markup, discussions_markup = message.split("Unread discussions", 1)
-		self.assertIn("gp-email-digest__avatar-image--icon", notifications_markup)
-		self.assertIn("/assets/gameplan/images/email-digest-reaction.png", notifications_markup)
-		self.assertNotIn("gp-email-digest__avatar-fallback", notifications_markup)
-		self.assertIn("/files/digest-author.png", discussions_markup)
-		self.assertNotIn("/files/digest-replier.png", discussions_markup)
 
 	def test_absolute_image_url_keeps_public_paths_and_drops_private_ones(self):
 		self.assertEqual(absolute_image_url("/files/avatar.png"), get_url("/files/avatar.png"))
@@ -327,230 +284,80 @@ class TestEmailDigest(GameplanTestCase):
 		self.assertIsNone(absolute_image_url("private/files/avatar.png"))
 		self.assertIsNone(absolute_image_url(None))
 
-	def test_unread_discussions_are_sorted_by_popularity(self):
-		team = create_community("Digest Popularity Team")
-		project = create_space("Digest Popularity Space", team.name)
-		self.create_unread_discussion(project.name, "Quiet Recent Discussion", 0, "2026-06-30 10:00:00")
-		self.create_unread_discussion(
-			project.name,
-			"Comment Heavy Discussion",
-			7,
-			"2026-06-29 10:00:00",
-		)
-		reaction_heavy = self.create_unread_discussion(
-			project.name,
-			"Reaction Heavy Discussion",
-			1,
-			"2026-06-28 10:00:00",
-		)
-		mixed = self.create_unread_discussion(
-			project.name, "Mixed Popular Discussion", 4, "2026-06-27 10:00:00"
-		)
-		self.add_discussion_reactions(reaction_heavy, 8)
-		self.add_discussion_reactions(mixed, 2)
-		self.add_comment_reactions(mixed, 4)
-		frappe.db.set_value(
-			"GP Discussion",
-			mixed.name,
-			"comments_count",
-			4,
-			update_modified=False,
-		)
+	def build_digest(self):
+		return build_digest(self.user.name, get_digest_period_start(self.today))
 
-		discussions = get_unread_discussions(self.user.name)
-
-		self.assertEqual(
-			[discussion.title for discussion in discussions[:4]],
-			[
-				"Mixed Popular Discussion",
-				"Reaction Heavy Discussion",
-				"Comment Heavy Discussion",
-				"Quiet Recent Discussion",
-			],
-		)
-		self.assertEqual(discussions[0].popularity_score, 10)
-
-	def test_unread_discussions_are_sorted_by_community_popularity(self):
-		aggregate_team = create_community("Digest Aggregate Team")
-		aggregate_project = create_space("Digest Aggregate Space", aggregate_team.name)
-		single_team = create_community("Digest Single Team")
-		single_project = create_space("Digest Single Space", single_team.name)
-		self.create_unread_discussion(
-			aggregate_project.name,
-			"Aggregate Popular One",
-			7,
-			"2026-06-29 10:00:00",
-		)
-		self.create_unread_discussion(
-			aggregate_project.name,
-			"Aggregate Popular Two",
-			5,
-			"2026-06-28 10:00:00",
-		)
-		self.create_unread_discussion(
-			single_project.name,
-			"Single Popular Discussion",
-			10,
-			"2026-06-30 10:00:00",
-		)
-
-		discussions = get_unread_discussions(self.user.name)
-
-		self.assertEqual(
-			[discussion.title for discussion in discussions[:3]],
-			[
-				"Aggregate Popular One",
-				"Aggregate Popular Two",
-				"Single Popular Discussion",
-			],
-		)
-
-	def test_unread_discussions_are_balanced_across_popular_communities(self):
-		dominant_team = create_community("Digest Dominant Team")
-		dominant_project = create_space("Digest Dominant Space", dominant_team.name)
-		secondary_team = create_community("Digest Secondary Team")
-		secondary_project = create_space("Digest Secondary Space", secondary_team.name)
-		tertiary_team = create_community("Digest Tertiary Team")
-		tertiary_project = create_space("Digest Tertiary Space", tertiary_team.name)
-		for index, score in enumerate([100, 90, 80, 70, 60], start=1):
-			self.create_unread_discussion(
-				dominant_project.name,
-				f"Dominant Discussion {index}",
-				score,
-				f"2026-06-2{index} 10:00:00",
-			)
-		self.create_unread_discussion(
-			secondary_project.name,
-			"Secondary Discussion",
-			20,
-			"2026-06-27 10:00:00",
-		)
-		self.create_unread_discussion(
-			tertiary_project.name,
-			"Tertiary Discussion",
-			10,
-			"2026-06-26 10:00:00",
-		)
-
-		discussions = get_unread_discussions(self.user.name)
-
-		self.assertEqual(
-			[discussion.title for discussion in discussions[:7]],
-			[
-				"Dominant Discussion 1",
-				"Dominant Discussion 2",
-				"Dominant Discussion 3",
-				"Secondary Discussion",
-				"Tertiary Discussion",
-				"Dominant Discussion 4",
-				"Dominant Discussion 5",
-			],
-		)
-
-	def test_send_digest_skips_email_when_there_are_no_unread_items(self):
+	def render_context(self):
 		with patch("frappe.sendmail") as sendmail:
-			send_digest_for_profile(self.profile, date(2026, 6, 30))
+			send_digest_for_profile(self.profile, self.today)
+		sendmail.assert_called_once()
+		return sendmail.call_args.kwargs["args"]
 
-		sendmail.assert_not_called()
-		self.assertEqual(
-			frappe.db.get_value("GP User Profile", self.profile.name, "email_digest_last_sent_on"),
-			date(2026, 6, 30),
-		)
-
-	def render_digest_with_images(self, avatar, community_image):
-		"""Render the digest for a member with one unread notification and one unread discussion,
-		both from an author whose avatar is `avatar`, in a community whose image is `community_image`.
-
-		Returns the rendered HTML and the part of it after the "Unread discussions" heading, since
-		the community image only appears there.
-		"""
+	def render_digest_with_author_image(self, image):
 		author = create_member(f"digest-author-{frappe.generate_hash(length=8)}@example.com", "Digest Author")
-		author_profile = frappe.get_doc("GP User Profile", {"user": author.name})
-		author_profile.image = avatar
-		author_profile.save(ignore_permissions=True)
-		team = create_community("Digest Image Team")
-		frappe.db.set_value("GP Team", team.name, "image", community_image, update_modified=False)
-		project = create_space("Digest Image Space", team.name)
-		discussion = create_discussion("Digest Image Discussion", project.name)
-		frappe.db.set_value(
-			"GP Discussion",
-			discussion.name,
-			{"owner": author.name, "last_post_by": author.name},
-			update_modified=False,
+		frappe.db.set_value("GP User Profile", {"user": author.name}, "image", image)
+		project = self.create_project("Digest Image")
+		discussion = self.create_unread_discussion(project, "Digest Image Discussion")
+		set_owner(discussion, author)
+		message, _text = get_email_from_template("email_digest", self.render_context())
+		return message
+
+	def create_project(self, title):
+		team = create_community(f"{title} Team")
+		return create_space(title, team.name)
+
+	def create_unread_discussion(self, project, title, created=None):
+		"""A discussion by someone else, posted at `created` (now by default). Posting in a
+		public Space gives every member, the reader included, an unread record for it."""
+		discussion = create_discussion(title, project.name)
+		if created:
+			self.backdate("GP Discussion", discussion.name, created)
+			self.backdate_unread_record(discussion.name, None, created)
+		return discussion
+
+	def add_reply(self, discussion, created=None, content="Reply", owner=None):
+		"""A reply the reader has not read, posted at `created` (now by default)."""
+		comment = create_comment(discussion.name, content=content, owner=owner)
+		if created:
+			self.backdate("GP Comment", comment.name, created)
+			self.backdate_unread_record(discussion.name, comment.name, created)
+		return comment
+
+	def backdate_unread_record(self, discussion, comment, created):
+		record = frappe.db.get_value(
+			"GP Unread Record", {"user": self.user.name, "discussion": discussion, "comment": comment}
 		)
-		frappe.get_doc(
-			{
-				"doctype": "GP Unread Record",
-				"user": self.user.name,
-				"discussion": discussion.name,
-				"project": project.name,
-				"is_unread": 1,
-			}
-		).insert(ignore_permissions=True)
-		frappe.get_doc(
+		self.assertTrue(record, "posting should give the reader an unread record")
+		self.backdate("GP Unread Record", record, created)
+
+	def add_reactions(self, doctype, name, count, created=None):
+		for index in range(count):
+			reaction = frappe.get_doc(
+				doctype="GP Reaction",
+				reference_doctype=doctype,
+				reference_name=name,
+				emoji=":thumbsup:",
+				user=f"digest-reaction-{index}-{frappe.generate_hash(length=8)}@example.com",
+			).insert(ignore_permissions=True)
+			if created:
+				self.backdate("GP Reaction", reaction.name, created)
+
+	def add_notification(self, discussion, project, message, from_user=None, type="Mention"):
+		return frappe.get_doc(
 			{
 				"doctype": "GP Notification",
 				"to_user": self.user.name,
-				"type": "Mention",
-				"message": "You were mentioned in the digest thread.",
+				"type": type,
+				"message": message,
 				"discussion": discussion.name,
 				"project": project.name,
-				"team": team.name,
-				"from_user": author.name,
+				"team": project.team,
+				"from_user": from_user and from_user.name,
 			}
 		).insert(ignore_permissions=True)
 
-		with patch("frappe.sendmail") as sendmail:
-			send_digest_for_profile(self.profile, date(2026, 6, 30))
-
-		sendmail.assert_called_once()
-		email = sendmail.call_args.kwargs
-		message, _text_content = get_email_from_template(email["template"], email["args"])
-		return message, message.split("Unread discussions", 1)[1]
-
-	def create_unread_discussion(self, project, title, comments_count, last_post_at):
-		discussion = create_discussion(title, project)
-		frappe.db.set_value(
-			"GP Discussion",
-			discussion.name,
-			{"comments_count": comments_count, "last_post_at": last_post_at},
-			update_modified=False,
-		)
-		frappe.get_doc(
-			{
-				"doctype": "GP Unread Record",
-				"user": self.user.name,
-				"discussion": discussion.name,
-				"project": project,
-				"is_unread": 1,
-			}
-		).insert(ignore_permissions=True)
-		return discussion
-
-	def add_discussion_reactions(self, discussion, count):
-		for index in range(count):
-			self.add_reaction("GP Discussion", discussion.name, index)
-
-	def add_comment_reactions(self, discussion, count):
-		comment = frappe.get_doc(
-			{
-				"doctype": "GP Comment",
-				"reference_doctype": "GP Discussion",
-				"reference_name": discussion.name,
-				"content": "Comment with reactions",
-			}
-		).insert(ignore_permissions=True)
-		for index in range(count):
-			self.add_reaction("GP Comment", comment.name, index)
-
-	def add_reaction(self, doctype, name, index):
-		frappe.get_doc(
-			doctype="GP Reaction",
-			reference_doctype=doctype,
-			reference_name=name,
-			emoji=":thumbsup:",
-			user=f"digest-reaction-{index}-{frappe.generate_hash(length=8)}@example.com",
-		).insert(ignore_permissions=True)
+	def backdate(self, doctype, name, created):
+		frappe.db.set_value(doctype, name, "creation", created, update_modified=False)
 
 	def assert_signed_digest_url(self, url, redirect):
 		query = parse_qs(urlparse(url).query)

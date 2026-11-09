@@ -1,11 +1,12 @@
 # Copyright (c) 2026, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from urllib.parse import quote
 
 import frappe
 from frappe import _
+from frappe.query_builder import Order
 from frappe.query_builder.functions import Count
 from frappe.utils import add_to_date, get_datetime, get_url, getdate, now_datetime, nowdate
 from frappe.utils.verified_command import get_signed_params, verify_request
@@ -13,11 +14,10 @@ from frappe.utils.verified_command import get_signed_params, verify_request
 from gameplan.permissions import apply_accessible_project_filter
 from gameplan.utils import html_to_text_preview
 
-EMAIL_DIGEST_FREQUENCY_DAYS = {
-	"Weekly": 7,
-	"Fortnightly": 14,
-	"Monthly": 30,
-}
+# The digest is weekly only while we tune what it shows. It covers the 7 days before the send
+# day, so a reader catches up on that week and nothing older.
+EMAIL_DIGEST_FREQUENCY = "Weekly"
+DIGEST_PERIOD_DAYS = 7
 EMAIL_DIGEST_DAYS_OF_WEEK = {
 	"Monday": 0,
 	"Tuesday": 1,
@@ -29,11 +29,15 @@ EMAIL_DIGEST_DAYS_OF_WEEK = {
 }
 DEFAULT_EMAIL_DIGEST_DAY_OF_WEEK = "Monday"
 MAX_DIGEST_ITEMS = 10
-DIGEST_DISCUSSIONS_PER_COMMUNITY = 3
+# Notifications that ask for the reader's attention; reactions do not
+MENTION_NOTIFICATION_TYPES = ("Mention", "Rich Quote")
+# A reply takes more effort than a reaction, so it counts as this many reactions when ranking.
+REPLY_WEIGHT = 3
+# A post needs this many reactions before the digest calls it the most popular of the week.
+MIN_HIGHLIGHT_REACTIONS = 3
 EMAIL_DIGEST_LINK_EXPIRES_DAYS = 45
 DIGEST_PREFERENCES_REDIRECT = "/g/notifications?settings=notifications"
 GAMEPLAN_LOGO_PATH = "/assets/gameplan/gameplan_logo_256.png"
-REACTION_ICON_PATH = "/assets/gameplan/images/email-digest-reaction.png"
 
 
 def send_due_email_digests():
@@ -56,15 +60,14 @@ def get_due_profiles(today: date | None = None):
 		],
 		filters=[
 			["enabled", "=", 1],
-			["email_digest_frequency", "in", list(EMAIL_DIGEST_FREQUENCY_DAYS)],
+			["email_digest_frequency", "=", EMAIL_DIGEST_FREQUENCY],
 		],
 	).run(as_dict=True)
 	return [profile for profile in profiles if is_digest_due(profile, today)]
 
 
 def is_digest_due(profile, today: date | None = None):
-	frequency = profile.email_digest_frequency
-	if frequency not in EMAIL_DIGEST_FREQUENCY_DAYS:
+	if profile.email_digest_frequency != EMAIL_DIGEST_FREQUENCY:
 		return False
 
 	today = today or getdate(nowdate())
@@ -75,7 +78,7 @@ def is_digest_due(profile, today: date | None = None):
 	if not last_sent_on:
 		return True
 
-	return (today - last_sent_on).days >= EMAIL_DIGEST_FREQUENCY_DAYS[frequency]
+	return (today - last_sent_on).days >= DIGEST_PERIOD_DAYS
 
 
 def is_digest_scheduled_for_today(profile, today: date):
@@ -90,14 +93,22 @@ def get_digest_day_of_week(profile):
 	return DEFAULT_EMAIL_DIGEST_DAY_OF_WEEK
 
 
+def get_digest_period_start(today: date) -> datetime:
+	"""Start of the week a digest sent on `today` covers.
+
+	It starts at midnight, so a post made on the last send day before the digest went out can
+	show up in two digests. Repeating an item is better than missing one."""
+	return datetime.combine(today - timedelta(days=DIGEST_PERIOD_DAYS), time.min)
+
+
 def send_digest_for_profile(profile, today: date | None = None):
 	today = today or getdate(nowdate())
-	digest = build_digest(profile.user)
+	digest = build_digest(profile.user, get_digest_period_start(today))
 
 	if has_digest_items(digest):
 		frappe.sendmail(
 			recipients=[profile.user],
-			subject=get_digest_subject(profile),
+			subject=get_digest_subject(),
 			template="email_digest",
 			args=get_digest_email_context(profile, digest),
 		)
@@ -112,33 +123,48 @@ def send_digest_for_profile(profile, today: date | None = None):
 	return digest
 
 
-def build_digest(user: str):
+def build_digest(user: str, since: datetime):
+	"""What `user` missed since `since`: unread mentions and quotes, the week's most popular post,
+	and discussions with new posts they have not read, busiest first."""
+	notifications = get_unread_mentions(user, since)
+	highlight = get_most_popular_post(user, since)
+	# A discussion already in a mention or the highlight is not listed again
+	shown = {str(notification.discussion) for notification in notifications if notification.discussion}
+	if highlight:
+		shown.add(str(highlight.discussion))
+	discussions = [
+		discussion for discussion in get_active_discussions(user, since) if str(discussion.name) not in shown
+	]
 	return {
-		"notifications": get_unread_notifications(user),
-		"discussions": get_unread_discussions(user),
+		"notifications": notifications,
+		"highlight": highlight,
+		"discussions": discussions[:MAX_DIGEST_ITEMS],
 	}
 
 
 def has_digest_items(digest):
-	return bool(digest["notifications"] or digest["discussions"])
+	return bool(digest["notifications"] or digest["highlight"] or digest["discussions"])
 
 
-def get_digest_subject(profile):
-	return f"Your {profile.email_digest_frequency} Gameplan digest"
+def get_digest_subject():
+	return f"Your {EMAIL_DIGEST_FREQUENCY} Gameplan digest"
 
 
 def get_digest_email_context(profile, digest):
 	avatar_map = get_user_avatar_map(get_digest_item_users(digest))
-	discussion_groups = format_discussion_groups(digest["discussions"], avatar_map, profile.user)
+	highlight = digest["highlight"]
 	return {
-		"frequency": profile.email_digest_frequency,
+		"frequency": EMAIL_DIGEST_FREQUENCY,
 		"logo_url": get_url(GAMEPLAN_LOGO_PATH),
 		"site_url": get_url(),
 		"open_gameplan_url": get_signed_digest_url(profile.user, "/g"),
 		"preferences_url": get_digest_preferences_url(profile.user),
 		"notifications": format_notification_items(digest["notifications"], avatar_map, profile.user),
-		"discussion_groups": discussion_groups,
-		"discussions": [discussion for group in discussion_groups for discussion in group["discussions"]],
+		"highlight": format_highlight(highlight, avatar_map, profile.user) if highlight else None,
+		"discussions": [
+			format_discussion_item(discussion, avatar_map, profile.user)
+			for discussion in digest["discussions"]
+		],
 	}
 
 
@@ -159,7 +185,7 @@ def open_digest_preferences(
 	frappe.local.response["location"] = get_safe_digest_redirect(redirect)
 
 
-def get_unread_notifications(user: str):
+def get_unread_mentions(user: str, since: datetime):
 	return frappe.qb.get_query(
 		"GP Notification",
 		fields=[
@@ -179,13 +205,23 @@ def get_unread_notifications(user: str):
 			"team",
 			"team.title as team_title",
 		],
-		filters={"to_user": user, "read": 0},
+		filters=[
+			["to_user", "=", user],
+			["read", "=", 0],
+			["type", "in", MENTION_NOTIFICATION_TYPES],
+			["creation", ">=", since],
+		],
 		order_by="creation desc",
 		limit=MAX_DIGEST_ITEMS,
 	).run(as_dict=True)
 
 
-def get_unread_discussions(user: str):
+def get_active_discussions(user: str, since: datetime):
+	"""Discussions with a post or reply since `since` that `user` has not read.
+
+	Ranked by everything that happened in them since `since` (the new discussion itself, its
+	replies and its reactions, with a reply worth `REPLY_WEIGHT` reactions), so an old thread
+	with a big history but a quiet week does not push this week's conversations out."""
 	UnreadRecord = frappe.qb.DocType("GP Unread Record")
 	Discussion = frappe.qb.DocType("GP Discussion")
 	Project = frappe.qb.DocType("GP Project")
@@ -205,124 +241,80 @@ def get_unread_discussions(user: str):
 			Discussion.title,
 			Discussion.slug,
 			Discussion.project,
+			Discussion.creation,
 			Discussion.last_post_at,
-			Discussion.comments_count,
 			Project.title.as_("project_title"),
 			Project.team,
 			Team.title.as_("team_title"),
-			Team.image.as_("team_image"),
-			Count(UnreadRecord.name).as_("unread_count"),
+			# COUNT skips nulls, and only a reply's unread record has a comment
+			Count(UnreadRecord.comment).as_("unread_replies_count"),
 		)
-		.where((UnreadRecord.user == user) & (UnreadRecord.is_unread == 1) & Project.archived_at.isnull())
+		.where(
+			(UnreadRecord.user == user)
+			& (UnreadRecord.is_unread == 1)
+			& (UnreadRecord.creation >= since)
+			& Project.archived_at.isnull()
+		)
 		.groupby(Discussion.name)
 	)
 	query = apply_accessible_project_filter(query, Discussion.project, user)
-	return get_popular_discussions(query.run(as_dict=True))
+	discussions = query.run(as_dict=True)
 
-
-def get_popular_discussions(discussions):
-	discussion_names = [discussion.name for discussion in discussions]
-	discussion_reactions = get_discussion_reaction_counts(discussion_names)
-	comment_reactions = get_comment_reaction_counts(discussion_names)
-
+	names = [str(discussion.name) for discussion in discussions]
+	replies = get_reply_counts(names, since)
+	reactions = get_reaction_counts(names, since)
 	for discussion in discussions:
-		discussion_name = str(discussion.name)
-		discussion.comments_count = discussion.comments_count or 0
-		discussion.reactions_count = discussion_reactions.get(discussion_name, 0) + comment_reactions.get(
-			discussion_name, 0
+		discussion.is_new = get_datetime(discussion.creation) >= since
+		discussion.replies_count = replies.get(str(discussion.name), 0)
+		discussion.reactions_count = reactions.get(str(discussion.name), 0)
+		discussion.activity_score = (
+			int(discussion.is_new) + REPLY_WEIGHT * discussion.replies_count + discussion.reactions_count
 		)
-		discussion.popularity_score = discussion.comments_count + discussion.reactions_count
 
-	return select_balanced_popular_discussions(discussions)
-
-
-def select_balanced_popular_discussions(discussions):
-	groups = get_discussions_by_group(discussions)
-	ordered_groups = sorted(groups.values(), key=discussion_group_sort_key, reverse=True)
-	for group in ordered_groups:
-		group["discussions"].sort(key=discussion_sort_key, reverse=True)
-
-	selected = []
-	selected_names = set()
-	for group in ordered_groups:
-		for discussion in group["discussions"][:DIGEST_DISCUSSIONS_PER_COMMUNITY]:
-			add_selected_discussion(selected, selected_names, discussion)
-			if len(selected) == MAX_DIGEST_ITEMS:
-				return selected
-
-	remaining_discussions = [
-		discussion
-		for group in ordered_groups
-		for discussion in group["discussions"][DIGEST_DISCUSSIONS_PER_COMMUNITY:]
-	]
-	for discussion in sorted(remaining_discussions, key=discussion_sort_key, reverse=True):
-		add_selected_discussion(selected, selected_names, discussion)
-		if len(selected) == MAX_DIGEST_ITEMS:
-			return selected
-
-	return selected
-
-
-def get_discussions_by_group(discussions):
-	groups = {}
-	for discussion in discussions:
-		group_key = get_discussion_group_key(discussion)
-		group = groups.setdefault(
-			group_key,
-			{
-				"title": discussion.team_title or "",
-				"popularity_score": 0,
-				"discussions": [],
-			},
-		)
-		group["popularity_score"] += discussion.popularity_score
-		group["discussions"].append(discussion)
-	return groups
-
-
-def add_selected_discussion(selected, selected_names, discussion):
-	if discussion.name in selected_names:
-		return
-	selected.append(discussion)
-	selected_names.add(discussion.name)
-
-
-def discussion_group_sort_key(group):
-	return (group["popularity_score"], group["title"])
+	return sorted(discussions, key=discussion_sort_key, reverse=True)
 
 
 def discussion_sort_key(discussion):
-	return (
-		discussion.popularity_score,
-		str(discussion.last_post_at or ""),
-		str(discussion.name),
-	)
+	return (discussion.activity_score, str(discussion.last_post_at or ""), str(discussion.name))
 
 
-def get_discussion_reaction_counts(discussion_names):
+def get_reply_counts(discussion_names, since: datetime):
 	if not discussion_names:
 		return {}
 
-	Reaction = frappe.qb.DocType("GP Reaction")
+	Comment = frappe.qb.DocType("GP Comment")
 	rows = (
-		frappe.qb.from_(Reaction)
-		.select(Reaction.reference_name, Count(Reaction.name).as_("count"))
+		frappe.qb.from_(Comment)
+		.select(Comment.reference_name, Count(Comment.name).as_("count"))
 		.where(
-			(Reaction.reference_doctype == "GP Discussion")
-			& Reaction.reference_name.isin([str(name) for name in discussion_names])
+			(Comment.reference_doctype == "GP Discussion")
+			& Comment.reference_name.isin(discussion_names)
+			& (Comment.creation >= since)
+			& Comment.deleted_at.isnull()
 		)
-		.groupby(Reaction.reference_name)
+		.groupby(Comment.reference_name)
 	).run(as_dict=True)
-	return {row.reference_name: row.count for row in rows}
+	return {str(row.reference_name): row.count for row in rows}
 
 
-def get_comment_reaction_counts(discussion_names):
+def get_reaction_counts(discussion_names, since: datetime):
+	"""Reactions added since `since` to each discussion's post and to its replies."""
 	if not discussion_names:
 		return {}
 
 	Reaction = frappe.qb.DocType("GP Reaction")
 	Comment = frappe.qb.DocType("GP Comment")
-	rows = (
+	post_rows = (
+		frappe.qb.from_(Reaction)
+		.select(Reaction.reference_name.as_("discussion"), Count(Reaction.name).as_("count"))
+		.where(
+			(Reaction.reference_doctype == "GP Discussion")
+			& Reaction.reference_name.isin(discussion_names)
+			& (Reaction.creation >= since)
+		)
+		.groupby(Reaction.reference_name)
+	).run(as_dict=True)
+	reply_rows = (
 		frappe.qb.from_(Reaction)
 		.join(Comment)
 		.on(Reaction.reference_name == Comment.name)
@@ -332,10 +324,101 @@ def get_comment_reaction_counts(discussion_names):
 			& (Comment.reference_doctype == "GP Discussion")
 			& Comment.reference_name.isin(discussion_names)
 			& Comment.deleted_at.isnull()
+			& (Reaction.creation >= since)
 		)
 		.groupby(Comment.reference_name)
 	).run(as_dict=True)
-	return {str(row.discussion): row.count for row in rows}
+
+	counts = {}
+	for row in [*post_rows, *reply_rows]:
+		counts[str(row.discussion)] = counts.get(str(row.discussion), 0) + row.count
+	return counts
+
+
+def get_most_popular_post(user: str, since: datetime):
+	"""The discussion post or reply made since `since` with the most reactions, from a Space
+	`user` can see. Their own posts are left out, since the digest is about what they missed."""
+	candidates = [
+		row
+		for row in [get_most_reacted_discussion(user, since), get_most_reacted_reply(user, since)]
+		if row and row.reactions_count >= MIN_HIGHLIGHT_REACTIONS
+	]
+	if not candidates:
+		return None
+	return max(candidates, key=lambda row: (row.reactions_count, str(row.creation)))
+
+
+def get_most_reacted_discussion(user: str, since: datetime):
+	Discussion = frappe.qb.DocType("GP Discussion")
+	query = popular_post_query(user, since, Discussion, Discussion, "GP Discussion").select(
+		Discussion.name.as_("discussion"),
+		Discussion.owner,
+		Discussion.content,
+		Discussion.creation,
+	)
+	return first_row(query)
+
+
+def get_most_reacted_reply(user: str, since: datetime):
+	Comment = frappe.qb.DocType("GP Comment")
+	Discussion = frappe.qb.DocType("GP Discussion")
+	query = (
+		popular_post_query(user, since, Comment, Discussion, "GP Comment")
+		.where((Comment.reference_doctype == "GP Discussion") & Comment.deleted_at.isnull())
+		.select(
+			Comment.reference_name.as_("discussion"),
+			Comment.name.as_("comment"),
+			Comment.owner,
+			Comment.content,
+			Comment.creation,
+		)
+	)
+	return first_row(query)
+
+
+def popular_post_query(user: str, since: datetime, Post, Discussion, post_doctype: str):
+	"""Posts of `post_doctype` made since `since` by someone other than `user`, in Spaces `user`
+	can see, with their reaction counts, most reacted first. `Post` is the discussion itself or
+	one of its replies."""
+	Reaction = frappe.qb.DocType("GP Reaction")
+	Project = frappe.qb.DocType("GP Project")
+	Team = frappe.qb.DocType("GP Team")
+
+	query = frappe.qb.from_(Reaction).join(Post).on(Reaction.reference_name == Post.name)
+	if Post is not Discussion:
+		query = query.join(Discussion).on(Post.reference_name == Discussion.name)
+	reactions_count = Count(Reaction.name)
+	query = (
+		query.join(Project)
+		.on(Discussion.project == Project.name)
+		.left_join(Team)
+		.on(Project.team == Team.name)
+		.select(
+			Discussion.title,
+			Discussion.slug,
+			Discussion.project,
+			Project.title.as_("project_title"),
+			Project.team,
+			Team.title.as_("team_title"),
+			reactions_count.as_("reactions_count"),
+		)
+		.where(
+			(Reaction.reference_doctype == post_doctype)
+			& (Post.creation >= since)
+			& (Post.owner != user)
+			& Project.archived_at.isnull()
+		)
+		.groupby(Post.name)
+		.orderby(reactions_count, order=Order.desc)
+		.orderby(Post.creation, order=Order.desc)
+		.limit(1)
+	)
+	return apply_accessible_project_filter(query, Discussion.project, user)
+
+
+def first_row(query):
+	rows = query.run(as_dict=True)
+	return rows[0] if rows else None
 
 
 def format_notification_items(notifications, avatar_map, user: str):
@@ -380,51 +463,46 @@ def format_notification_item(notification, avatar_map, user: str):
 		"description": description or "",
 		"metadata": metadata,
 		"url": get_signed_digest_url(user, notification_path(notification)),
-		"avatar": notification_avatar(notification, avatar_map),
+		"avatar": avatar_context(notification.from_user, notification.from_user_full_name, avatar_map),
 	}
 
 
-def notification_avatar(notification, avatar_map):
-	# Reactions are often grouped with no single sender, so show a reaction tile, as the
-	# app's notification list does, instead of initials.
-	if notification.type == "Reaction":
-		return {"label": "Reaction", "initials": "", "url": get_url(REACTION_ICON_PATH), "is_icon": True}
-	return avatar_context(notification.from_user, notification.from_user_full_name, avatar_map)
-
-
-def format_discussion_groups(discussions, avatar_map, user: str):
-	groups = {}
-	for discussion in discussions:
-		group_key = get_discussion_group_key(discussion)
-		group = groups.setdefault(
-			group_key,
-			{
-				"title": discussion.team_title or "Other discussions",
-				"image_url": absolute_image_url(discussion.team_image),
-				"initials": initials_for(discussion.team_title or "Other discussions"),
-				"popularity_score": 0,
-				"discussions": [],
-			},
-		)
-		group["popularity_score"] += discussion.popularity_score
-		group["discussions"].append(format_discussion_item(discussion, avatar_map, user))
-
-	return sorted(
-		groups.values(),
-		key=lambda group: (group["popularity_score"], group["title"]),
-		reverse=True,
-	)
-
-
 def format_discussion_item(discussion, avatar_map, user: str):
-	metadata = activity_text(discussion.project_title, discussion.comments_count, discussion.reactions_count)
 	return {
 		"title": discussion.title or "Untitled",
 		"description": "",
-		"metadata": metadata,
-		"unread_label": f"{discussion.unread_count} unread",
+		"metadata": activity_text(
+			location_text(discussion.team_title, discussion.project_title),
+			discussion.replies_count,
+			discussion.reactions_count,
+		),
+		"unread_label": "New"
+		if discussion.is_new
+		else pluralize(discussion.unread_replies_count, "new reply", "new replies"),
 		"url": get_signed_digest_url(user, discussion_path(discussion)),
 		"avatar": avatar_context(discussion.owner, None, avatar_map),
+	}
+
+
+def format_highlight(post, avatar_map, user: str):
+	author = avatar_context(post.owner, None, avatar_map)
+	path = content_path(post.team, post.project, "discussion", post.discussion, post.slug)
+	if path and post.get("comment"):
+		path = f"{path}?comment={quote(str(post.comment))}"
+	return {
+		"title": post.title or "Untitled",
+		"description": html_to_text_preview(post.content, 200) or "",
+		"metadata": " · ".join(
+			part
+			for part in [
+				author["label"],
+				location_text(post.team_title, post.project_title),
+				pluralize(post.reactions_count, "reaction"),
+			]
+			if part
+		),
+		"url": get_signed_digest_url(user, path),
+		"avatar": author,
 	}
 
 
@@ -434,10 +512,6 @@ def notification_group_key(notification):
 		notification.discussion or notification.task or notification.name,
 		notification.type,
 	)
-
-
-def get_discussion_group_key(discussion):
-	return discussion.team or "__no_community__"
 
 
 def notification_path(notification):
@@ -478,17 +552,17 @@ def location_text(team_title: str | None, project_title: str | None):
 	return " / ".join(part for part in [team_title, project_title] if part)
 
 
-def activity_text(project_title: str | None, comments_count: int, reactions_count: int):
-	parts = [project_title] if project_title else []
-	if comments_count:
-		parts.append(pluralize(comments_count, "comment"))
+def activity_text(location: str, replies_count: int, reactions_count: int):
+	parts = [location] if location else []
+	if replies_count:
+		parts.append(pluralize(replies_count, "reply", "replies"))
 	if reactions_count:
 		parts.append(pluralize(reactions_count, "reaction"))
 	return " · ".join(parts)
 
 
-def pluralize(count: int, singular: str):
-	label = singular if count == 1 else f"{singular}s"
+def pluralize(count: int, singular: str, plural: str | None = None):
+	label = singular if count == 1 else plural or f"{singular}s"
 	return f"{count} {label}"
 
 
@@ -553,6 +627,8 @@ def get_safe_digest_redirect(redirect: str):
 def get_digest_item_users(digest):
 	users = {notification.from_user for notification in digest["notifications"] if notification.from_user}
 	users.update(discussion.owner for discussion in digest["discussions"] if discussion.owner)
+	if digest["highlight"]:
+		users.add(digest["highlight"].owner)
 	return users
 
 

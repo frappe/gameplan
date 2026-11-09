@@ -15,9 +15,51 @@
 		<h2 class="gp-email-digest__title">Your {{ frequency | lower | e }} digest</h2>
 		<div class="gp-email-digest__site-url">{{ site_url | e }}</div>
 
+		{% if highlight %}
+		<div class="gp-email-digest__section">
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Most popular this week</h3>
+			<table class="gp-email-digest__item" role="presentation" cellpadding="0" cellspacing="0">
+				<tr>
+					<td class="gp-email-digest__avatar-cell gp-email-digest__avatar-cell--top">
+						<span class="gp-email-digest__avatar-content">
+						{% if highlight.avatar.url %}
+						<img
+							alt="{{ highlight.avatar.label | e }}"
+							class="gp-email-digest__avatar-image"
+							height="36"
+							src="{{ highlight.avatar.url | e }}"
+							width="36"
+						>
+						{% else %}
+						<span class="gp-email-digest__avatar-fallback">{{ highlight.avatar.initials | e }}</span>
+						{% endif %}
+						</span>
+					</td>
+					<td class="gp-email-digest__content-cell">
+						{% if highlight.url %}
+						<a class="gp-email-digest__content-link" href="{{ highlight.url | e }}">
+						{% else %}
+						<div class="gp-email-digest__content">
+						{% endif %}
+							<div class="gp-email-digest__item-title gp-email-digest__highlight-title">{{ highlight.title | e }}</div>
+							{% if highlight.description %}
+							<div class="gp-email-digest__description">{{ highlight.description | e }}</div>
+							{% endif %}
+							<div class="gp-email-digest__metadata">{{ highlight.metadata | e }}</div>
+						{% if highlight.url %}
+						</a>
+						{% else %}
+						</div>
+						{% endif %}
+					</td>
+				</tr>
+			</table>
+		</div>
+		{% endif %}
+
 		{% if notifications %}
 		<div class="gp-email-digest__section">
-			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Unread notifications</h3>
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Mentions and quotes</h3>
 			{% for item in notifications %}
 			<table class="gp-email-digest__item" role="presentation" cellpadding="0" cellspacing="0">
 				<tr>
@@ -26,7 +68,7 @@
 						{% if item.avatar.url %}
 						<img
 							alt="{{ item.avatar.label | e }}"
-							class="gp-email-digest__avatar-image{% if item.avatar.is_icon %} gp-email-digest__avatar-image--icon{% endif %}"
+							class="gp-email-digest__avatar-image"
 							height="36"
 							src="{{ item.avatar.url | e }}"
 							width="36"
@@ -61,68 +103,48 @@
 		</div>
 		{% endif %}
 
-		{% if discussion_groups %}
+		{% if discussions %}
 		<div class="gp-email-digest__section">
-			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">Unread discussions</h3>
-			{% for group in discussion_groups %}
-			<table class="gp-email-digest__group-title{% if not loop.first %} gp-email-digest__group-title--spaced{% endif %}" role="presentation" cellpadding="0" cellspacing="0">
+			<h3 class="gp-email-digest__section-title gp-email-digest__section-title--muted">New this week</h3>
+			{% for item in discussions %}
+			<table class="gp-email-digest__item" role="presentation" cellpadding="0" cellspacing="0">
 				<tr>
-					<td class="gp-email-digest__group-image-cell">
-						{% if group.image_url %}
+					<td class="gp-email-digest__avatar-cell">
+						<span class="gp-email-digest__avatar-content">
+						{% if item.avatar.url %}
 						<img
-							alt="{{ group.title | e }}"
-							class="gp-email-digest__group-image"
-							height="20"
-							src="{{ group.image_url | e }}"
-							width="20"
+							alt="{{ item.avatar.label | e }}"
+							class="gp-email-digest__avatar-image"
+							height="36"
+							src="{{ item.avatar.url | e }}"
+							width="36"
 						>
 						{% else %}
-						<span class="gp-email-digest__group-fallback">{{ group.initials | e }}</span>
+						<span class="gp-email-digest__avatar-fallback">{{ item.avatar.initials | e }}</span>
+						{% endif %}
+						</span>
+					</td>
+					<td class="gp-email-digest__content-cell{% if not loop.first %} gp-email-digest__content-cell--divided{% endif %}">
+						{% if item.url %}
+						<a class="gp-email-digest__content-link" href="{{ item.url | e }}">
+						{% else %}
+						<div class="gp-email-digest__content">
+						{% endif %}
+							<div class="gp-email-digest__item-title gp-email-digest__discussion-title">
+								<span class="gp-email-digest__unread-label">{{ item.unread_label | e }}</span>
+								{{ item.title | e }}
+							</div>
+							{% if item.metadata %}
+							<div class="gp-email-digest__metadata">{{ item.metadata | e }}</div>
+							{% endif %}
+						{% if item.url %}
+						</a>
+						{% else %}
+						</div>
 						{% endif %}
 					</td>
-					<td class="gp-email-digest__group-name">{{ group.title | e }}</td>
 				</tr>
 			</table>
-				{% for item in group.discussions %}
-				<table class="gp-email-digest__item" role="presentation" cellpadding="0" cellspacing="0">
-					<tr>
-						<td class="gp-email-digest__avatar-cell">
-							<span class="gp-email-digest__avatar-content">
-							{% if item.avatar.url %}
-							<img
-								alt="{{ item.avatar.label | e }}"
-								class="gp-email-digest__avatar-image{% if item.avatar.is_icon %} gp-email-digest__avatar-image--icon{% endif %}"
-								height="36"
-								src="{{ item.avatar.url | e }}"
-								width="36"
-							>
-							{% else %}
-							<span class="gp-email-digest__avatar-fallback">{{ item.avatar.initials | e }}</span>
-							{% endif %}
-							</span>
-						</td>
-						<td class="gp-email-digest__content-cell{% if not loop.first %} gp-email-digest__content-cell--divided{% endif %}">
-							{% if item.url %}
-							<a class="gp-email-digest__content-link" href="{{ item.url | e }}">
-							{% else %}
-							<div class="gp-email-digest__content">
-							{% endif %}
-								<div class="gp-email-digest__item-title gp-email-digest__discussion-title">
-									<span class="gp-email-digest__unread-label">{{ item.unread_label | e }}</span>
-									{{ item.title | e }}
-								</div>
-								{% if item.metadata %}
-								<div class="gp-email-digest__metadata">{{ item.metadata | e }}</div>
-								{% endif %}
-							{% if item.url %}
-							</a>
-							{% else %}
-							</div>
-							{% endif %}
-						</td>
-					</tr>
-				</table>
-				{% endfor %}
 			{% endfor %}
 		</div>
 		{% endif %}

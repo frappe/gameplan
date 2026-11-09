@@ -71,56 +71,6 @@ body {
 	line-height: 20px;
 }
 
-.gp-email-digest__group-title {
-	border-bottom: 1px solid #e5e7eb;
-	border-collapse: collapse;
-	margin-bottom: 8px;
-	margin-top: 12px;
-	width: 100%;
-}
-
-.gp-email-digest__group-title--spaced {
-	margin-top: 40px;
-}
-
-.gp-email-digest__group-image-cell {
-	padding-bottom: 8px;
-	text-align: left;
-	vertical-align: middle;
-	width: 28px;
-}
-
-.gp-email-digest__group-image,
-.gp-email-digest__group-fallback {
-	border-radius: 4px;
-	display: block;
-	height: 20px;
-	margin: 0 8px 0 0;
-	width: 20px;
-}
-
-.gp-email-digest__group-image {
-	object-fit: cover;
-}
-
-.gp-email-digest__group-fallback {
-	background: #f3f4f6;
-	color: #374151;
-	font-size: 13px;
-	font-weight: 600;
-	line-height: 20px;
-	text-align: center;
-}
-
-.gp-email-digest__group-name {
-	color: #111827;
-	font-size: 15px;
-	font-weight: 500;
-	line-height: 22px;
-	padding-bottom: 8px;
-	vertical-align: middle;
-}
-
 .gp-email-digest__item {
 	border-collapse: collapse;
 	table-layout: fixed;
@@ -130,6 +80,10 @@ body {
 .gp-email-digest__avatar-cell {
 	vertical-align: middle;
 	width: 48px;
+}
+
+.gp-email-digest__avatar-cell--top {
+	vertical-align: top;
 }
 
 .gp-email-digest__content-cell {
@@ -150,11 +104,6 @@ body {
 
 .gp-email-digest__avatar-image {
 	object-fit: cover;
-}
-
-/* The reaction tile PNG carries its own rounded corners */
-.gp-email-digest__avatar-image--icon {
-	border-radius: 0;
 }
 
 .gp-email-digest__avatar-content {
@@ -189,6 +138,10 @@ body {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.gp-email-digest__highlight-title {
+	font-weight: 500;
 }
 
 .gp-email-digest__unread-label {
