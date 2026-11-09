@@ -12,6 +12,7 @@
       class="-mx-3"
       :filters="{ feed_type: 'bookmarks' }"
       :show-pinned="false"
+      show-community
       cacheKey="Bookmarks"
     />
   </div>

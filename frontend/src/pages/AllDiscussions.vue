@@ -37,6 +37,7 @@
         :filters="filters"
         :orderBy="() => discussionOrderBy"
         :showPinned="false"
+        showCommunity
         :cacheKey="`AllDiscussions-${feedType}`"
         :key="JSON.stringify(filters)"
       />

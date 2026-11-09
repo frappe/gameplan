@@ -1,6 +1,10 @@
 <template>
   <div class="pb-16 -mx-3">
-    <DiscussionList :filters="{ participator: profile.doc.user }" :show-pinned="false" />
+    <DiscussionList
+      :filters="{ participator: profile.doc.user }"
+      :show-pinned="false"
+      show-community
+    />
   </div>
 </template>
 <script>

@@ -11,7 +11,7 @@
           :key="discussion.name"
           :discussion="discussion"
           :showSpaceName="!filters || !filters.project"
-          :showCommunityName="spansCommunities"
+          :showCommunityName="showCommunity"
         />
       </List>
     </div>
@@ -31,7 +31,7 @@
         :key="discussion.bookmark || discussion.name"
         :discussion="discussion"
         :showSpaceName="!filters || !filters.project"
-        :showCommunityName="spansCommunities"
+        :showCommunityName="showCommunity"
       />
     </List>
     <div class="px-2 sm:px-0">
@@ -68,11 +68,15 @@ interface Props {
   cacheKey?: string
   showPinned?: boolean
   selectable?: boolean
+  // Name each row's community too, for lists that mix communities. A space name
+  // alone is ambiguous there.
+  showCommunity?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showPinned: true,
   selectable: false,
+  showCommunity: false,
 })
 
 const selectedDiscussions = defineModel<string[]>('selectedDiscussions', { default: () => [] })
@@ -117,10 +121,6 @@ const pinnedDiscussions = useDiscussions({
 })
 
 const filters = computed(() => toValue(props.filters))
-// A space name alone is ambiguous once a list holds more than one community's spaces.
-const spansCommunities = computed(() => {
-  return !filters.value?.project && typeof filters.value?.team !== 'string'
-})
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
 const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)

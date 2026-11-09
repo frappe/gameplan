@@ -1,6 +1,6 @@
 <template>
   <div class="pb-16 -mx-3">
-    <DiscussionList :filters="{ owner: profile.doc.user }" :showPinned="false" />
+    <DiscussionList :filters="{ owner: profile.doc.user }" :showPinned="false" showCommunity />
   </div>
 </template>
 <script>
