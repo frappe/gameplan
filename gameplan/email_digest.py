@@ -505,7 +505,6 @@ def notification_group_key(notification):
 	return (
 		notification_path(notification),
 		notification.discussion or notification.task or notification.name,
-		notification.type,
 	)
 
 

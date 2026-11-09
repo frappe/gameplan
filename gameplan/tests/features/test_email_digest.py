@@ -190,6 +190,8 @@ class TestEmailDigest(GameplanTestCase):
 			sorted(row.message for row in digest["notifications"]),
 			["A mention this week.", "A quote this week."],
 		)
+		# A mention and a quote in one discussion make one row
+		self.assertEqual(len(self.render_context()["notifications"]), 1)
 		# The mention already points at the discussion, so the list does not repeat it.
 		self.assertNotIn(discussion.name, [row.name for row in digest["discussions"]])
 
