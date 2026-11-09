@@ -150,7 +150,7 @@
    "fieldname": "email_digest_frequency",
    "fieldtype": "Select",
    "label": "Email Digest Frequency",
-   "options": "Off\nWeekly\nFortnightly\nMonthly"
+   "options": "Off\nWeekly"
   },
   {
    "default": "Monday",

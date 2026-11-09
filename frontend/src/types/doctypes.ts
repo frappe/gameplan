@@ -82,7 +82,7 @@ export interface GPUserProfile extends DocType {
   /** Sidebar Badge Style: Select */
   sidebar_badge_style?: 'Unread count' | 'Dot'
   /** Email Digest Frequency: Select */
-  email_digest_frequency?: 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
+  email_digest_frequency?: 'Off' | 'Weekly'
   /** Email Digest Day of Week: Select */
   email_digest_day_of_week?:
     | 'Monday'
