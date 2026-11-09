@@ -87,11 +87,10 @@ import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
+import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
 import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
-
-type FeedType = 'recent' | 'unread' | 'participating'
 
 interface Props {
   communityId: string
@@ -110,12 +109,6 @@ const filters = computed(() => ({
   feed_type: props.feedType,
 }))
 
-const feedTitles: Record<FeedType, string> = {
-  recent: 'All Discussions',
-  unread: 'Unread',
-  participating: 'Participating',
-}
-
 const feedTitle = computed(() => feedTitles[props.feedType])
 
 const community = useCommunity(() => props.communityId)
@@ -130,20 +123,6 @@ const communityUnreadCount = computed(() => {
 const participatingUnreadCount = computed(() => {
   return getParticipatingUnreadCount(props.communityId)
 })
-const feedTabs = computed(() => [
-  {
-    label: 'All Discussions',
-    value: 'recent',
-  },
-  {
-    label: 'Participating',
-    value: 'participating',
-  },
-  {
-    label: 'Unread',
-    value: 'unread',
-  },
-])
 const currentFeed = computed({
   get() {
     return props.feedType

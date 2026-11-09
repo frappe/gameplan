@@ -13,6 +13,7 @@ import { communities, getCommunity } from './data/communities'
 import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
+import { isFeedType, type FeedType } from './data/discussionFeeds'
 import { currentShowAllDiscussions } from './data/sidebarPreferences'
 import { settingsBackgroundPath } from './components/Settings'
 import {
@@ -43,7 +44,6 @@ type ProjectContentDoc = {
   slug?: string
 }
 
-const discussionFeeds = ['recent', 'unread', 'participating']
 const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null>>()
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
@@ -92,7 +92,7 @@ async function redirectLegacyTeamRoute(to: RouteLocationNormalized): Promise<Rou
  * With the All Discussions preference off, `/discussions` stays a compatibility entry
  * point that opens the same feed in the current community.
  */
-async function redirectToCommunityFeed(feedType: string): Promise<RouteLocationRaw> {
+async function redirectToCommunityFeed(feedType: FeedType): Promise<RouteLocationRaw> {
   await ensureCommunityDataLoaded()
 
   if (!communityState.id) {
@@ -173,7 +173,7 @@ const routes: RouteRecordRaw[] = [
         return { name: 'Bookmarks' }
       }
 
-      if (discussionFeeds.includes(feedType)) {
+      if (isFeedType(feedType)) {
         return
       }
 
@@ -204,7 +204,7 @@ const routes: RouteRecordRaw[] = [
         return { name: 'Bookmarks' }
       }
 
-      const validFeedType = discussionFeeds.includes(feedType) ? feedType : 'recent'
+      const validFeedType = isFeedType(feedType) ? feedType : 'recent'
       if (!currentShowAllDiscussions.value) {
         return redirectToCommunityFeed(validFeedType)
       }

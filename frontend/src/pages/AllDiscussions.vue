@@ -60,10 +60,9 @@ import { useRouter } from 'vue-router'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { activeCommunities } from '@/data/communities'
+import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
 import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
-
-type FeedType = 'recent' | 'unread' | 'participating'
 
 const props = withDefaults(defineProps<{ feedType?: FeedType }>(), {
   feedType: 'recent',
@@ -71,11 +70,6 @@ const props = withDefaults(defineProps<{ feedType?: FeedType }>(), {
 
 const router = useRouter()
 
-const feedTitles: Record<FeedType, string> = {
-  recent: 'All Discussions',
-  unread: 'Unread',
-  participating: 'Participating',
-}
 const feedTitle = computed(() => feedTitles[props.feedType])
 
 // Communities hidden from the rail stay out of this feed too: "all" means every
@@ -94,12 +88,6 @@ const unreadCount = computed(() => {
     return total + getSpaceUnreadCount(space.name)
   }, 0)
 })
-
-const feedTabs = [
-  { label: 'All Discussions', value: 'recent' },
-  { label: 'Participating', value: 'participating' },
-  { label: 'Unread', value: 'unread' },
-]
 
 const currentFeed = computed({
   get: () => props.feedType,
