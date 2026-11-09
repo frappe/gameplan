@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
+import { StorageSerializers, useLocalStorage } from '@vueuse/core'
 import { marked } from 'marked'
 
 /**
@@ -54,11 +54,16 @@ export const changelogEntries: ChangelogEntry[] = Object.entries(sources)
 
 export const changelogReleases: ChangelogRelease[] = groupByRelease(changelogEntries)
 
-const seenEntryIds = useLocalStorage<string[] | null>('gameplan:changelogSeen', null)
+// A null default makes VueUse guess the "any" serializer, which stores the array as
+// comma-separated text, so name the JSON serializer.
+const seenEntryIds = useLocalStorage<string[] | null>('gameplan:changelogSeen', null, {
+  serializer: StorageSerializers.object,
+})
 
 export const unseenEntries = computed(() => {
   const seen = seenEntryIds.value
-  if (seen) return changelogEntries.filter((entry) => !seen.includes(entry.id))
+  // Anything but an array (absent, or edited by hand) counts as "never opened".
+  if (Array.isArray(seen)) return changelogEntries.filter((entry) => !seen.includes(entry.id))
   return changelogEntries.filter(isRecent)
 })
 
