@@ -13,12 +13,15 @@ const spaceSidebarSort = useLocalStorage<SpaceSidebarSort>(
   defaultSpaceSidebarSort,
 )
 const hideInactiveSpaces = useLocalStorage('gameplan:hideInactiveSpaces', false)
+const showAllDiscussions = useLocalStorage('gameplan:showAllDiscussions', false)
 
 export const currentSidebarBadgeStyle = computed(() => sidebarBadgeStyle.value)
 export const currentSpaceSidebarSort = computed(() => {
   return normalizeSpaceSidebarSort(spaceSidebarSort.value)
 })
 export const currentHideInactiveSpaces = computed(() => hideInactiveSpaces.value)
+/** Whether the rail and mobile home offer the feed that spans every joined community. */
+export const currentShowAllDiscussions = computed(() => showAllDiscussions.value)
 
 const spaceSortValues: SpaceSidebarSort[] = ['Recent activity', 'Alphabetical']
 
@@ -68,6 +71,10 @@ export function setSpaceSidebarSort(sort: unknown) {
 
 export function setHideInactiveSpaces(value: boolean) {
   hideInactiveSpaces.value = value
+}
+
+export function setShowAllDiscussions(value: boolean) {
+  showAllDiscussions.value = value
 }
 
 function normalizeSidebarBadgeStyle(style: unknown): SidebarBadgeStyle {

@@ -71,9 +71,12 @@ const hideMobileNav = computed(() => {
 
 const onCommunityRoute = computed(() => route.matched.some((record) => record.meta?.communityScope))
 
-// Home stays lit across every community route, not just the Home page — tapping it
-// still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
-const isHomeRoute = computed(() => route.name === 'Home' || onCommunityRoute.value)
+// Home stays lit across every community route and the All Discussions feed, not just the
+// Home page — tapping it still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
+const isHomeRoute = computed(() => {
+  const name = route.name?.toString() || ''
+  return ['Home', 'AllDiscussions', 'AllDiscussionsTab'].includes(name) || onCommunityRoute.value
+})
 
 // "You" spans the whole More section (profile, pages, tasks, bookmarks, drafts,
 // and the settings pages the More menu links to).

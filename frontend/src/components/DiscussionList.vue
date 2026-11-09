@@ -11,6 +11,7 @@
           :key="discussion.name"
           :discussion="discussion"
           :showSpaceName="!filters || !filters.project"
+          :showCommunityName="spansCommunities"
         />
       </List>
     </div>
@@ -30,6 +31,7 @@
         :key="discussion.bookmark || discussion.name"
         :discussion="discussion"
         :showSpaceName="!filters || !filters.project"
+        :showCommunityName="spansCommunities"
       />
     </List>
     <div class="px-2 sm:px-0">
@@ -115,6 +117,10 @@ const pinnedDiscussions = useDiscussions({
 })
 
 const filters = computed(() => toValue(props.filters))
+// A space name alone is ambiguous once a list holds more than one community's spaces.
+const spansCommunities = computed(() => {
+  return !filters.value?.project && typeof filters.value?.team !== 'string'
+})
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
 const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)

@@ -95,7 +95,7 @@ import { activeCommunities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import { draftCount } from '@/data/drafts'
 import { unreadNotifications } from '@/data/notifications'
-import { currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
+import { currentShowAllDiscussions, currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { memberCount, useSessionUser } from '@/data/users'
 import AppDropdown from '../AppDropdown.vue'
@@ -133,6 +133,14 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
   currentSidebarBadgeStyle.value === 'Dot' ? 'dot' : 'count',
 )
 
+const allDiscussionsShortcut = computed<RailShortcut>(() => ({
+  label: 'All Discussions',
+  icon: 'lucide-message-square-text',
+  isActive: isRoute('AllDiscussions', 'AllDiscussionsTab'),
+  route: { name: 'AllDiscussions' },
+  description: 'From every community you have joined',
+}))
+
 const shortcuts = computed<RailShortcut[]>(() => [
   {
     label: 'Search',
@@ -140,6 +148,7 @@ const shortcuts = computed<RailShortcut[]>(() => [
     isActive: isRoute('Search'),
     route: { name: 'Search' },
   },
+  ...(currentShowAllDiscussions.value ? [allDiscussionsShortcut.value] : []),
   {
     label: 'People',
     icon: 'lucide-users-2',

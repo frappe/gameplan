@@ -36,7 +36,7 @@
                   {{ $user(post.by).full_name.trim() }}
                 </span>
                 <span class="inline-flex items-center" v-if="showSpaceName">
-                  &nbsp;in {{ discussion.project_title }}
+                  &nbsp;in {{ placeLabel }}
                   <span
                     v-if="isSpacePrivate(discussion.project)"
                     class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
@@ -92,6 +92,7 @@ import { computed } from 'vue'
 import { Tooltip, Badge, dayjsLocal } from 'frappe-ui'
 import { ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
+import { getCommunity } from '@/data/communities'
 import { getSpace, useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
 import { relativeTimestamp } from '@/utils'
@@ -99,7 +100,15 @@ import { relativeTimestamp } from '@/utils'
 const props = defineProps<{
   discussion: Discussion
   showSpaceName: boolean
+  showCommunityName?: boolean
 }>()
+
+const placeLabel = computed(() => {
+  if (!props.showCommunityName) return props.discussion.project_title
+  const communityId = getSpace(props.discussion.project)?.team
+  const communityTitle = communityId ? getCommunity(communityId)?.title : undefined
+  return [communityTitle, props.discussion.project_title].filter(Boolean).join(' / ')
+})
 
 const linkTo = computed(() => {
   return {
