@@ -1,6 +1,6 @@
 // The feeds a discussions page can show, for one community or across all of them.
 // The order is the order of the tabs.
-export const discussionFeeds = ['recent', 'participating', 'unread'] as const
+const discussionFeeds = ['recent', 'participating', 'unread'] as const
 
 export type FeedType = (typeof discussionFeeds)[number]
 
