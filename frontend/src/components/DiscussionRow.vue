@@ -31,19 +31,19 @@
                   <span class="lucide-align-left size-4 p-[1px] mr-1" />
                 </Tooltip>
               </div>
-              <div>
+              <div class="min-w-0 truncate">
                 <span>
                   {{ $user(post.by).full_name.trim() }}
                 </span>
-                <span class="inline-flex items-center" v-if="showSpaceName">
-                  &nbsp;in {{ placeLabel }}
+                <span v-if="showSpaceName">
+                  <span>&nbsp;in {{ placeLabel }}</span>
                   <span
                     v-if="isSpacePrivate(discussion.project)"
-                    class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
+                    class="lucide-lock ml-0.5 inline-block h-3 w-3 align-[-1px] text-ink-gray-6"
                   /> </span
                 >:&nbsp;
               </div>
-              <div class="truncate">
+              <div class="min-w-0 flex-1 truncate">
                 {{ post.content }}
               </div>
             </div>
