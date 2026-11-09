@@ -492,14 +492,10 @@ def format_highlight(post, avatar_map, user: str):
 	return {
 		"title": post.title or "Untitled",
 		"description": html_to_text_preview(post.content, 200) or "",
-		"metadata": " · ".join(
-			part
-			for part in [
-				author["label"],
-				location_text(post.team_title, post.project_title),
-				pluralize(post.reactions_count, "reaction"),
-			]
-			if part
+		"metadata": join_metadata(
+			author["label"],
+			location_text(post.team_title, post.project_title),
+			pluralize(post.reactions_count, "reaction"),
 		),
 		"url": get_signed_digest_url(user, path),
 		"avatar": author,
@@ -553,12 +549,15 @@ def location_text(team_title: str | None, project_title: str | None):
 
 
 def activity_text(location: str, replies_count: int, reactions_count: int):
-	parts = [location] if location else []
-	if replies_count:
-		parts.append(pluralize(replies_count, "reply", "replies"))
-	if reactions_count:
-		parts.append(pluralize(reactions_count, "reaction"))
-	return " · ".join(parts)
+	return join_metadata(
+		location,
+		pluralize(replies_count, "reply", "replies") if replies_count else None,
+		pluralize(reactions_count, "reaction") if reactions_count else None,
+	)
+
+
+def join_metadata(*parts: str | None):
+	return " · ".join(part for part in parts if part)
 
 
 def pluralize(count: int, singular: str, plural: str | None = None):
