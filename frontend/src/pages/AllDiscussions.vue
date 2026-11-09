@@ -24,14 +24,18 @@
           </span>
         </template>
       </TabButtons>
-      <Select class="shrink-0 !w-fit" :options="orderOptions" v-model="orderBy" />
+      <Select
+        class="shrink-0 !w-fit"
+        :options="discussionSortOptions"
+        v-model="discussionOrderBy"
+      />
     </div>
 
     <KeepAlive>
       <DiscussionList
         class="-mx-3"
         :filters="filters"
-        :orderBy="() => orderBy"
+        :orderBy="() => discussionOrderBy"
         :showPinned="false"
         :cacheKey="`AllDiscussions-${feedType}`"
         :key="JSON.stringify(filters)"
@@ -41,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import {
   Button,
   PageHeader,
@@ -51,11 +55,11 @@ import {
   TabButtons,
   usePageMeta,
 } from 'frappe-ui'
-import type { OrderBy } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { activeCommunities } from '@/data/communities'
+import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 
 type FeedType = 'recent' | 'unread' | 'participating'
@@ -65,7 +69,6 @@ const props = withDefaults(defineProps<{ feedType?: FeedType }>(), {
 })
 
 const router = useRouter()
-const orderBy = ref<OrderBy>('last_post_at desc')
 
 const feedTitles: Record<FeedType, string> = {
   recent: 'All Discussions',
@@ -108,13 +111,6 @@ const currentFeed = computed({
     )
   },
 })
-
-const orderOptions = [
-  { label: 'Sort by', value: '' as const, disabled: true },
-  { label: 'Newest first', value: 'last_post_at desc' as OrderBy },
-  { label: 'Oldest first', value: 'last_post_at asc' as OrderBy },
-  { label: 'Creation date', value: 'creation desc' as OrderBy },
-]
 
 usePageMeta(() => ({ title: feedTitle.value }))
 </script>
