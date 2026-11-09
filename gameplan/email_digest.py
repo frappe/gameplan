@@ -31,7 +31,7 @@ DEFAULT_EMAIL_DIGEST_DAY_OF_WEEK = "Monday"
 MAX_DIGEST_ITEMS = 10
 # Notifications that ask for the reader's attention; reactions do not
 MENTION_NOTIFICATION_TYPES = ("Mention", "Rich Quote")
-# A reply takes more effort than a reaction, so it counts as this many reactions when ranking.
+# A post or reply takes more effort than a reaction, so it counts as this many reactions when ranking.
 REPLY_WEIGHT = 3
 # A post needs this many reactions before the digest calls it the most popular of the week.
 MIN_HIGHLIGHT_REACTIONS = 3
@@ -220,7 +220,7 @@ def get_active_discussions(user: str, since: datetime):
 	"""Discussions with a post or reply since `since` that `user` has not read.
 
 	Ranked by everything that happened in them since `since` (the new discussion itself, its
-	replies and its reactions, with a reply worth `REPLY_WEIGHT` reactions), so an old thread
+	replies and its reactions, with a post or reply worth `REPLY_WEIGHT` reactions), so an old thread
 	with a big history but a quiet week does not push this week's conversations out."""
 	UnreadRecord = frappe.qb.DocType("GP Unread Record")
 	Discussion = frappe.qb.DocType("GP Discussion")
@@ -267,9 +267,8 @@ def get_active_discussions(user: str, since: datetime):
 		discussion.is_new = get_datetime(discussion.creation) >= since
 		discussion.replies_count = replies.get(str(discussion.name), 0)
 		discussion.reactions_count = reactions.get(str(discussion.name), 0)
-		discussion.activity_score = (
-			int(discussion.is_new) + REPLY_WEIGHT * discussion.replies_count + discussion.reactions_count
-		)
+		posts_count = int(discussion.is_new) + discussion.replies_count
+		discussion.activity_score = REPLY_WEIGHT * posts_count + discussion.reactions_count
 
 	return sorted(discussions, key=discussion_sort_key, reverse=True)
 
