@@ -47,13 +47,16 @@ gameplan/tests/
 `GameplanTestCase` creates the standard cast fresh in every test and rolls it back in
 `tearDown`. Each is available on `self`.
 
-| Persona         | Email                | Role            | Represents                             |
-| --------------- | -------------------- | --------------- | -------------------------------------- |
-| `admin`         | admin@example.com    | Gameplan Admin  | Global admin                           |
-| `member`        | member@example.com   | Gameplan Member | Owner of the test content              |
-| `second_member` | member2@example.com  | Gameplan Member | Another member in the community        |
-| `guest`         | guest@example.com    | Gameplan Guest  | Guest with access only where granted   |
-| `outsider`      | outsider@example.com | Gameplan Member | A member outside every community/space |
+| Persona         | Email                      | Role            | Represents                             |
+| --------------- | -------------------------- | --------------- | -------------------------------------- |
+| `admin`         | gameplan-admin@example.com | Gameplan Admin  | Global admin                           |
+| `member`        | member@example.com         | Gameplan Member | Owner of the test content              |
+| `second_member` | member2@example.com        | Gameplan Member | Another member in the community        |
+| `guest`         | gameplan-guest@example.com | Gameplan Guest  | Guest with access only where granted   |
+| `outsider`      | outsider@example.com       | Gameplan Member | A member outside every community/space |
+
+Frappe's own Administrator and Guest users own `admin@example.com` and `guest@example.com`,
+and user emails are unique, so the test personas use other addresses.
 
 ### Using `GameplanTestCase`
 
