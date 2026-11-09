@@ -1,7 +1,7 @@
 <template>
   <PageHeaderMobile class="sm:hidden" :title="feedTitle">
     <template #prefix>
-      <PageHeaderBackButton :to="{ name: 'Home' }" />
+      <PageHeaderBackButton :fallback-route="{ name: 'Home' }" />
     </template>
   </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
