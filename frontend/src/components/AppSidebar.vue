@@ -109,6 +109,17 @@
           </nav>
         </div>
       </ScrollArea>
+
+      <div v-if="latestUnseenEntry" class="shrink-0 p-2">
+        <SidebarCard
+          title="What's new"
+          :description="latestUnseenEntry.title"
+          icon="lucide-sparkles"
+          dismissible
+          :action="changelogAction"
+          @dismiss="markChangelogSeen"
+        />
+      </div>
     </template>
   </Sidebar>
 
@@ -121,8 +132,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { Button, Dropdown, Sidebar, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
+import {
+  Button,
+  Dropdown,
+  Sidebar,
+  SidebarCard,
+  SidebarItem,
+  SidebarLabel,
+  ScrollArea,
+} from 'frappe-ui'
 import { communityState } from '@/data/communityState'
+import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelog'
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
@@ -139,6 +159,10 @@ const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
 const showNewSpaceDialog = ref(false)
+
+// The newest unseen "What's new" entry, until the dialog is opened or the card dismissed.
+const latestUnseenEntry = computed(() => unseenEntries.value[0])
+const changelogAction = { label: "See what's new", onClick: openChangelog }
 
 const activeSpaceId = computed(() => {
   const routeName = route.name?.toString() || ''

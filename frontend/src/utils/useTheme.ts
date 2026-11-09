@@ -1,4 +1,4 @@
-import { onMounted, ref, type Ref } from 'vue'
+import { onMounted, readonly, ref, type Ref } from 'vue'
 
 export type Theme = 'light' | 'dark' | 'system'
 
@@ -8,6 +8,8 @@ const THEME_COLORS = {
 } as const
 
 const currentTheme: Ref<Theme> = ref('light')
+/** The theme on screen: `currentTheme` with 'system' resolved. */
+const resolvedTheme: Ref<'light' | 'dark'> = ref('light')
 let isInitialized = false
 
 const getSystemTheme = (): 'light' | 'dark' => {
@@ -15,9 +17,9 @@ const getSystemTheme = (): 'light' | 'dark' => {
 }
 
 const applyTheme = (theme: Theme): void => {
-  const resolvedTheme = theme === 'system' ? getSystemTheme() : theme
-  document.documentElement.setAttribute('data-theme', resolvedTheme)
-  updateThemeMeta(resolvedTheme)
+  resolvedTheme.value = theme === 'system' ? getSystemTheme() : theme
+  document.documentElement.setAttribute('data-theme', resolvedTheme.value)
+  updateThemeMeta(resolvedTheme.value)
 }
 
 const updateThemeMeta = (theme: 'light' | 'dark'): void => {
@@ -77,6 +79,7 @@ export function useTheme() {
 
   return {
     currentTheme,
+    resolvedTheme: readonly(resolvedTheme),
     toggleTheme,
     cycleTheme,
     setTheme,

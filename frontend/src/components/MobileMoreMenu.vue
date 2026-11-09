@@ -79,6 +79,7 @@ import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
+import { hasUnseenEntries, openChangelog } from '@/data/changelog'
 import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
@@ -137,6 +138,12 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
     { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
     { label: 'Tasks', icon: 'lucide-list-todo', route: { name: 'MyTasks' } },
     { label: 'People', icon: 'lucide-users-2', route: { name: 'People' } },
+    {
+      label: "What's new",
+      icon: 'lucide-sparkles',
+      onClick: openChangelog,
+      value: hasUnseenEntries.value ? 'New' : undefined,
+    },
   ]
 
   return [

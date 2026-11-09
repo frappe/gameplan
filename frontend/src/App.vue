@@ -14,6 +14,7 @@
          Phones have no dialog: a /settings/* URL is an ordinary page there
          (pages/SettingsPage.vue). -->
     <SettingsDialog v-if="$session.isLoggedIn && usersReady && !isMobileViewport" />
+    <ChangelogDialog v-if="$session.isLoggedIn" />
   </FrappeUIProvider>
 </template>
 
@@ -28,6 +29,7 @@ import { useTheme } from '@/utils/useTheme'
 import { useCursorStyle } from '@/utils/useCursorStyle'
 import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
 import SettingsDialog from './components/Settings/SettingsDialog.vue'
+import ChangelogDialog from './components/Changelog/ChangelogDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
 import { isSettingsRoute } from './components/Settings/overlayHistory'
 import { getHomeRoute } from '@/router'
