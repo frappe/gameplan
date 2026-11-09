@@ -8,7 +8,7 @@ import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferenc
 import { session } from './session'
 import { onSocketEvent } from '@/socket'
 
-export type EmailDigestFrequency = 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
+export type EmailDigestFrequency = 'Off' | 'Weekly'
 export type EmailDigestDayOfWeek =
   | 'Monday'
   | 'Tuesday'

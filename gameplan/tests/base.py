@@ -44,7 +44,7 @@ class GameplanTestCase(FrappeTestCase):
 		self.admin = create_admin()
 		self.member = create_member("member@example.com", "Member")
 		self.second_member = create_member("member2@example.com", "Second Member")
-		self.guest = create_guest("guest@example.com", "Guest")
+		self.guest = create_guest("gameplan-guest@example.com", "Guest")
 		self.outsider = create_member("outsider@example.com", "Outsider")
 
 	def tearDown(self):
