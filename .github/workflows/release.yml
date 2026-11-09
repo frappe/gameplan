@@ -2,7 +2,8 @@ name: Release
 
 # Every merge to develop is a release:
 #
-#   1. commit the new version to gameplan/__init__.py and tag it vX.Y.Z
+#   1. commit the new version to gameplan/__init__.py, stamp it on unreleased "What's new"
+#      entries in frontend/src/changelog/, and tag it vX.Y.Z
 #   2. build the prebuilt assets for that commit (Pilot downloads them)
 #   3. publish a GitHub release with notes listing the merged pull requests
 #   4. open a release PR in frappe/marketplace, which merges it once its checks pass, so
@@ -69,6 +70,7 @@ jobs:
           # the release commit, move to the new develop and try again.
           for attempt in 1 2 3; do
             version=$(python3 .github/scripts/next_version.py "${previous#v}" "$REQUESTED")
+            python3 .github/scripts/stamp_changelog.py "$version" "$(date -u +%F)"
             git commit -qa --allow-empty -m "chore(release): v$version"
             git tag -a "v$version" -m "v$version"
             if git push --atomic origin HEAD:develop "v$version"; then

@@ -71,11 +71,18 @@
       <template #trigger="{ open }">
         <button
           type="button"
-          class="flex size-7 items-center justify-center rounded-full transition focus-visible:ring-0 focus-visible:focus-ring"
+          class="relative flex size-7 items-center justify-center rounded-full transition focus-visible:ring-0 focus-visible:focus-ring"
           :class="open ? '' : 'hover:opacity-90'"
-          aria-label="Account menu"
+          :aria-label="hasUnseenEntries ? 'Account menu, new updates to see' : 'Account menu'"
         >
           <UserAvatar v-if="sessionUser.name" :user="sessionUser.name" size="md" class="size-7" />
+          <!-- The rail-coloured padding cuts the dot out of the avatar. -->
+          <span
+            v-if="hasUnseenEntries"
+            class="absolute -right-1 -top-1 rounded-full bg-surface-sidebar p-0.5"
+          >
+            <UnseenDot />
+          </span>
         </button>
       </template>
     </UserDropdown>
@@ -91,11 +98,13 @@ import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { SidebarRail, SidebarRailItem } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
+import { hasUnseenEntries } from '@/data/changelog'
+import UnseenDot from '../Changelog/UnseenDot.vue'
 import { activeCommunities } from '@/data/communities'
 import type { Community } from '@/data/communities'
 import { draftCount } from '@/data/drafts'
 import { unreadNotifications } from '@/data/notifications'
-import { currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
+import { currentShowAllDiscussions, currentSidebarBadgeStyle } from '@/data/sidebarPreferences'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { memberCount, useSessionUser } from '@/data/users'
 import AppDropdown from '../AppDropdown.vue'
@@ -133,6 +142,14 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
   currentSidebarBadgeStyle.value === 'Dot' ? 'dot' : 'count',
 )
 
+const allDiscussionsShortcut = computed<RailShortcut>(() => ({
+  label: 'All Discussions',
+  icon: 'lucide-message-square-text',
+  isActive: isRoute('AllDiscussions', 'AllDiscussionsTab'),
+  route: { name: 'AllDiscussions' },
+  description: 'From every community you have joined',
+}))
+
 const shortcuts = computed<RailShortcut[]>(() => [
   {
     label: 'Search',
@@ -140,6 +157,7 @@ const shortcuts = computed<RailShortcut[]>(() => [
     isActive: isRoute('Search'),
     route: { name: 'Search' },
   },
+  ...(currentShowAllDiscussions.value ? [allDiscussionsShortcut.value] : []),
   {
     label: 'People',
     icon: 'lucide-users-2',

@@ -13,6 +13,8 @@ import { communities, getCommunity } from './data/communities'
 import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
+import { isFeedType, type FeedType } from './data/discussionFeeds'
+import { currentShowAllDiscussions } from './data/sidebarPreferences'
 import { settingsBackgroundPath } from './components/Settings'
 import {
   isLeavingOverlay,
@@ -42,7 +44,6 @@ type ProjectContentDoc = {
   slug?: string
 }
 
-const discussionFeeds = ['recent', 'unread', 'participating']
 const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null>>()
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
@@ -85,6 +86,24 @@ async function redirectLegacyTeamRoute(to: RouteLocationNormalized): Promise<Rou
   }
 
   return { name: 'Discussions', params: { communityId } }
+}
+
+/**
+ * With the All Discussions preference off, `/discussions` stays a compatibility entry
+ * point that opens the same feed in the current community.
+ */
+async function redirectToCommunityFeed(feedType: FeedType): Promise<RouteLocationRaw> {
+  await ensureCommunityDataLoaded()
+
+  if (!communityState.id) {
+    return getHomeRoute()
+  }
+
+  if (feedType === 'recent') {
+    return { name: 'Discussions', params: { communityId: communityState.id } }
+  }
+
+  return { name: 'DiscussionsTab', params: { communityId: communityState.id, feedType } }
 }
 
 const routes: RouteRecordRaw[] = [
@@ -154,7 +173,7 @@ const routes: RouteRecordRaw[] = [
         return { name: 'Bookmarks' }
       }
 
-      if (discussionFeeds.includes(feedType)) {
+      if (isFeedType(feedType)) {
         return
       }
 
@@ -166,43 +185,32 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    name: 'AllDiscussions',
     path: '/discussions',
-    component: RouteGuard,
+    component: () => import('@/pages/AllDiscussions.vue'),
     async beforeEnter() {
-      await ensureCommunityDataLoaded()
-
-      // `/discussions` stays as a compatibility entry point, but there is no global feed anymore.
-      if (!communityState.id) {
-        return getHomeRoute()
-      }
-
-      return {
-        name: 'Discussions',
-        params: { communityId: communityState.id },
-      }
+      if (currentShowAllDiscussions.value) return
+      return redirectToCommunityFeed('recent')
     },
   },
   {
+    name: 'AllDiscussionsTab',
     path: '/discussions/:feedType',
-    component: RouteGuard,
+    component: () => import('@/pages/AllDiscussions.vue'),
+    props: true,
     async beforeEnter(to) {
-      await ensureCommunityDataLoaded()
-
       const feedType = routeParam(to.params.feedType)
       if (feedType === 'bookmarks') {
         return { name: 'Bookmarks' }
       }
 
-      if (!communityState.id) {
-        return getHomeRoute()
+      const validFeedType = isFeedType(feedType) ? feedType : 'recent'
+      if (!currentShowAllDiscussions.value) {
+        return redirectToCommunityFeed(validFeedType)
       }
 
-      return {
-        name: 'DiscussionsTab',
-        params: {
-          communityId: communityState.id,
-          feedType: discussionFeeds.includes(feedType) ? feedType : 'recent',
-        },
+      if (validFeedType === 'recent') {
+        return { name: 'AllDiscussions', replace: true }
       }
     },
   },

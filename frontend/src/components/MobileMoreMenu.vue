@@ -58,6 +58,7 @@
                 <span v-if="item.value" class="shrink-0 text-md text-ink-gray-5">
                   {{ item.value }}
                 </span>
+                <UnseenDot v-if="item.unseen" />
                 <span class="size-4 shrink-0 text-ink-gray-4 lucide-chevron-right" />
               </span>
             </span>
@@ -79,6 +80,8 @@ import { computed, defineAsyncComponent, ref } from 'vue'
 import { useRouter, type RouteLocationRaw } from 'vue-router'
 import { BottomSheet } from 'frappe-ui'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
+import { hasUnseenEntries, openChangelog } from '@/data/changelog'
+import UnseenDot from '@/components/Changelog/UnseenDot.vue'
 import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
@@ -89,6 +92,8 @@ interface MoreItem {
   route?: RouteLocationRaw
   onClick?: () => void
   value?: string
+  /** Shows the orange "What's new" dot. */
+  unseen?: boolean
 }
 
 interface MoreItemGroup {
@@ -137,6 +142,12 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
     { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
     { label: 'Tasks', icon: 'lucide-list-todo', route: { name: 'MyTasks' } },
     { label: 'People', icon: 'lucide-users-2', route: { name: 'People' } },
+    {
+      label: "What's new",
+      icon: 'lucide-sparkles',
+      onClick: openChangelog,
+      unseen: hasUnseenEntries.value,
+    },
   ]
 
   return [
