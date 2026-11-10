@@ -30,7 +30,8 @@
    "fieldname": "key",
    "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Key"
+   "label": "Key",
+   "permlevel": 1
   },
   {
    "fieldname": "status",
@@ -117,6 +118,18 @@
   {
    "read": 1,
    "role": "Gameplan Member"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "write": 1,
+   "role": "System Manager"
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "write": 1,
+   "role": "Gameplan Admin"
   }
  ],
  "sort_field": "modified",
