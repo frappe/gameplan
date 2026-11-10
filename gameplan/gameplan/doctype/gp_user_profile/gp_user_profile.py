@@ -50,7 +50,7 @@ class GPUserProfile(HasAttachments, Document):
 		self.validate_profile_ownership()
 
 	def validate_profile_ownership(self):
-		"""Only the profile's own user may change it, and the owner is immutable.
+		"""Only the profile's own user may change it, admins included.
 
 		Runs even when permission checks are bypassed. Changes the system makes on a
 		user's behalf, such as syncing the name and enabled state from User, set
@@ -62,17 +62,11 @@ class GPUserProfile(HasAttachments, Document):
 			or frappe.flags.in_install
 			or frappe.flags.in_migrate
 			or frappe.flags.in_fixtures
+			or frappe.session.user == "Administrator"
 		):
 			return
-		user = frappe.session.user
-		if user == "Administrator":
-			return
-		# Authorize against the stored owner, not the submitted `user`. A write that
-		# reassigns `user` to the session user would otherwise pass this check and hand
-		# the attacker the victim's profile row (its name, bio and avatar), since by the
-		# time validation runs `self.user` already holds the submitted value.
-		stored_user = frappe.db.get_value(self.doctype, self.name, "user")
-		if stored_user != user:
+		# Check the stored owner: `self.user` already holds the submitted value.
+		if self.get_doc_before_save().user != frappe.session.user:
 			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):
