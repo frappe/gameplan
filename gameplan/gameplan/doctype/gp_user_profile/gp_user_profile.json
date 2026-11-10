@@ -38,6 +38,7 @@
    "label": "User",
    "options": "User",
    "reqd": 1,
+   "set_only_once": 1,
    "unique": 1
   },
   {
@@ -168,7 +169,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-09-10 10:00:00.000000",
+ "modified": "2026-11-10 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",
