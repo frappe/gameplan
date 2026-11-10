@@ -875,8 +875,13 @@ export function getHomeRoute(): RouteLocationRaw {
 }
 
 function getDesktopHomeRoute(): RouteLocationRaw {
-  // Home resolves to the active community when possible; onboarding stays only for truly empty sites.
+  // Home is All Discussions when that preference is on, else the active community's feed.
+  // Onboarding stays only for truly empty sites.
   if (communityState.id) {
+    if (currentShowAllDiscussions.value) {
+      return { name: 'AllDiscussions' }
+    }
+
     return {
       name: 'Discussions',
       params: { communityId: communityState.id },
