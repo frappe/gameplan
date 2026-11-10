@@ -74,8 +74,6 @@ class GPUserProfile(HasAttachments, Document):
 		stored_user = frappe.db.get_value(self.doctype, self.name, "user")
 		if stored_user != user:
 			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
-		if self.user != stored_user:
-			frappe.throw("Cannot reassign a profile to another user", frappe.PermissionError)
 
 	def autoname(self):
 		self.name = self.generate_name()

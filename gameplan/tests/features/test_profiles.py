@@ -153,8 +153,8 @@ class TestProfiles(GameplanTestCase):
 		frappe.set_user(self.alice.name)
 		profile = get_profile(self.alice.name)
 		profile.user = self.bob.name
-		with self.assertRaises(frappe.PermissionError):
-			profile.save()
+		with self.assertRaises(frappe.CannotChangeConstantError):
+			profile.save(ignore_permissions=True)
 
 	def test_admin_cannot_edit_others_profile(self):
 		alice_profile = get_profile(self.alice.name)
