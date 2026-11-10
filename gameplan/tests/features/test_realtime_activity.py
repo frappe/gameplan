@@ -92,12 +92,16 @@ class TestActivityBroadcastPayload(RealtimeActivityTestCase):
 	"""What the event carries. `frontend/src/socket.ts` types this as
 	`NewActivityEvent`; the listeners in CommentsArea/CommentsList filter on it."""
 
-	def test_payload_identifies_the_document_the_activity_belongs_to(self):
+	def test_payload_identifies_the_document_and_the_action(self):
 		call = self.capture_one_broadcast(self.close_discussion)
 
 		self.assertEqual(
 			call.args[1],
-			{"reference_doctype": "GP Discussion", "reference_name": str(self.discussion.name)},
+			{
+				"reference_doctype": "GP Discussion",
+				"reference_name": str(self.discussion.name),
+				"action": "Discussion Closed",
+			},
 		)
 
 	def test_reference_name_is_a_string(self):

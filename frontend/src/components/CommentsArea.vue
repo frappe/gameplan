@@ -46,6 +46,11 @@
           :readOnlyMode="readOnlyMode"
           :comments="comments"
           :bookmarks="bookmarks"
+          :can-highlight="canHighlightComments"
+          :highlighted-reply="highlightedReply"
+          @highlight="emit('highlight-comment', String(item.name))"
+          @unhighlight="emit('unhighlight-comment', String(item.name))"
+          @show-highlight="emit('show-highlight')"
         />
         <Activity
           :class="[
@@ -56,6 +61,7 @@
           ]"
           v-else-if="item.doctype == 'GP Activity'"
           :activity="item"
+          @open-comment="scrollToCommentById"
         />
         <Poll
           v-else-if="item.doctype == 'GP Poll'"
@@ -254,10 +260,13 @@ interface Props {
   disableNewComment?: boolean
   // transient: hide the fixed comment bar while the post itself is being edited
   hideNewComment?: boolean
-  // Bumped by the parent whenever this client's own action changes the reference
-  // document (pass its `modified`). Lets the timeline refresh for the acting user
-  // without waiting on the `new_activity` socket echo — see the watch below.
+  // Any value that changes whenever this client's own action adds an activity (e.g. the
+  // doc's `modified` plus fields that change without bumping it). Lets the timeline
+  // refresh for the acting user without waiting on the `new_activity` socket echo — see
+  // the watch below.
   activityVersion?: string | number
+  canHighlightComments?: boolean
+  highlightedReply?: string | null
 }
 
 interface ComposerUiState {
@@ -286,6 +295,10 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'composer-resize': []
+  'highlight-comment': [comment: string]
+  'unhighlight-comment': [comment: string]
+  'show-highlight': []
+  'new-activity': [action: string]
 }>()
 
 const router = useRouter()
@@ -387,9 +400,9 @@ const activities = useList<GPActivity>({
 // The timeline normally updates live via the `new_activity` socket event (see
 // onMounted). Independent of that server round trip, the user who just
 // renamed/closed/moved the discussion should see their own action recorded at once.
-// The parent bumps `activityVersion` with the doc's `modified` on every such action,
-// so reload the timeline when it changes (skipping the initial undefined -> value
-// transition on first load, when the list has already fetched on mount).
+// `activityVersion` changes on every such action, so reload the timeline when it
+// changes (skipping the initial undefined -> value transition on first load, when the
+// list has already fetched on mount).
 watch(
   () => props.activityVersion,
   (next, prev) => {
@@ -640,7 +653,9 @@ function _scrollToEnd() {
 }
 
 function scrollToCommentById(id: string) {
-  const item = timelineItems.value.find((item) => item.name === id)
+  const item = timelineItems.value.find(
+    (item) => item.doctype === 'GP Comment' && String(item.name) === id,
+  )
   if (item) {
     scrollToItem(item)
   }
@@ -805,6 +820,7 @@ onMounted(() => {
     // timeline silently stops updating. Compare as strings.
     if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
       activities.reload()
+      emit('new-activity', data.action)
     }
   })
 })
