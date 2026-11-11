@@ -193,7 +193,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCall, ScrollArea } from 'frappe-ui'
+import { FormControl, ScrollArea, useCall } from 'frappe-ui'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'

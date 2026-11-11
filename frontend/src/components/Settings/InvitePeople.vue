@@ -106,7 +106,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Select, Tooltip, useCall, useList } from 'frappe-ui'
+import { FormControl, Select, Tooltip, useCall, useList } from 'frappe-ui'
 import { GPInvitation } from '@/types/doctypes'
 import { users } from '@/data/users'
 

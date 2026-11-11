@@ -2,7 +2,6 @@ import { createApp } from 'vue'
 import {
   Button,
   TextInput,
-  FormControl,
   ErrorMessage,
   Dialog,
   Alert,
@@ -21,10 +20,11 @@ import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
 
+// Not FormControl: it imports every input frappe-ui has (date, time, combobox,
+// multi-select), so registering it here put all of them in the first download.
 let globalComponents = {
   Button,
   TextInput,
-  FormControl,
   ErrorMessage,
   Dialog,
   Alert,
