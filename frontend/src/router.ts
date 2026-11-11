@@ -24,6 +24,7 @@ import {
   resolveOverlayBase,
 } from './components/Settings/overlayHistory'
 import { shellScrollContainer } from 'frappe-ui'
+import { navigationTarget } from './utils/navigationTarget'
 
 declare const __FRONTEND_ROUTE__: string
 
@@ -752,10 +753,18 @@ function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLo
 }
 
 router.afterEach((to, _from, failure) => {
+  navigationTarget.value = null
   if (!failure && isSettingsRoute(to)) recordOverlayBase()
 })
 
+router.onError(() => {
+  navigationTarget.value = null
+})
+
 router.beforeEach(async (to, from) => {
+  // Set before anything below awaits, so navigation lights up the clicked item at once.
+  // The settings dialog opens over the current page, which stays the active one.
+  if (!isSettingsRoute(to)) navigationTarget.value = to
   saveAndRestoreScrollPosition(to, from)
 
   if (to.name === 'Login' && session.isLoggedIn) {
@@ -853,6 +862,59 @@ router.beforeEach(async (to, from) => {
 })
 
 export default router
+
+// The pages people move between from the rail, the sidebar and the tab bar. The
+// discussion page comes last: it carries the editor, about 1 MB before compression.
+const PREFETCHED_ROUTES = [
+  'Discussions',
+  'AllDiscussions',
+  'Space',
+  'SpaceDiscussions',
+  'Notifications',
+  'Search',
+  'People',
+  'Drafts',
+  'Bookmarks',
+  'Home',
+  'More',
+  'PersonProfile',
+  'PersonProfileProfile',
+  'Discussion',
+]
+
+/**
+ * Each page's code is a separate download, so the first visit to a page used to wait
+ * for it with nothing changing on screen: about 700 ms on a 3G connection. Fetch the
+ * common pages while the browser is idle, so that switching to one only has to render.
+ * Skipped when the person has asked their browser to save data.
+ */
+export function prefetchPages() {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } })
+    .connection
+  if (connection?.saveData) return
+
+  const loaders = PREFETCHED_ROUTES.flatMap((name) => {
+    const record = router.getRoutes().find((route) => route.name === name)
+    return Object.values(record?.components ?? {}).filter(
+      (component): component is () => Promise<unknown> => typeof component === 'function',
+    )
+  })
+
+  const whenIdle = (callback: () => void) =>
+    'requestIdleCallback' in window
+      ? window.requestIdleCallback(callback, { timeout: 3000 })
+      : window.setTimeout(callback, 200)
+
+  // One at a time, so the downloads never compete with what the current page is loading.
+  const loadNext = () => {
+    const load = loaders.shift()
+    if (!load) return
+    load()
+      .catch(() => {})
+      .finally(() => whenIdle(loadNext))
+  }
+  whenIdle(loadNext)
+}
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])

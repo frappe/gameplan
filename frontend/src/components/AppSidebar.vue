@@ -131,7 +131,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   Button,
   Dropdown,
@@ -142,6 +141,7 @@ import {
   ScrollArea,
 } from 'frappe-ui'
 import { communityState } from '@/data/communityState'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelog'
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
@@ -154,7 +154,7 @@ import SpaceIcon from './SpaceIcon.vue'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
 
-const route = useRoute()
+const activeRoute = useActiveNavRoute()
 const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
@@ -165,6 +165,7 @@ const latestUnseenEntry = computed(() => unseenEntries.value[0])
 const changelogAction = { label: "See what's new", onClick: openChangelog }
 
 const activeSpaceId = computed(() => {
+  const route = activeRoute.value
   const routeName = route.name?.toString() || ''
   if (routeName.startsWith('Space') || routeName === 'Discussion') {
     return route.params.spaceId?.toString() || null

@@ -12,7 +12,7 @@ import {
   setConfig,
   useCall,
 } from 'frappe-ui'
-import router from './router'
+import router, { prefetchPages } from './router'
 import App from './App.vue'
 import './index.css'
 import { getPlatform } from './utils'
@@ -32,6 +32,7 @@ let globalComponents = {
 }
 let app = createApp(App)
 app.use(router)
+router.isReady().then(prefetchPages)
 // Installed before anything else runs, so an error thrown during setup is reported too.
 installErrorReporting(app, router)
 for (let [key, component] of Object.entries(globalComponents)) {
