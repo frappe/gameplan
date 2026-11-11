@@ -4,7 +4,6 @@
     <template #trigger="{ open }">
       <Button
         v-if="isMobile"
-        variant="ghost"
         size="md"
         icon="lucide-arrow-up-down text-ink-gray-6"
         :label="`Sort: ${discussionSortLabel}`"
