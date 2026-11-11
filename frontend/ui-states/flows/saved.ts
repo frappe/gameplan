@@ -72,7 +72,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     bookmarkHover: {
       meta: {
         description:
-          'The pointer on the first bookmark row\'s remove button, with its "Remove bookmark" tooltip. The row is highlighted and the button sits at its right edge, past the date and reply count.',
+          'The pointer on the first bookmark row\'s remove button, with its "Remove bookmark" tooltip. The row is highlighted and the button takes the place of the date and reply count at its right edge.',
       },
       on: { REMOVE_FROM_LIST: 'bookmarkRemovedToast' },
     },

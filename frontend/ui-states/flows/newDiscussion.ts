@@ -45,7 +45,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     saveFailed: {
       meta: {
         description:
-          'Writing while draft saves fail: a toast says a local copy is kept and retried, and a red "Not saved" status sits next to Publish. The breadcrumb still says "New discussion".',
+          'Writing while draft saves fail: an amber alert above the title says "Couldn\'t save your draft", that the changes are still on this page and Gameplan tries again as you edit, with a Retry button. Publish has nothing beside it, and the breadcrumb still says "New discussion".',
       },
     },
     publishing: {
@@ -53,7 +53,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { PUBLISHED: 'posted', PUBLISH_FAILS: 'publishFailed' },
     },
     publishFailed: {
-      meta: { description: 'Publishing failed: a red line above the title repeats the server\'s message ("Something went wrong.") with a Retry button, and the draft stays as it was.' },
+      meta: { description: 'Publishing failed: a red alert above the title repeats the server\'s message ("Something went wrong.") with a Retry button, and the draft stays as it was.' },
     },
     posted: {
       meta: { description: 'Published: the composer is replaced by the new discussion in Releases.' },
@@ -159,8 +159,9 @@ export const newDiscussion = defineFlow<Event>({
       const hold = await scene.hold(DRAFT_WRITES)
       await hold.abort(500)
       await writePost(scene)
-      await expect(scene.page.getByText('Could not save your draft to the server')).toBeVisible({ timeout: 30_000 })
-      await expect(scene.page.getByText('Not saved', { exact: true }).filter({ visible: true })).toBeVisible()
+      const alert = scene.page.getByRole('alert').filter({ hasText: "Couldn't save your draft" })
+      await expect(alert).toBeVisible({ timeout: 30_000 })
+      await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
       await scene.page.mouse.move(700, 20)
     },
     async PUBLISH(scene) {

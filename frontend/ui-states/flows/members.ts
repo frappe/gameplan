@@ -11,6 +11,7 @@ type Event =
   | { type: 'OPEN_MISSING_PROFILE' }
   | { type: 'MANAGE_USERS' }
   | { type: 'PICK_ADMIN_ROLE' }
+  | { type: 'HOVER_USER' }
   | { type: 'OPEN_INVITE' }
   | { type: 'TYPE_EMAILS' }
   | { type: 'SEND' }
@@ -66,9 +67,15 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     usersSettings: {
       meta: {
         description:
-          'Settings › Users, opened from the account menu: everyone with a role picker, the date they joined, a disable button, and the same solid Invite button as People.',
+          'Settings › Users, opened from the account menu: everyone with a role picker, the date they joined, and the same solid Invite button as People. The disable button stays hidden until a row is hovered.',
       },
-      on: { PICK_ADMIN_ROLE: 'roleConfirm' },
+      on: { PICK_ADMIN_ROLE: 'roleConfirm', HOVER_USER: 'userHover' },
+    },
+    userHover: {
+      meta: {
+        description:
+          "The pointer on Priya Sharma's row in Settings › Users: a ghost disable button appears at the row's right end. Other rows show none.",
+      },
     },
     roleConfirm: {
       meta: {
@@ -196,6 +203,12 @@ export const members = defineFlow<Event>({
       await expect(scene.page).toHaveURL(/\/settings\/users$/)
       await expect(settingsDialog(scene).getByText('Priya Sharma')).toBeVisible({ timeout: 20_000 })
       await scene.page.mouse.move(700, 20)
+    },
+    async HOVER_USER(scene) {
+      const disable = settingsDialog(scene).getByRole('button', { name: 'Disable Priya Sharma' })
+      await expect(disable).toHaveCSS('opacity', '0')
+      await settingsDialog(scene).getByText('priya@moonhollow.studio').hover()
+      await expect(disable).toHaveCSS('opacity', '1')
     },
     async PICK_ADMIN_ROLE(scene) {
       // The innermost element holding both Priya's email and a role picker is her row.
