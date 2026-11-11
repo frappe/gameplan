@@ -1,6 +1,6 @@
 <template>
   <div class="h-full touch-pan-y">
-    <div class="mb-5" v-if="pinnedDiscussions.data?.length">
+    <div class="mb-4" v-if="pinnedDiscussions.data?.length">
       <div class="px-3 flex items-center space-x-1 mb-2">
         <Pin class="h-4 w-4 text-ink-gray-4" />
         <span class="text-ink-gray-8 text-base"> Pinned </span>
@@ -14,6 +14,10 @@
           :showCommunityName="showCommunity"
         />
       </List>
+      <!-- Closes the pinned group. Rows draw dividers only between each other, so without
+           this the last pinned row floats above the rest. It spans the rows' content box
+           (their padding is 16px on phones, 12px above), wider than the inset dividers. -->
+      <div class="mx-4 border-b border-outline-gray-1 sm:mx-3" />
     </div>
 
     <template v-if="isInitialLoading">
