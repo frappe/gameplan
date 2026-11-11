@@ -1,4 +1,12 @@
 <template>
+  <PageHeaderMobile class="sm:hidden" title="Page not found">
+    <template #prefix>
+      <PageHeaderBackButton :fallback-route="{ name: 'Home' }" />
+    </template>
+  </PageHeaderMobile>
+  <PageHeader class="hidden sm:flex">
+    <Breadcrumbs class="h-7" :items="[{ label: 'Page not found' }]" />
+  </PageHeader>
   <div class="body-container py-8">
     <EmptyStateBox class="mx-auto max-w-2xl px-6">
       <span class="lucide-triangle-alert mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
@@ -11,7 +19,13 @@
 </template>
 
 <script setup lang="ts">
-import { usePageMeta } from 'frappe-ui'
+import {
+  Breadcrumbs,
+  PageHeader,
+  PageHeaderBackButton,
+  PageHeaderMobile,
+  usePageMeta,
+} from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 
 usePageMeta(() => {
