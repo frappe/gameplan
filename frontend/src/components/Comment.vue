@@ -35,15 +35,12 @@
           <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
         </UserProfileLink>
         <div>
-          <Tooltip :text="dayjsLocal(comment.creation).format('D MMM YYYY [at] h:mm A')">
+          <Tooltip :text="fullTimestamp(comment.creation)">
             <time class="text-p-base text-ink-gray-5 sm:text-base" :datetime="comment.creation">
               {{ relativeTimestamp(comment.creation) }}
             </time>
           </Tooltip>
-          <Tooltip
-            v-if="comment.edited_at"
-            :text="dayjsLocal(comment.edited_at).format('D MMM YYYY [at] h:mm A')"
-          >
+          <Tooltip v-if="comment.edited_at" :text="fullTimestamp(comment.edited_at)">
             <span class="text-ink-gray-5"> &nbsp;&middot; Edited </span>
           </Tooltip>
           <span v-if="isUpdating" class="italic text-ink-gray-5"> &nbsp;&middot; Sending… </span>
@@ -109,9 +106,9 @@
 
 <script setup lang="ts">
 import { ref, computed, defineAsyncComponent } from 'vue'
-import { Dropdown, Tooltip, dayjsLocal } from 'frappe-ui'
+import { Dropdown, Tooltip } from 'frappe-ui'
 import { useDoctype, useList } from 'frappe-ui'
-import { copyToClipboard, errorText, relativeTimestamp } from '@/utils'
+import { copyToClipboard, errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
 import Reactions from './Reactions.vue'

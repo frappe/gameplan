@@ -116,14 +116,14 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Tooltip, Badge, Button, dayjsLocal } from 'frappe-ui'
+import { Tooltip, Badge, Button } from 'frappe-ui'
 import { ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import PushPin from './icons/PushPin.vue'
 import { getCommunity } from '@/data/communities'
 import { getSpace, useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
-import { relativeTimestamp } from '@/utils'
+import { fullTimestamp, relativeTimestamp } from '@/utils'
 
 const props = defineProps<{
   discussion: Discussion
@@ -184,7 +184,7 @@ const timestamp = computed(() => {
   const at = props.showCreatedAt
     ? props.discussion.creation
     : post.value.at || props.discussion.creation
-  const date = dayjsLocal(at).format('D MMM YYYY [at] h:mm A')
+  const date = fullTimestamp(at)
   return { at, tooltip: props.showCreatedAt ? `Started ${date}` : date }
 })
 

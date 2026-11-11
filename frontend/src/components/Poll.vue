@@ -51,7 +51,7 @@
           <span class="hidden md:inline">&nbsp;&middot;&nbsp;</span>
         </UserProfileLink>
         <div>
-          <Tooltip :text="dayjsLocal(_poll.creation).format('D MMM YYYY [at] h:mm A')">
+          <Tooltip :text="fullTimestamp(_poll.creation)">
             <time class="text-ink-gray-5" :datetime="_poll.creation">
               {{ relativeTimestamp(_poll.creation) }}
             </time>
@@ -215,7 +215,7 @@ import type { RadioValue } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
-import { copyToClipboard, errorText, relativeTimestamp } from '@/utils'
+import { copyToClipboard, errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import Reactions from './Reactions.vue'
 import StickyRowFade from './StickyRowFade.vue'

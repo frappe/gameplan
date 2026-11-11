@@ -29,7 +29,6 @@
       v-else-if="activeList.error && !notifications?.length"
       class="mx-4 sm:mx-3"
       :message="errorText(activeList.error, 'Could not load notifications.')"
-      :retrying="activeList.loading"
       @retry="activeList.reload()"
     />
 
@@ -46,10 +45,7 @@
         @click="openNotification(notification)"
       >
         <ListCell>
-          <ReactorAvatars
-            v-if="reactors(notification).length"
-            :users="reactors(notification)"
-          />
+          <ReactorAvatars v-if="reactors(notification).length" :users="reactors(notification)" />
           <UserAvatarWithHover
             size="2xl"
             :user="notification.from_user"
@@ -108,7 +104,7 @@
             <!-- `modified` is when the row last had news: its insert, or the newest reaction
                  that re-lit it. Marking it read leaves `modified` alone (GPNotification.before_save),
                  so the time shown and the list order agree. -->
-            <Tooltip :text="dayjsLocal(notification.modified).format('D MMM YYYY [at] h:mm A')">
+            <Tooltip :text="fullTimestamp(notification.modified)">
               <time
                 class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
                 :datetime="notification.modified"
@@ -178,7 +174,7 @@ import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifica
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
-import { errorText, relativeTimestamp } from '@/utils'
+import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 
 type ActiveTab = 'Unread' | 'Read'
 

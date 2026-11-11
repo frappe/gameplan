@@ -5,7 +5,6 @@
       variant="subtle"
       icon-left="lucide-rotate-ccw"
       label="Retry"
-      :loading="retrying"
       @click="emit('retry')"
     />
   </EmptyStateBox>
@@ -18,7 +17,6 @@ import EmptyStateBox from './EmptyStateBox.vue'
 
 defineProps<{
   message: string
-  retrying?: boolean
 }>()
 
 const emit = defineEmits<{ retry: [] }>()

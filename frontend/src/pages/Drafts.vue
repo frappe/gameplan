@@ -82,7 +82,6 @@
       <LoadError
         v-else-if="phase === 'failed'"
         :message="errorText(drafts.error, 'Could not load your drafts.')"
-        :retrying="drafts.loading"
         @retry="drafts.reload()"
       />
       <EmptyStateBox
@@ -148,7 +147,7 @@
               </div>
             </ListCell>
             <ListCell class="justify-end">
-              <Tooltip :text="dayjsLocal(draft.modified).format('D MMM YYYY [at] h:mm A')">
+              <Tooltip :text="fullTimestamp(draft.modified)">
                 <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
                   {{ relativeTimestamp(draft.modified) }}
                 </div>
@@ -182,7 +181,7 @@ import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { errorText, relativeTimestamp } from '@/utils'
+import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import { getCommunity } from '@/data/communities'
 import { computed, onMounted, ref } from 'vue'

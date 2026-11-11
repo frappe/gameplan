@@ -76,6 +76,11 @@ export function relativeTimestamp(timestamp: string): string {
   return dayjsLocal(timestamp).format('D MMM YYYY')
 }
 
+/** The full date and time for the Tooltip next to a `relativeTimestamp()`. */
+export function fullTimestamp(timestamp: string): string {
+  return dayjsLocal(timestamp).format('D MMM YYYY [at] h:mm A')
+}
+
 /**
  * Whether an editor body carries nothing a reader would see.
  *

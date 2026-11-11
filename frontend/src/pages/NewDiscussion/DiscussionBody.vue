@@ -4,7 +4,6 @@
       v-if="draftLoadFailed"
       class="mt-4"
       message="Could not load this draft."
-      :retrying="isDraftLoading"
       @retry="retryDraftLoad"
     />
     <template v-else>

@@ -35,7 +35,6 @@
         v-if="discussions.error && !discussions.data?.length"
         class="mx-3"
         :message="errorText(discussions.error, 'Could not load discussions.')"
-        :retrying="discussions.loading"
         @retry="retryLoad"
       />
       <EmptyStateBox

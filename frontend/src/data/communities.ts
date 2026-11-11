@@ -94,7 +94,7 @@ export function leaveCommunity(community: Community) {
 /**
  * Ask before leaving. A public community is one click away again, but a private one's
  * view permission *is* its membership (backend `can_view_community`), so leaving hides
- * it and its Join action for good. Mirrors `confirmLeaveSpace`.
+ * it and its Join action for good.
  *
  * The dialog holds its loading state until the call settles and renders a rejection
  * inline, which is where the "last admin cannot leave" message lands.

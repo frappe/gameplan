@@ -211,13 +211,7 @@
           <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
-        <LoadError
-          v-if="search.error"
-          class="mt-5"
-          :message="searchErrorText"
-          :retrying="search.loading"
-          @retry="submit()"
-        />
+        <LoadError v-if="search.error" class="mt-5" :message="searchErrorText" @retry="submit()" />
         <EmptyStateBox
           v-else-if="hasNoResults"
           class="mt-5"
@@ -249,7 +243,7 @@
                     <div v-else class="min-w-0 truncate text-base-medium text-ink-gray-9">
                       {{ item.reference_title || $user(item.author).full_name }}
                     </div>
-                    <Tooltip :text="fullTimestamp(item.modified)">
+                    <Tooltip :text="fullTimestamp(siteDatetime(item.modified))">
                       <div class="ml-auto shrink-0 whitespace-nowrap text-sm text-ink-gray-5">
                         {{ relativeTimestamp(siteDatetime(item.modified)) }}
                       </div>
@@ -287,7 +281,6 @@ import {
   TextInput,
   Tooltip,
   dayjs,
-  dayjsLocal,
   debounce,
   getConfig,
   usePageMeta,
@@ -298,7 +291,7 @@ import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser, useUser } from '@/data/users'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import LoadError from '@/components/LoadError.vue'
-import { errorText, relativeTimestamp } from '@/utils'
+import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
@@ -800,10 +793,6 @@ function resultMeta(item: SearchResultItem) {
   const type = item.doctype.replace('GP ', '')
   const space = item.project ? getSpace(item.project)?.title : undefined
   return [useUser(item.author).full_name, type, space].filter(Boolean).join(' · ')
-}
-
-function fullTimestamp(unix: number) {
-  return dayjsLocal(siteDatetime(unix)).format('D MMM YYYY [at] h:mm A')
 }
 
 // relativeTimestamp() reads a site-time string, but the index stores Unix seconds.

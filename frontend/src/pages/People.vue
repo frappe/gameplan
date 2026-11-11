@@ -75,7 +75,6 @@
             v-if="phase === 'failed'"
             class="mt-4"
             :message="errorText(people.error, 'Could not load people.')"
-            :retrying="people.loading"
             @retry="people.reload()"
           />
           <EmptyStateBox

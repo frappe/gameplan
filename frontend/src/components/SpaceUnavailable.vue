@@ -6,7 +6,6 @@
     <div class="body-container py-8">
       <LoadError
         :message="errorText(spaces.error, 'Could not load spaces.')"
-        :retrying="spaces.loading"
         @retry="spaces.reload()"
       />
     </div>

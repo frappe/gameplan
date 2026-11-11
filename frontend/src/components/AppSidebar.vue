@@ -100,13 +100,7 @@
               role="alert"
             >
               {{ errorText(spaces.error, 'Could not load spaces.') }}
-              <Button
-                size="sm"
-                icon-left="lucide-rotate-ccw"
-                class="mt-2"
-                :loading="spaces.loading"
-                @click="spaces.reload()"
-              >
+              <Button size="sm" icon-left="lucide-rotate-ccw" class="mt-2" @click="spaces.reload()">
                 Retry
               </Button>
             </div>
@@ -165,13 +159,7 @@ import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelo
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
-import {
-  getSpaceUnreadCount,
-  markAllAsRead,
-  spaces,
-  spacesStatus,
-  type Space,
-} from '@/data/spaces'
+import { getSpaceUnreadCount, markAllAsRead, spaces, spacesStatus, type Space } from '@/data/spaces'
 import { errorText } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'

@@ -106,7 +106,7 @@
                 {{ $user(discussion.doc.owner).full_name }}
                 <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
-              <Tooltip :text="dayjsLocal(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
+              <Tooltip :text="fullTimestamp(discussion.doc.creation)">
                 <time
                   class="text-p-base text-ink-gray-5 sm:text-base"
                   :datetime="discussion.doc.creation"
@@ -327,7 +327,6 @@
         v-else-if="discussion.isFinished"
         class="mt-14"
         :message="errorText(discussion.error, 'Could not load this discussion.')"
-        :retrying="discussion.loading"
         @retry="discussion.reload()"
       />
     </div>
@@ -371,7 +370,6 @@ import {
   Dialog,
   Tooltip,
   usePageMeta,
-  dayjsLocal,
   Switch,
   dialog,
   toast,
@@ -390,7 +388,13 @@ import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import LoadError from './LoadError.vue'
 import StickyRowFade from './StickyRowFade.vue'
 import NotFound from '@/pages/NotFound.vue'
-import { copyToClipboard, errorText, isEditorContentEmpty, relativeTimestamp } from '@/utils'
+import {
+  copyToClipboard,
+  errorText,
+  fullTimestamp,
+  isEditorContentEmpty,
+  relativeTimestamp,
+} from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
