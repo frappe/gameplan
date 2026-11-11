@@ -222,7 +222,8 @@ const spaceActions = computed(() => [
       {
         label: 'Archive…',
         icon: 'lucide-archive',
-        onClick: () => currentSpace.value && archiveSpace(currentSpace.value),
+        onClick: () =>
+          currentSpace.value && archiveSpace(currentSpace.value, { fromSpacePage: true }),
         condition: () => canEditSettings.value,
       },
       {

@@ -150,7 +150,7 @@ const spaceVisitApi = useDoctype<GPProject>('GP Project')
 /**
  * The space just archived from its own page. The sidebar drops archived spaces, so it keeps
  * this one, dimmed, until the person leaves the page; otherwise the page they are on has no
- * row in the sidebar.
+ * row in the sidebar. Space.vue clears it when that page goes away.
  */
 const lingeringArchivedSpaceId = ref<string | null>(null)
 
@@ -162,14 +162,15 @@ export function forgetArchivedSpace(spaceId: string) {
   if (isLingeringArchivedSpace(spaceId)) lingeringArchivedSpaceId.value = null
 }
 
-export function archiveSpace(space: Space) {
+// Pass `fromSpacePage` only from the space's own page, which is what clears the dimmed row.
+export function archiveSpace(space: Space, { fromSpacePage = false } = {}) {
   dialog.confirm({
     title: `Archive ${space.title}?`,
     message: 'The space becomes read-only, and its discussions no longer show in feeds.',
     confirmLabel: 'Archive',
     onConfirm: async () => {
       await spaceDoctype.runDocMethod.submit({ method: 'archive', name: space.name })
-      lingeringArchivedSpaceId.value = space.name
+      if (fromSpacePage) lingeringArchivedSpaceId.value = space.name
       toast.success('Space archived', {
         action: { label: 'Undo', onClick: () => undoArchiveSpace(space) },
       })
