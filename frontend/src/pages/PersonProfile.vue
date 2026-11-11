@@ -50,10 +50,8 @@
     title="Profile not found"
     description="This person may have left, or the link is wrong."
   >
-    <template #header>
-      <PageHeader>
-        <Breadcrumbs :items="[{ label: 'People', route: { name: 'People' } }, { label: 'Not found' }]" />
-      </PageHeader>
+    <template #breadcrumbs>
+      <Breadcrumbs :items="[{ label: 'People', route: { name: 'People' } }, { label: 'Not found' }]" />
     </template>
   </NotFound>
 </template>

@@ -1,5 +1,5 @@
 ---
-title: All Discussions is back
+title: All discussions is back
 version: 0.1.26
 media: all-discussions.mp4
 date: 2026-11-09

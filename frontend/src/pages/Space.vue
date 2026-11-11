@@ -59,11 +59,7 @@
       </div>
     </PageHeader>
     <component class="flex-1" v-if="space" :is="Component" :space="space" />
-    <NotFound
-      v-if="spaceList.isFinished && !space"
-      title="Space not found"
-      description="It may have been deleted, or you no longer have access to it."
-    />
+    <SpaceUnavailable v-else :communityId="communityId" />
   </router-view>
 </template>
 <script setup lang="ts">
@@ -77,11 +73,10 @@ import {
   useSpace,
   canPostInSpace,
   forgetArchivedSpace,
-  spaces as spaceList,
   trackSpaceVisit,
 } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
-import NotFound from '@/pages/NotFound.vue'
+import SpaceUnavailable from '@/components/SpaceUnavailable.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'

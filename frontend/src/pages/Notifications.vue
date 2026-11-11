@@ -105,20 +105,17 @@
         </ListCell>
         <ListCell class="justify-end">
           <div>
-            <!-- `creation`, not `modified`: marking a notification read is a PUT that bumps
-                 `modified`, so a Monday mention opened on Thursday would claim to be "a few
-                 seconds ago" for the rest of its life. The list is still ordered by
-                 `modified` so a re-lit notification resurfaces (see useNotificationList),
-                 which can read slightly out of order here — an honest timestamp out of order
-                 beats a wrong one in order. -->
-            <Tooltip :text="dayjsLocal(notification.creation).format('D MMM YYYY [at] h:mm A')">
+            <!-- `modified` is when the row last had news: its insert, or the newest reaction
+                 that re-lit it. Marking it read leaves `modified` alone (GPNotification.before_save),
+                 so the time shown and the list order agree. -->
+            <Tooltip :text="dayjsLocal(notification.modified).format('D MMM YYYY [at] h:mm A')">
               <time
                 class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
-                :datetime="notification.creation"
+                :datetime="notification.modified"
               >
-                <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
+                <span class="sm:hidden">{{ shortTimestamp(notification.modified) }}</span>
                 <span class="hidden sm:inline">
-                  {{ relativeTimestamp(notification.creation) }}
+                  {{ relativeTimestamp(notification.modified) }}
                 </span>
               </time>
             </Tooltip>
@@ -197,8 +194,7 @@ const notificationFields: (keyof NotificationRow)[] = [
   'message',
   'read',
   'type',
-  'creation',
-  // Not displayed — it is what the list is ordered by.
+  // When the row last had news. The list is ordered by it and shows it.
   'modified',
   'comment',
   'discussion',
@@ -440,10 +436,7 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
     filters: () => ({ to_user: sessionUser.name, read }),
     fields: notificationFields,
     // `modified desc`, not `creation desc`: a reaction notification is a single row that
-    // gets re-lit in place, so ordering by `creation` left a freshly raised notification
-    // buried at its original position — unreachable once newer ones pushed it off the page.
-    // The row still *displays* `creation`, because `modified` also moves when the row is
-    // marked read and would date every read notification to the moment it was opened.
+    // gets re-lit in place, and `modified` is the time of its newest reaction.
     orderBy: 'modified desc',
     // The page has no pagination control, so the window has to be wide enough to hold a
     // realistic backlog. `useList.reload()` refetches at the current offset and appends,

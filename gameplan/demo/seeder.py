@@ -251,6 +251,7 @@ class Seeder:
 		# Track notifications produced by this event so we can backdate them to the
 		# event's virtual time (side-effect notifications are stamped at wall clock).
 		max_notification_before = self._max_notification_id()
+		started_at = now_datetime()
 
 		frappe.set_user(actor)
 		try:
@@ -259,7 +260,7 @@ class Seeder:
 			frappe.set_user("Administrator")
 
 		if ts is not None:
-			self._backdate_new_notifications(max_notification_before, ts)
+			self._backdate_new_notifications(max_notification_before, started_at, ts)
 		self.counts[event_type] = self.counts.get(event_type, 0) + 1
 
 	# ---- event handlers -----------------------------------------------------
@@ -678,14 +679,18 @@ class Seeder:
 		return (result and result[0][0]) or 0
 
 	@staticmethod
-	def _backdate_new_notifications(previous_max_id: int, ts: datetime):
+	def _backdate_new_notifications(previous_max_id: int, started_at: datetime, ts: datetime):
 		# Notifications are created as side effects at wall-clock time; realign the
 		# ones this event just produced so Maya's read-state heuristic is meaningful.
+		# A reaction re-lights its post's existing row instead of adding one, so rows
+		# this event only updated get the event's time as their `modified` too.
 		frappe.db.sql(
 			"""
 			UPDATE `tabGP Notification`
-			SET creation = %(ts)s, modified = %(ts)s
-			WHERE CAST(name AS UNSIGNED) > %(prev)s
+			SET
+				creation = CASE WHEN CAST(name AS UNSIGNED) > %(prev)s THEN %(ts)s ELSE creation END,
+				modified = %(ts)s
+			WHERE CAST(name AS UNSIGNED) > %(prev)s OR modified >= %(started_at)s
 			""",
-			{"ts": ts, "prev": previous_max_id},
+			{"ts": ts, "prev": previous_max_id, "started_at": started_at},
 		)

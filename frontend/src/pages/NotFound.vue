@@ -1,6 +1,10 @@
 <template>
   <div>
-    <slot name="header" />
+    <PageHeader>
+      <slot name="breadcrumbs">
+        <Breadcrumbs :items="[{ label: 'Not found' }]" />
+      </slot>
+    </PageHeader>
     <div class="body-container py-8">
       <EmptyStateBox icon="lucide-link-2-off" :title="title" :description="description">
         <Button class="mt-4" variant="subtle" label="Go to Home" :route="homeRoute" />
@@ -13,7 +17,7 @@
 // The /404 route, and the in-place state for a space, discussion or profile that is
 // missing or out of reach. Rendered inside the app shell, so the sidebar stays.
 import { computed } from 'vue'
-import { Button, usePageMeta } from 'frappe-ui'
+import { Breadcrumbs, Button, PageHeader, usePageMeta } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import { getHomeRoute } from '@/router'
 
@@ -29,8 +33,8 @@ const props = withDefaults(
 )
 
 defineSlots<{
-  /** A PageHeader with breadcrumbs, for pages that keep their place in the app. */
-  header?: () => unknown
+  /** The trail to the missing page, ending in "Not found". Defaults to "Not found" alone. */
+  breadcrumbs?: () => unknown
 }>()
 
 const homeRoute = computed(() => getHomeRoute())

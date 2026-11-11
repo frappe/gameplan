@@ -38,10 +38,11 @@ const communitySpaceList = computed(() => {
     )
   }
 
-  return [
-    ...sortSpaces(visibleSpaces, currentSpaceSidebarSort.value),
-    ...archivedCommunitySpaceList.value.filter((space) => isLingeringArchivedSpace(space.name)),
-  ]
+  // Sorted with the rest, so a space archived from its own page stays in its place.
+  const lingeringArchivedSpaces = archivedCommunitySpaceList.value.filter((space) =>
+    isLingeringArchivedSpace(space.name),
+  )
+  return sortSpaces([...visibleSpaces, ...lingeringArchivedSpaces], currentSpaceSidebarSort.value)
 })
 
 const archivedCommunitySpaceList = computed(() => {

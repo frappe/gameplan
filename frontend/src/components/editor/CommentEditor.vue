@@ -58,7 +58,7 @@ const props = withDefaults(
     // comment owner — stamped on quotes created from this comment's selection
     author?: string
     canAttachPoll?: boolean
-    // A failed submit, shown beside Discard and Submit so it sits next to the button pressed.
+    // A failed submit, shown just above Discard and Submit so it sits by the button pressed.
     error?: string | null
   }>(),
   { value: '', placeholder: null, editable: true, toolbarExpanded: false },
@@ -196,7 +196,9 @@ function canInsertCodeBlock(editor: Editor) {
     </template>
     <template v-if="editable" #bottom="{ editor: e }">
       <!-- The slot yields null until the editor mounts, and every control here
-      needs one. Same guard as the #top slot above. -->
+      needs one. Same guard as the #top slot above. The error gets its own line,
+      right-aligned over Discard and Submit, so a long sentence cannot squeeze the toolbar. -->
+      <ErrorMessage v-if="e && error" class="mt-2 text-right" :message="error" />
       <div v-if="e" class="mt-2 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
         <ScrollArea orientation="horizontal" class="min-w-0">
           <div class="flex items-center gap-1">
@@ -297,7 +299,6 @@ function canInsertCodeBlock(editor: Editor) {
           </div>
         </ScrollArea>
         <div class="flex items-center justify-end gap-2">
-          <ErrorMessage v-if="error" class="min-w-0 text-right" :message="error" />
           <Button class="shrink-0" v-bind="discardButtonProps || {}"> Discard </Button>
           <Button class="shrink-0" variant="solid" v-bind="submitButtonProps || {}">
             Submit

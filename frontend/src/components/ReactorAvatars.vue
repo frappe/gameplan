@@ -1,15 +1,15 @@
 <template>
   <UserAvatarWithHover v-if="users.length === 1" size="2xl" :user="users[0]" />
-  <!-- Two avatars stacked in the 40px slot a single avatar uses, the newest in front.
-       The padded wrapper paints the row's surface as a gap between them. -->
-  <div v-else class="relative size-10 shrink-0">
-    <span class="absolute left-0 top-0 flex">
-      <UserAvatarWithHover size="lg" :user="users[1]" />
-    </span>
+  <!-- Two avatars overlapping side by side in the 40px slot a single avatar uses, the newest
+       in front on the left. Its padded wrapper paints the row's surface as a gap between them. -->
+  <div v-else class="flex size-10 shrink-0 items-center">
     <span
-      class="absolute -bottom-0.5 -right-0.5 flex rounded-full bg-surface-base p-0.5 sm:group-hover:bg-surface-gray-1"
+      class="relative z-[1] flex rounded-full bg-surface-base p-0.5 sm:group-hover:bg-surface-gray-1"
     >
-      <UserAvatarWithHover size="lg" :user="users[0]" />
+      <UserAvatarWithHover size="md" :user="users[0]" />
+    </span>
+    <span class="-ml-3 flex">
+      <UserAvatarWithHover size="md" :user="users[1]" />
     </span>
   </div>
 </template>

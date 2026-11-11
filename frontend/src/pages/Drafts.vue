@@ -81,14 +81,12 @@
       </div>
       <LoadError
         v-else-if="phase === 'failed'"
-        class="mx-3"
         :message="errorText(drafts.error, 'Could not load your drafts.')"
         :retrying="drafts.loading"
         @retry="drafts.reload()"
       />
       <EmptyStateBox
         v-else-if="phase === 'empty'"
-        class="mx-3"
         icon="lucide-file-pen-line"
         title="No drafts"
         description="Discussions you start and don't publish are saved here."
@@ -316,6 +314,9 @@ function deleteDrafts() {
 // IndexedDB and would otherwise never show here. Adopting one inserts it through the list,
 // which is what puts it on screen.
 onMounted(() => {
+  // Rows the composer inserted or edited this session hold the bare GP Draft fields, with no
+  // space title, community or kind. Refetch so every row has its place and route.
+  if (drafts.isFinished) drafts.reload()
   recoverOrphanedDrafts()
 })
 

@@ -43,7 +43,7 @@
         class="mx-3"
         :message="errorText(discussions.error, 'Could not load discussions.')"
         :retrying="discussions.loading"
-        @retry="discussions.reload()"
+        @retry="retryLoad"
       />
       <EmptyStateBox
         class="mx-3"
@@ -147,6 +147,12 @@ const removedRowKeys = ref(new Set<string>())
 const visibleDiscussions = computed(() =>
   (discussions.data || []).filter((discussion) => !removedRowKeys.value.has(rowKey(discussion))),
 )
+
+// The pinned list fails with the main one on a failed first load, so retry both.
+function retryLoad() {
+  discussions.reload()
+  if (props.showPinned) pinnedDiscussions.reload()
+}
 
 function rowKey(discussion: Discussion) {
   return discussion.bookmark || discussion.name

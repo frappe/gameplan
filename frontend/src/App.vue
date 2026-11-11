@@ -49,7 +49,9 @@ const Layout = computed(() => {
   }
 })
 
-users.fetch()
+// A signed-out visitor has no user list to load, and its AuthenticationError would send
+// them to /login even on a public route. The router sends them there for every other route.
+if (session.isLoggedIn) users.fetch()
 
 // Only desktop layers settings over a background page. On a phone the settings
 // route renders its own page, so it is treated like any other route here.

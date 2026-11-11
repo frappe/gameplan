@@ -51,7 +51,7 @@
         </div>
       </div>
     </ListCell>
-    <ListCell class="justify-end">
+    <ListCell class="justify-end gap-2">
       <div>
         <Tooltip :text="timestamp.tooltip">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
@@ -84,16 +84,14 @@
           <Badge v-else>{{ (discussion.comments_count || 0) + 1 }}</Badge>
         </div>
       </div>
-    </ListCell>
-    <!-- Shown on hover, so not on touch screens. stop+prevent keep the click out of
-         row navigation. -->
-    <ListCell v-if="removable" class="max-sm:hidden">
-      <Tooltip text="Remove bookmark">
+      <!-- Shown on hover, so not on touch screens. stop+prevent keep the click out of
+           row navigation. -->
+      <Tooltip v-if="removable" text="Remove bookmark">
         <Button
           variant="ghost"
           icon="lucide-bookmark-minus"
           label="Remove bookmark"
-          class="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          class="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:hidden"
           @click.stop.prevent="emit('remove')"
         />
       </Tooltip>

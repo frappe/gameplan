@@ -466,6 +466,25 @@ class TestReactionNotifications(NotificationTestCase):
 		self.assertEqual(discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post")
 
 
+	def test_modified_is_the_newest_reaction_and_marking_read_keeps_it(self):
+		"""The bell sorts and dates rows by `modified`, so it must track news, not reads."""
+		self._react(self.discussion, self.second_member)
+		name = self.notifications_for(self.member)[0].name
+		backdated = "2026-01-01 10:00:00"
+		frappe.db.set_value("GP Notification", name, "modified", backdated, update_modified=False)
+
+		with self.as_user(self.member):
+			notification = frappe.get_doc("GP Notification", name)
+			notification.read = 1
+			notification.save()
+		self.assertEqual(str(frappe.db.get_value("GP Notification", name, "modified")), backdated)
+
+		self._react(self.discussion, self.second_member, emoji="🎉")
+		row = frappe.db.get_value("GP Notification", name, ["modified", "read"], as_dict=True)
+		self.assertGreater(str(row.modified), backdated)
+		self.assertEqual(row.read, 0)
+
+
 class TestUnreadNotificationsCount(NotificationTestCase):
 	def test_anonymous_caller_is_denied(self):
 		with self.as_user("Guest"), self.assertRaises(frappe.PermissionError):

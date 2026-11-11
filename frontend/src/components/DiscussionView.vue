@@ -1,5 +1,14 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="postId">
+  <NotFound
+    v-if="notFound"
+    title="Discussion not found"
+    description="It may have been deleted, or you no longer have access to it."
+  >
+    <template #breadcrumbs>
+      <SpaceBreadcrumbs :spaceId="currentSpaceId" :items="[{ label: 'Not found' }]" />
+    </template>
+  </NotFound>
+  <div class="relative flex h-full flex-col" v-else>
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
         <PageHeaderUpButton
@@ -310,11 +319,6 @@
           fieldname="content"
         />
       </template>
-      <NotFound
-        v-else-if="notFound"
-        title="Discussion not found"
-        description="It may have been deleted, or you no longer have access to it."
-      />
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
            Fail visibly instead of rendering a blank page. Gated on isFinished so the
            pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash

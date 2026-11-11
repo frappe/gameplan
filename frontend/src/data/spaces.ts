@@ -53,6 +53,17 @@ export let spaces = useList<Space>({
   immediate: true,
 })
 
+/**
+ * A failed request leaves the list empty, which reads the same as a community with no
+ * spaces. Callers check this before saying a space is missing or that there are none.
+ * Cached rows still count as loaded when only a refresh fails.
+ */
+export const spacesStatus = computed<'loading' | 'ready' | 'failed'>(() => {
+  if (spaces.data?.length) return 'ready'
+  if (spaces.error) return 'failed'
+  return spaces.isFinished ? 'ready' : 'loading'
+})
+
 export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
   return computed(() => {
     let _name = toValue(name)

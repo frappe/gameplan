@@ -154,7 +154,8 @@
               <p class="text-ink-gray-6">Press enter to search</p>
             </template>
             <template v-else-if="search.loading">
-              <LoadingText class="!text-sm" text="Searching…" />
+              <!-- pl-1 undoes LoadingText's -ml-1 on its spinner, so it lines up with the text. -->
+              <LoadingText class="!text-sm pl-1" text="Searching…" />
             </template>
             <template v-else-if="searchResponse?.summary">
               <div class="space-y-1">
