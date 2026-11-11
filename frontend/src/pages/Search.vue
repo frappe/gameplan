@@ -228,6 +228,13 @@
           <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
+        <EmptyStateBox
+          v-if="hasNoResults"
+          class="mt-5"
+          icon="lucide-search-x"
+          title="No results"
+          description="Try different words or fewer filters."
+        />
         <div class="mt-5 -mx-2.5 pb-20">
           <List :columns="['auto', 'minmax(0,1fr)']" class="list-row-px-2.5" divider="inset">
             <ListRow
@@ -292,6 +299,7 @@ import { useCall, useNewDoc } from 'frappe-ui'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
@@ -379,6 +387,15 @@ const groupedSpaces = useGroupedSpaceOptions()
 const visibleSearchResults = computed(() => {
   return (searchResponse.value?.results || []).filter(isSearchResultVisible)
 })
+
+// A finished search that matched nothing. Not while a new search runs or after one failed.
+const hasNoResults = computed(
+  () =>
+    Boolean(searchResponse.value?.summary) &&
+    !visibleSearchResults.value.length &&
+    !search.loading &&
+    !search.error,
+)
 
 // API Calls Setup
 const search = useCall<SearchResponse, SearchParams>({

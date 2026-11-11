@@ -232,10 +232,12 @@
             </List>
 
             <ErrorMessage class="mt-2" :message="people.error" />
-            <EmptyStateBox v-if="isEmpty" class="mt-2">
-              <span class="lucide-users mb-1 size-7 text-ink-gray-4" aria-hidden="true" />
-              {{ search ? 'No members match your search' : 'No members yet' }}
-            </EmptyStateBox>
+            <EmptyStateBox
+              v-if="isEmpty"
+              class="mt-2"
+              :icon="search ? 'lucide-search-x' : 'lucide-users'"
+              :title="search ? 'No members match your search' : 'No members yet'"
+            />
 
             <div class="p-3" v-if="people.hasNextPage">
               <Button @click="people.next" :loading="people.loading"> Load more </Button>

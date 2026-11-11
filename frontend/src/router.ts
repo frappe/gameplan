@@ -278,6 +278,7 @@ const routes: RouteRecordRaw[] = [
     path: '/404',
     name: 'NotFound',
     component: () => import('@/pages/NotFound.vue'),
+    meta: { communitySidebar: true },
   },
   {
     path: '/list',
@@ -826,11 +827,9 @@ router.beforeEach(async (to, from) => {
 
   let communityId = routeParam(to.params.communityId)
 
+  // A missing space is not redirected: Space.vue and SpaceDiscussion.vue show "Space not
+  // found" in place, under the community's sidebar, once the community below checks out.
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
-
-  if (to.params.spaceId && !space) {
-    return { name: 'NotFound' }
-  }
 
   if (space?.team && space.team !== communityId) {
     return redirectCurrentRouteToCommunity(to, space.team)
@@ -933,13 +932,15 @@ async function getCanonicalContentRoute(
   // URL is already canonical — skip the blocking server fetch and let the route change
   // immediately (the detail page shows its own skeleton). Restricted to in-app navigation:
   // deep links (first load, refresh, pasted or hand-edited URLs — from is START_LOCATION
-  // with no matched records) still hit the server so a deleted document 404s and a stale
-  // space/slug rewrites to canonical.
+  // with no matched records) still hit the server so a stale space/slug rewrites to
+  // canonical and a deleted document shows as not found.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
 
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
-  if (!doc?.project) return { name: 'NotFound' }
+  // A discussion that is missing or out of reach renders its route anyway, and
+  // DiscussionView shows "Discussion not found" in place.
+  if (!doc?.project) return descriptor.routeName === 'Discussion' ? undefined : { name: 'NotFound' }
 
   const space = await findSpace(String(doc.project))
   if (!space?.team) return { name: 'NotFound' }

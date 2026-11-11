@@ -35,10 +35,11 @@
       />
     </List>
     <div class="px-2 sm:px-0">
-      <EmptyStateBox class="mx-3" v-if="!discussions.loading && discussions.data?.length === 0">
-        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
-        No discussions
-      </EmptyStateBox>
+      <EmptyStateBox
+        class="mx-3"
+        v-if="!discussions.loading && discussions.data?.length === 0"
+        v-bind="emptyState"
+      />
       <div class="flex items-center justify-center p-3" v-if="showLoadMoreButton">
         <Button
           icon-left="lucide-refresh-cw"
@@ -59,7 +60,8 @@ import { List } from 'frappe-ui/list'
 import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
-import EmptyStateBox from './EmptyStateBox.vue'
+import EmptyStateBox, { type EmptyState } from './EmptyStateBox.vue'
+import { feedEmptyStates } from '@/data/discussionFeeds'
 import Pin from './icons/Pin.vue'
 
 interface Props {
@@ -71,12 +73,14 @@ interface Props {
   // Name each row's community too, for lists that mix communities. A space name
   // alone is ambiguous there.
   showCommunity?: boolean
+  emptyState?: EmptyState
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showPinned: true,
   selectable: false,
   showCommunity: false,
+  emptyState: () => feedEmptyStates.recent,
 })
 
 const selectedDiscussions = defineModel<string[]>('selectedDiscussions', { default: () => [] })

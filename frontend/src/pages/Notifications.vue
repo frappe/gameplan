@@ -129,16 +129,13 @@
       </ListRow>
     </List>
 
-    <div
+    <EmptyStateBox
       v-else
-      class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
-    >
-      <div class="mx-auto grid size-10 place-items-center rounded-4 bg-surface-gray-2">
-        <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
-      </div>
-      <div class="mt-3 text-base-medium text-ink-gray-8">{{ emptyStateTitle }}</div>
-      <div class="mt-1 text-base text-ink-gray-5">{{ emptyStateDescription }}</div>
-    </div>
+      class="mx-4 sm:mx-3"
+      icon="lucide-bell-check"
+      :title="emptyStateTitle"
+      :description="emptyStateDescription"
+    />
   </div>
 </template>
 <script setup lang="ts">
@@ -158,6 +155,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'

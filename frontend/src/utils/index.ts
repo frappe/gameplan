@@ -116,6 +116,50 @@ export function extractServerMessage(error: unknown): string {
   return error.message ? stripHtml(error.message) : ''
 }
 
+/**
+ * One readable sentence about a failed request, to put in front of a person.
+ *
+ * Frappe's own message is used when it reads as a sentence, without the exception name
+ * in front ("PermissionError: You cannot…" becomes "You cannot…"). Everything else becomes
+ * `fallback`: "Internal Server Error", tracebacks, empty responses, and JavaScript errors
+ * such as "Failed to fetch". Write `fallback` as the failure in plain words
+ * ("Could not load discussions.").
+ */
+export function errorText(error: unknown, fallback: string): string {
+  const sentence = serverLines(error).map(withoutExceptionName).find(isReadable)
+  return sentence ? asSentence(sentence) : fallback
+}
+
+// The lines the server wrote for a person. frappe-ui's v1 requests (`useCall`,
+// `createResource`) put them on `messages`; the v2 composables (`useDoc`, `useList`)
+// throw an error with the exception name on `type` and "<type>: <text>" on `message`.
+function serverLines(error: unknown): string[] {
+  if (typeof error === 'string') return error.split('\n')
+  if (!(error instanceof Error)) return []
+  const { messages, type } = error as Error & { messages?: unknown; type?: unknown }
+  if (Array.isArray(messages)) {
+    return messages
+      .filter((message): message is string => typeof message === 'string')
+      .flatMap((message) => stripHtml(message).split('\n'))
+  }
+  if (typeof type === 'string') return stripHtml(error.message).split('\n')
+  return []
+}
+
+function withoutExceptionName(line: string): string {
+  return line.replace(/^(?:[\w.]+\.)?[A-Z]\w*(?:Error|Exception)\b:?\s*/, '').trim()
+}
+
+function isReadable(line: string): boolean {
+  if (!line.includes(' ') || line.length > 300) return false
+  return !/internal server error|traceback/i.test(line)
+}
+
+function asSentence(line: string): string {
+  const capitalized = line.charAt(0).toUpperCase() + line.slice(1)
+  return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`
+}
+
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, '').trim()
 }

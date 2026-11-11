@@ -8,11 +8,17 @@
       :read-only-mode="Boolean(space?.archived_at) || $readOnlyMode"
     />
   </div>
+  <NotFound
+    v-else-if="spaces.isFinished"
+    title="Space not found"
+    description="It may have been deleted, or you no longer have access to it."
+  />
 </template>
 
 <script setup lang="ts">
 import DiscussionView from '@/components/DiscussionView.vue'
-import { useSpace } from '@/data/spaces'
+import NotFound from '@/pages/NotFound.vue'
+import { spaces, useSpace } from '@/data/spaces'
 
 interface Props {
   spaceId: string

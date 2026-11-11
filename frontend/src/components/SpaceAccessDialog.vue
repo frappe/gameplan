@@ -59,12 +59,13 @@
                 </div>
               </div>
             </div>
-            <EmptyStateBox v-if="!space.members.length" class="py-6">
-              <span class="lucide-users size-5 text-ink-gray-4" />
-              <div class="mt-2 text-p-sm text-ink-gray-5">
-                No users have been added to this private space.
-              </div>
-            </EmptyStateBox>
+            <EmptyStateBox
+              v-if="!space.members.length"
+              class="py-6"
+              icon="lucide-users"
+              title="No members yet"
+              description="No one has been added to this private space."
+            />
           </div>
         </section>
 

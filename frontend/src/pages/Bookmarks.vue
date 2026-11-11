@@ -14,6 +14,11 @@
       :show-pinned="false"
       show-community
       cacheKey="Bookmarks"
+      :empty-state="{
+        icon: 'lucide-bookmark',
+        title: 'No bookmarks',
+        description: 'Bookmark a discussion from its ••• menu to find it here.',
+      }"
     />
   </div>
 </template>

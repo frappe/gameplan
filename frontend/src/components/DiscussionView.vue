@@ -291,14 +291,11 @@
           fieldname="content"
         />
       </template>
-      <EmptyStateBox v-else-if="notFound" class="mx-auto mt-14 max-w-2xl px-6">
-        <span class="lucide-triangle-alert mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
-        <div class="text-base text-ink-gray-7">Discussion not found</div>
-        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
-          This discussion may have been deleted, or you no longer have access to it. Refresh to try
-          again.
-        </p>
-      </EmptyStateBox>
+      <NotFound
+        v-else-if="notFound"
+        title="Discussion not found"
+        description="It may have been deleted, or you no longer have access to it."
+      />
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
            Fail visibly instead of rendering a blank page. Gated on isFinished so the
            pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash
@@ -368,6 +365,7 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
+import NotFound from '@/pages/NotFound.vue'
 import { copyToClipboard, isEditorContentEmpty } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'

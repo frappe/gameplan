@@ -63,6 +63,7 @@
         :orderBy="() => discussionOrderBy"
         :cacheKey="`Discussions-${communityId}-${feedType}`"
         :key="JSON.stringify(filters)"
+        :empty-state="feedEmptyStates[feedType]"
       />
     </KeepAlive>
   </div>
@@ -87,7 +88,7 @@ import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
-import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
+import { feedEmptyStates, feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
 import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'

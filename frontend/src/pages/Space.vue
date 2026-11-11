@@ -1,7 +1,7 @@
 <template>
   <router-view v-slot="{ Component, route }">
     <PageHeaderMobile
-      v-if="!route.meta.hideHeader"
+      v-if="space && !route.meta.hideHeader"
       class="sm:hidden"
       :title="space?.title || 'Space'"
     >
@@ -48,7 +48,7 @@
         @navigate="menuOpen = false"
       />
     </BottomSheet>
-    <PageHeader v-if="!route.meta.hideHeader" class="hidden sm:flex">
+    <PageHeader v-if="space && !route.meta.hideHeader" class="hidden sm:flex">
       <div class="flex w-full items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <SpaceBreadcrumbs :spaceId="spaceId" />
@@ -59,11 +59,11 @@
       </div>
     </PageHeader>
     <component class="flex-1" v-if="space" :is="Component" :space="space" />
-    <div class="body-container pt-5" v-if="spaceList.isFinished && !space">
-      <EmptyStateBox>
-        <div class="text-ink-gray-6">Page not found</div>
-      </EmptyStateBox>
-    </div>
+    <NotFound
+      v-if="spaceList.isFinished && !space"
+      title="Space not found"
+      description="It may have been deleted, or you no longer have access to it."
+    />
   </router-view>
 </template>
 <script setup lang="ts">
@@ -75,7 +75,7 @@ import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
 import PushPin from '@/components/icons/PushPin.vue'
 import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
-import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import NotFound from '@/pages/NotFound.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
@@ -125,6 +125,6 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 onMounted(() => {
-  trackSpaceVisit(props.spaceId)
+  if (space.value) trackSpaceVisit(props.spaceId)
 })
 </script>

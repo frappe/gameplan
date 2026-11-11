@@ -72,10 +72,13 @@
   </PageHeader>
   <div class="body-container pt-5 pb-40">
     <div>
-      <EmptyStateBox v-if="drafts.data?.length === 0" class="mx-3">
-        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
-        No drafts
-      </EmptyStateBox>
+      <EmptyStateBox
+        v-if="drafts.data?.length === 0"
+        class="mx-3"
+        icon="lucide-file-pen-line"
+        title="No drafts"
+        description="Discussions you start and don't publish are saved here."
+      />
       <div class="-mx-3" v-else>
         <List
           :selectable="isBulkDeleteMode"
