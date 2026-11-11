@@ -7,7 +7,13 @@
       title="This invitation link is no longer valid"
       :description="description"
     >
-      <Button v-if="session.isLoggedIn" class="mt-4" variant="subtle" label="Go to Home" route="/" />
+      <Button
+        v-if="session.isLoggedIn"
+        class="mt-4"
+        variant="subtle"
+        label="Go to Home"
+        route="/"
+      />
       <Button v-else class="mt-4" variant="subtle" label="Sign in" href="/login?redirect-to=/g" />
     </EmptyStateBox>
   </div>
@@ -25,11 +31,12 @@ import { session } from '@/data/session'
 
 const route = useRoute()
 
-const description = computed(() =>
-  route.query.reason === 'accepted'
-    ? 'It has already been accepted. Sign in to continue.'
-    : 'Ask the person who invited you to send a new one.',
-)
+const description = computed(() => {
+  if (route.query.reason !== 'accepted') return 'Ask the person who invited you to send a new one.'
+  return session.isLoggedIn
+    ? 'It has already been accepted.'
+    : 'It has already been accepted. Sign in to continue.'
+})
 
 usePageMeta(() => ({ title: 'Invitation link not valid' }))
 </script>
