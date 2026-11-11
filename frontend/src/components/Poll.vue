@@ -474,9 +474,9 @@ function queueVote(action: () => Promise<void>) {
 function confirmAnonymousVote(option: GPPollOption) {
   return new Promise<void>((resolve) => {
     dialog.confirm({
-      title: 'Anonymous poll',
-      message: `This poll is anonymous. Once you vote, you cannot retract your vote. You are voting for "${option.title}". Continue?`,
-      confirmLabel: `Vote for "${option.title}"`,
+      title: `Vote for "${option.title}"?`,
+      message: "This poll is anonymous, so your vote can't be changed or retracted.",
+      confirmLabel: 'Vote',
       onConfirm: async () => {
         anonymousChoice.value = option.title
         await castVote(option.title)
