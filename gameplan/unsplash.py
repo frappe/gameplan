@@ -268,25 +268,3 @@ def _request(path: str, access_key: str, params: dict | None = None):
 		return response.json() or {}
 	except ValueError:
 		frappe.throw("Unsplash returned a response that could not be read.")
-
-
-# --- Legacy helpers -------------------------------------------------------
-# `gameplan.api.get_unsplash_photos` (and the old `UnsplashImageBrowser.vue`
-# behind it) still import these. They predate the endpoints above and should go
-# when that api.py endpoint does; nothing new should call them.
-
-
-def get_by_keyword(keyword):
-	access_key = get_access_key()
-	if not access_key:
-		frappe.throw(NOT_CONFIGURED_MESSAGE)
-
-	return _request("/search/photos", access_key, params={"query": keyword}).get("results")
-
-
-def get_list():
-	access_key = get_access_key()
-	if not access_key:
-		frappe.throw(NOT_CONFIGURED_MESSAGE)
-
-	return _request("/photos", access_key)
