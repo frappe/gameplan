@@ -38,7 +38,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     retried: {
       meta: {
         description:
-          'After Retry: the feed is back as it loads normally, the Pinned group on top and every post below it. Retry reloads the pinned request along with the main list.',
+          'After Retry: the feed is back as it loads normally, pinned posts first with a pin icon, then every other post. Retry reloads the pinned request along with the main list.',
       },
     },
     recent: {
@@ -93,7 +93,7 @@ export const feed = defineFlow<Event>({
   events: {
     async LOADS(scene) {
       await holds.get(scene)?.release()
-      await expect(scene.page.getByText('Pinned', { exact: true })).toBeVisible()
+      await expect(scene.page.getByLabel('Pinned').first()).toBeVisible()
       await expect(rows(scene).nth(5)).toBeVisible()
     },
     async FAILS(scene) {
@@ -105,7 +105,7 @@ export const feed = defineFlow<Event>({
     async RETRY(scene) {
       await holds.get(scene)?.release()
       await scene.page.getByRole('button', { name: 'Retry' }).click()
-      await expect(scene.page.getByText('Pinned', { exact: true })).toBeVisible()
+      await expect(scene.page.getByLabel('Pinned').first()).toBeVisible()
       await expect(rows(scene).nth(5)).toBeVisible()
       await expect(scene.page.getByText('Could not load discussions.')).toBeHidden()
       await scene.page.mouse.move(700, 20)
