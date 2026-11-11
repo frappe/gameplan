@@ -68,6 +68,9 @@ function setupApp() {
   setConfig('resourceFetcher', frappeRequest)
   setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
   setConfig('systemTimezone', window.system_timezone || null)
+  // frappe-ui reads the browser timezone through Intl on every dayjsLocal() call when
+  // this is unset. A long list formats several timestamps per row, so resolve it once.
+  setConfig('localTimezone', Intl.DateTimeFormat().resolvedOptions().timeZone)
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
   socket = initSocket()
   app.config.globalProperties.$socket = socket

@@ -1,4 +1,4 @@
-import { dayjsLocal, toast } from 'frappe-ui'
+import { dayjs, dayjsLocal, toast, type Dayjs } from 'frappe-ui'
 
 export interface ImgDimensions {
   width: number
@@ -66,14 +66,28 @@ export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
   }
 }
 
-export function relativeTimestamp(timestamp: string): string {
-  if (dayjsLocal().diff(timestamp, 'day') < 3) {
-    return dayjsLocal(timestamp).fromNow()
+/**
+ * "3 hours ago" for a server timestamp. Same text as `dayjsLocal(timestamp).fromNow()`,
+ * measured on a plain dayjs object because diffing timezone-aware ones is slow.
+ */
+export function timeAgo(timestamp: string, withoutSuffix = false): string {
+  return dayjs(dayjsLocal(timestamp).valueOf()).fromNow(withoutSuffix)
+}
+
+/** Takes a server timestamp, or one already converted with `dayjsLocal`. */
+export function relativeTimestamp(timestamp: string | Dayjs): string {
+  const time = typeof timestamp === 'string' ? dayjsLocal(timestamp) : timestamp
+  // How long ago something happened does not depend on the timezone. Measure it on
+  // plain dayjs objects: diffing timezone-aware ones is slow, and a list does it per row.
+  const instant = dayjs(time.valueOf())
+  const now = dayjs()
+  if (now.diff(instant, 'day') < 3) {
+    return instant.fromNow()
   }
-  if (dayjsLocal().diff(timestamp, 'year') < 1) {
-    return dayjsLocal(timestamp).format('D MMM')
+  if (now.diff(instant, 'year') < 1) {
+    return time.format('D MMM')
   }
-  return dayjsLocal(timestamp).format('D MMM YYYY')
+  return time.format('D MMM YYYY')
 }
 
 /**

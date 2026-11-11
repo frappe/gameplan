@@ -53,9 +53,9 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <Tooltip :text="dayjsLocal(post.at).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="postTime.format('D MMM YYYY [at] h:mm A')">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(post.at || discussion.creation) }}
+            {{ relativeTimestamp(postTime) }}
           </div>
         </Tooltip>
         <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -142,6 +142,9 @@ const post = computed(() => {
     at: d.last_post_at,
   }
 })
+
+// Parsed once: a list renders many rows, and each timezone conversion is slow.
+const postTime = computed(() => dayjsLocal(post.value.at || props.discussion.creation))
 
 function isSpacePrivate(spaceId: string) {
   return useSpace(spaceId).value?.is_private

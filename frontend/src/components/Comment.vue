@@ -37,7 +37,7 @@
         <div>
           <Tooltip :text="dayjsLocal(comment.creation).format('D MMM YYYY [at] h:mm A')">
             <time class="text-p-base text-ink-gray-5 sm:text-base" :datetime="comment.creation">
-              {{ dayjsLocal(comment.creation).fromNow() }}
+              {{ timeAgo(comment.creation) }}
             </time>
           </Tooltip>
           <Tooltip
@@ -113,7 +113,7 @@
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { Dropdown, ErrorMessage, Tooltip, dayjsLocal } from 'frappe-ui'
 import { useDoctype, useList } from 'frappe-ui'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, timeAgo } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import CommentEditor from './editor/CommentEditor.vue'
 import Reactions from './Reactions.vue'

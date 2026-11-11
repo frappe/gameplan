@@ -98,7 +98,7 @@
                   class="text-p-base text-ink-gray-5 sm:text-base"
                   :datetime="discussion.doc.creation"
                 >
-                  {{ dayjsLocal(discussion.doc.creation).fromNow() }}
+                  {{ timeAgo(discussion.doc.creation) }}
                 </time>
               </Tooltip>
             </div>
@@ -368,7 +368,7 @@ import UserProfileLink from './UserProfileLink.vue'
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
 import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty } from '@/utils'
+import { copyToClipboard, isEditorContentEmpty, timeAgo } from '@/utils'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'

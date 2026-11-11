@@ -54,7 +54,7 @@
         <div>
           <Tooltip :text="dayjsLocal(_poll.creation).format('D MMM YYYY [at] h:mm A')">
             <time class="text-ink-gray-5" :datetime="_poll.creation">
-              {{ dayjsLocal(_poll.creation).fromNow() }}
+              {{ timeAgo(_poll.creation) }}
             </time>
           </Tooltip>
         </div>
@@ -215,7 +215,7 @@ import type { RadioValue } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, timeAgo } from '@/utils'
 import Reactions from './Reactions.vue'
 import { useUser, useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'

@@ -104,7 +104,7 @@
             >
               <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
               <span class="hidden sm:inline">
-                {{ dayjsLocal(notification.creation).fromNow() }}
+                {{ timeAgo(notification.creation) }}
               </span>
             </time>
             <div
@@ -151,6 +151,7 @@ import {
   TabButtons,
   Tooltip,
   Breadcrumbs,
+  dayjs,
   dayjsLocal,
   dialog,
   useCall,
@@ -158,6 +159,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import { timeAgo } from '@/utils'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
@@ -378,15 +380,18 @@ function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: 
 }
 
 function shortTimestamp(timestamp: string) {
-  let time = dayjsLocal(timestamp)
-  let minutes = dayjsLocal().diff(time, 'minute')
+  const time = dayjsLocal(timestamp)
+  // Diff plain dayjs objects: timezone-aware ones are slow, and every row does this.
+  const instant = dayjs(time.valueOf())
+  const now = dayjs()
+  const minutes = now.diff(instant, 'minute')
   if (minutes < 1) return 'now'
   if (minutes < 60) return `${minutes}m`
 
-  let hours = dayjsLocal().diff(time, 'hour')
+  const hours = now.diff(instant, 'hour')
   if (hours < 24) return `${hours}h`
 
-  let days = dayjsLocal().diff(time, 'day')
+  const days = now.diff(instant, 'day')
   if (days < 7) return `${days}d`
   if (days < 365) return time.format('D MMM')
   return time.format('D MMM YY')
