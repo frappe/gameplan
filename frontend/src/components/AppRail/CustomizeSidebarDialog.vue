@@ -59,7 +59,7 @@
                     icon="lucide-arrow-down"
                     :label="`Hide ${community.title} from sidebar`"
                     tooltip="Hide from sidebar"
-                    class="shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                    class="shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                     @pointerdown.stop
                     @mousedown.stop
                     @click.stop="moveCommunityToSection(community.name, 'hidden')"
@@ -112,7 +112,7 @@
                   icon="lucide-arrow-up"
                   :label="`Show ${community.title} in sidebar`"
                   tooltip="Show in sidebar"
-                  class="shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+                  class="shrink-0 text-ink-gray-5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   @pointerdown.stop
                   @mousedown.stop
                   @click.stop="moveCommunityToSection(community.name, 'shown')"
