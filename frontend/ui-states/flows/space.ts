@@ -1,13 +1,13 @@
 import { expect } from '@playwright/test'
 import { setup } from 'xstate'
-import { defineFlow } from '../flow'
+import { defineFlow, pressEmpty } from '../flow'
 import { communities, type Hold, type Scene } from '../scene'
 
 type Event =
   | { type: 'LOADS' }
   | { type: 'FAILS' }
   | { type: 'OPEN_MENU' }
-  | { type: 'JOIN' }
+  | { type: 'SHOW_UNREAD' }
   | { type: 'MARK_ALL_READ' }
   | { type: 'CONFIRM_READ' }
   | { type: 'MOVE_DISCUSSIONS' }
@@ -20,9 +20,12 @@ type Event =
 /**
  * A space's discussion list, its "Space actions" menu and what each action
  * leads to. `Space.vue` renders the child page only once the space is in the
- * global spaces list, and "Page not found" once that list has finished without
- * it. `SpaceDiscussions.vue` holds the menu, the bulk-move mode and the dialogs;
- * `DiscussionList.vue` picks skeleton rows, rows or "No discussions".
+ * global spaces list; otherwise `SpaceUnavailable.vue` shows "Space not found"
+ * once that list has loaded without it, or `LoadError` with Retry if the list
+ * failed. `SpaceDiscussions.vue` holds the feed tabs (`DiscussionFeedBar.vue`, with
+ * the tab in `?feed=`), the menu, the bulk-move mode and the dialogs;
+ * `DiscussionList.vue` picks skeleton rows, rows, `LoadError` or the empty box.
+ * The confirms and the archive toast live in `data/spaces.ts`.
  */
 const machine = setup({ types: { events: {} as Event } }).createMachine({
   id: 'space',
@@ -31,23 +34,24 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     skeleton: {
       meta: {
         description:
-          'QA & Playtests while its discussion list is still loading: the header, tabs and sort are drawn, with three skeleton rows below.',
+          'QA & Playtests while its discussion list is still loading: the header, the All discussions / Participating / Unread tabs and the sort are drawn, with three skeleton rows below.',
       },
       on: { LOADS: 'populated', FAILS: 'failed' },
     },
     failed: {
       meta: {
         description:
-          'The discussion list request failed. No error message and no rows: only a "Load more" button under the tabs.',
+          'The discussion list request failed: "Could not load discussions." and a Retry button under the tabs, where the rows would be.',
       },
     },
     populated: {
       meta: {
         description:
-          'QA & Playtests: every discussion, newest activity first. The smoke-test thread Maya has not opened is in bold, with its unread count in an orange badge.',
+          'QA & Playtests on the All discussions tab: the same tab bar and sort as the community feed, no Pages or Tasks tabs, and a solid "New discussion" button. The smoke-test thread Maya has not opened is in bold, with its unread count in an orange badge.',
       },
       on: {
         OPEN_MENU: 'spaceMenu',
+        SHOW_UNREAD: 'unreadTab',
         MOVE_DISCUSSIONS: 'bulkMove',
         OPEN_EMPTY_SPACE: 'empty',
         OPEN_MISSING_SPACE: 'notFound',
@@ -57,24 +61,27 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     spaceMenu: {
       meta: {
         description:
-          'The "Space actions" menu for an admin who has not joined the space: Pin, Settings, Copy link, Mark all as read, Join space, Manage access, Move discussions, Archive.',
+          'The "Space actions" menu for an admin, in three groups: Pin space, Copy link, "Mark all as read…"; "Settings…", "Manage access…", Move discussions; then "Archive…". No Join or Leave space.',
       },
-      on: { JOIN: 'joined', MARK_ALL_READ: 'markAllReadConfirm', ARCHIVE: 'archiveConfirm' },
+      on: { MARK_ALL_READ: 'markAllReadConfirm', ARCHIVE: 'archiveConfirm' },
     },
-    joined: {
+    unreadTab: {
       meta: {
         description:
-          'After Join space the page itself does not change: no toast, no badge. Only the reopened menu now says "Leave space".',
+          'The Unread tab of QA & Playtests (`?feed=unread`): only the smoke-test thread Maya has not opened, with the space\'s unread count after the tab label.',
       },
     },
     markAllReadConfirm: {
-      meta: { description: 'The confirmation before marking every discussion in QA & Playtests as read.' },
+      meta: {
+        description:
+          'The confirm before marking the space read: "Mark all discussions in QA & Playtests as read?", one sentence on the effect, Cancel and "Mark all as read". No icon, not red.',
+      },
       on: { CONFIRM_READ: 'allRead' },
     },
     allRead: {
       meta: {
         description:
-          'After Mark all as read: the sidebar count beside QA & Playtests clears, but the list is not refetched, so the smoke-test row is still bold with its orange 6.',
+          'After Mark all as read: the sidebar count beside QA & Playtests and the Unread tab count clear, but the list is not refetched, so the smoke-test row is still bold with its orange 6.',
       },
     },
     bulkMove: {
@@ -84,28 +91,31 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     archiveConfirm: {
-      meta: { description: 'The confirmation before archiving the space, saying it becomes read-only.' },
+      meta: {
+        description:
+          'The confirm before archiving: "Archive QA & Playtests?", saying the space becomes read-only and leaves the feeds, with Cancel and "Archive". No icon, not red.',
+      },
       on: { CONFIRM_ARCHIVE: 'archived' },
     },
     archived: {
       meta: {
         description:
-          'The archived space: an "Archived" badge beside the name, no "Add new" button, and the space drops out of the sidebar. The list itself looks the same.',
+          'The archived space: an "Archived" badge before the ••• menu, no "New discussion" button, a "Space archived" toast with Undo, and QA & Playtests dimmed in the sidebar but still in its place.',
       },
     },
     empty: {
-      meta: { description: 'A new space with no discussions yet: the generic "No discussions" box under the tabs.' },
+      meta: { description: 'A new space with no discussions yet: an icon, "No discussions yet" and "New discussions will show up here." under the tabs.' },
     },
     notFound: {
       meta: {
         description:
-          'A space id that does not exist. The router sends it to the app-wide "Page not found" page before Space.vue mounts, so Space.vue\'s own "Page not found" box is not what shows.',
+          'A space id that does not exist: "Space not found" in place, inside the community\'s sidebar, with "Go to Home", under a header that reads "Common Room / Not found".',
       },
     },
     spacesFailed: {
       meta: {
         description:
-          'The global spaces list failed to load. The router cannot tell this from a missing space and shows the same "Page not found" page, saying the link is invalid or access was lost; the sidebar has no spaces.',
+          'The global spaces list failed to load: under a "Common Room" header the page shows a cloud icon, "Could not load spaces." and Retry, and the sidebar says "Could not load spaces." with its own Retry button. No "Space not found".',
       },
     },
   },
@@ -124,6 +134,7 @@ function rows(scene: Scene) {
 }
 
 async function openMenu(scene: Scene) {
+  await pressEmpty(scene.page)
   await scene.page.getByRole('button', { name: 'Space actions' }).click()
   await expect(scene.page.getByRole('menuitem', { name: 'Copy link' })).toBeVisible()
 }
@@ -161,22 +172,24 @@ export const space = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByRole('button', { name: 'Load more' })).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
     async OPEN_MENU(scene) {
       await openMenu(scene)
-      await expect(scene.page.getByRole('menuitem', { name: 'Join space' })).toBeVisible()
+      await expect(scene.page.getByRole('menuitem', { name: 'Archive…' })).toBeVisible()
+      await expect(scene.page.getByRole('menuitem', { name: /Join space|Leave space/ })).toHaveCount(0)
     },
-    async JOIN(scene) {
-      const joined = scene.page.waitForResponse((r) => r.url().includes('get_joined_spaces'))
-      await pick(scene, 'Join space')
-      await joined
-      await openMenu(scene)
-      await expect(scene.page.getByRole('menuitem', { name: 'Leave space' })).toBeVisible()
+    async SHOW_UNREAD(scene) {
+      await scene.page.getByRole('radio', { name: /^Unread/ }).click()
+      await expect(scene.page).toHaveURL(/[?&]feed=unread/)
+      await expect(rows(scene).first()).toBeVisible()
+      await expect(rows(scene).nth(1)).toBeHidden()
+      await scene.page.mouse.move(700, 20)
     },
     async MARK_ALL_READ(scene) {
-      await pick(scene, 'Mark all as read')
-      await expect(dialog(scene).getByText(`mark all discussions in ${SPACE_TITLE} as read`)).toBeVisible()
+      await pick(scene, 'Mark all as read…')
+      await expect(dialog(scene).getByText(`Mark all discussions in ${SPACE_TITLE} as read?`)).toBeVisible()
     },
     async CONFIRM_READ(scene) {
       const marked = scene.page.waitForResponse((r) => r.url().includes('mark_all_as_read'))
@@ -194,30 +207,34 @@ export const space = defineFlow<Event>({
       await scene.page.mouse.move(700, 20)
     },
     async ARCHIVE(scene) {
-      await pick(scene, 'Archive')
-      await expect(dialog(scene).getByText('archived space')).toBeVisible()
+      await pick(scene, 'Archive…')
+      await expect(dialog(scene).getByText(`Archive ${SPACE_TITLE}?`)).toBeVisible()
     },
     async CONFIRM_ARCHIVE(scene) {
       await dialog(scene).getByRole('button', { name: 'Archive' }).click()
       await expect(dialog(scene)).toBeHidden()
       await expect(scene.page.getByText('Archived', { exact: true })).toBeVisible()
-      await expect(scene.page.getByRole('button', { name: 'Add new' })).toBeHidden()
+      await expect(scene.page.getByRole('button', { name: 'New discussion' })).toBeHidden()
+      await expect(scene.page.getByText('Space archived')).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Undo' })).toBeVisible()
     },
     async OPEN_EMPTY_SPACE(scene) {
       const empty = await scene.space(COMMUNITY)
       // A full navigation, so the spaces list is fetched again and includes the new space.
       await openSpace(scene, empty.name)
-      await expect(scene.page.getByText('No discussions')).toBeVisible()
+      await expect(scene.page.getByText('No discussions yet')).toBeVisible()
     },
     async OPEN_MISSING_SPACE(scene) {
       await openSpace(scene, '99999')
-      await expect(scene.page.getByText('Page not found')).toBeVisible()
+      await expect(scene.page.getByText('Space not found', { exact: true })).toBeVisible()
+      await expect(scene.page.getByText('Not found', { exact: true })).toBeVisible()
     },
     async SPACES_FAIL(scene) {
       const spacesList = await scene.hold(SPACES_LIST_URL)
       await spacesList.abort(500)
       await openSpace(scene, spaceIds.get(scene) as string)
-      await expect(scene.page.getByText('Page not found')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toHaveCount(2, { timeout: 30_000 })
+      await expect(scene.page.getByText('Space not found')).toHaveCount(0)
     },
   },
 })

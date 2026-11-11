@@ -30,7 +30,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     blank: {
       meta: {
         description:
-          'An empty site, opened by a Gameplan Member: "Welcome to Gameplan" with three empty steps beside a preview of the sidebar. Continue is disabled.',
+          'An empty site, opened by a Gameplan Member: "Welcome to Gameplan" with three empty steps beside a preview of the rail and sidebar (General and "Your first space"). The space icon button shows a smile-plus, and Continue is disabled.',
       },
       on: { FILL: 'filled', COMMUNITY_CREATED_ELSEWHERE: 'notJoined' },
     },
@@ -48,7 +48,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     badEmail: {
       meta: {
         description:
-          'One address is missing its domain. Leaving the field shows "Invalid email(s)" under it, but Continue stays enabled and would submit the list anyway.',
+          'One address is missing its domain. Leaving the field shows "omar@moonhollow is not a valid email address" under it, and Continue sends nothing until it is fixed.',
       },
     },
     submitting: {
@@ -58,16 +58,16 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     failed: {
       meta: {
         description:
-          'The setup request failed with a server error: "Internal Server Error" in red above Continue, the form kept as typed so Continue can be tried again.',
+          'The setup request failed: "Could not set up Gameplan. Try again." in red beside Continue, and the form kept as typed so Continue can be tried again.',
       },
     },
     done: {
-      meta: { description: "Setup finished: the new community's feed, with General and Engineering in the sidebar and no posts yet." },
+      meta: { description: "Setup finished: the new community's feed, with Engineering and General in the sidebar, the All discussions / Participating / Unread tabs, and a \"No discussions yet\" box." },
     },
     alreadySetUp: {
       meta: {
         description:
-          'Someone else created a community while this form was open. Continue fails with the raw "PermissionError: This site is already set up" in red, and the page offers no way out but a reload.',
+          'Someone else created a community while this form was open. Continue fails with "This site is already set up." in red beside it, and the page offers no way out but a reload.',
       },
     },
     notJoined: {
@@ -103,7 +103,7 @@ function continueButton(scene: Scene) {
 }
 
 function emailsField(scene: Scene) {
-  return scene.page.getByPlaceholder('jane@example.com, mary@example.com, ...')
+  return scene.page.getByPlaceholder('jane@example.com, sam@example.com')
 }
 
 /** Opens a path and waits for `ready`, the element only the target screen has. */
@@ -144,8 +144,7 @@ export const onboarding = defineFlow<Event>({
     async MISTYPE_EMAIL(scene) {
       await emailsField(scene).fill('nadia@moonhollow.studio, omar@moonhollow')
       await emailsField(scene).blur()
-      await expect(scene.page.getByText('Invalid email(s): omar@moonhollow')).toBeVisible()
-      await expect(continueButton(scene)).toBeEnabled()
+      await expect(scene.page.getByText('omar@moonhollow is not a valid email address')).toBeVisible()
     },
     async SUBMIT(scene) {
       holds.set(scene, await scene.hold(ONBOARDING_URL))
@@ -161,7 +160,7 @@ export const onboarding = defineFlow<Event>({
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(continueButton(scene)).toBeEnabled({ timeout: 30_000 })
-      await expect(scene.page.getByText('Internal Server Error')).toBeVisible()
+      await expect(scene.page.getByText(/Could not set up Gameplan|Something went wrong/)).toBeVisible()
     },
     async SUBMIT_AFTER_SETUP_ELSEWHERE(scene) {
       await createCommunityElsewhere(scene)

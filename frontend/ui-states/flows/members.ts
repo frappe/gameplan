@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 import { setup } from 'xstate'
-import { defineFlow } from '../flow'
+import { defineFlow, pressEmpty } from '../flow'
 import type { Hold, Scene } from '../scene'
 
 type Event =
@@ -31,74 +31,75 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     directoryLoading: {
       meta: {
         description:
-          'The People list request is still out. The heading already says "0 members", and under the column headers there is only a spinning "Load more" button: no skeleton rows.',
+          'The People list request is still out: the heading says "Members" with no count, and three skeleton rows sit under the column headers.',
       },
       on: { LOADS: 'directory', FAILS: 'directoryFailed' },
     },
     directoryFailed: {
       meta: {
         description:
-          'The People list request failed. The heading still says "0 members", with "Internal Server Error" in red and a "Load more" button where the rows would be.',
+          'The People list request failed: "Could not load people." with a Retry button where the rows would be, lined up with the table.',
       },
     },
     directory: {
       meta: {
         description:
-          'People: 16 members, Maya first, then by last update, with post, reply and reaction counts. Admins see an Invite button.',
+          'People: 16 members, Maya first, then by last update, with post, reply and reaction counts. Admins see a solid Invite button.',
       },
       on: {
         SEARCH_MISS: 'searchEmpty',
         OPEN_PROFILE: 'profile',
         OPEN_MISSING_PROFILE: 'profileMissing',
+        OPEN_INVITE: 'inviteOpen',
         MANAGE_USERS: 'usersSettings',
       },
     },
     searchEmpty: {
-      meta: { description: 'A search that matches nobody: "0 members" and "No members match your search".' },
+      meta: { description: 'A search that matches nobody: "0 members" and a "No members match your search" box aligned with the table.' },
     },
     profile: {
       meta: { description: "Priya Sharma's profile: Profile, Posts and Replies tabs over her cover, avatar, name and bio cards." },
     },
     profileMissing: {
-      meta: { description: 'A profile link for someone who is not here: the generic "Page not found" box, with no way back to People.' },
+      meta: { description: 'A profile link for someone who is not here: "Profile not found" inside the app shell, with a People / Not found breadcrumb and a "Go to Home" button.' },
     },
     usersSettings: {
       meta: {
         description:
-          'Invite on People opens Settings at Users: everyone with a role picker, the date they joined, and a disable button.',
+          'Settings › Users, opened from the account menu: everyone with a role picker, the date they joined, a disable button, and the same solid Invite button as People.',
       },
-      on: { OPEN_INVITE: 'inviteOpen', PICK_ADMIN_ROLE: 'roleConfirm' },
+      on: { PICK_ADMIN_ROLE: 'roleConfirm' },
     },
     roleConfirm: {
       meta: {
         description:
-          'Picking Admin for Priya asks to confirm, naming the role by its internal value, "Gameplan Admin", not the "Admin" label just picked.',
+          'Picking Admin for Priya asks "Change Priya Sharma\'s role to Admin?", with one sentence on what that allows and a "Change role" button.',
       },
     },
     inviteOpen: {
-      meta: { description: 'The Invite People dialog over Users: an empty email box, with no role or button until something is typed.' },
+      meta: { description: 'Invite on People opens the "Invite people" dialog in place: an empty email box with its helper line, the Role picker (User) and what it allows, and Cancel beside a disabled Invite. There are no pending invites yet, so that list is absent.' },
       on: { TYPE_EMAILS: 'inviteFilled' },
     },
     inviteFilled: {
       meta: {
         description:
-          'Two addresses typed: the Role picker (User by default), what that role can do, and the Invite button appear.',
+          'Two addresses typed: Invite becomes enabled.',
       },
       on: { SEND: 'inviteSending' },
     },
     inviteSending: {
-      meta: { description: 'Invite was clicked and the request is out: the button spins, and the email box is disabled and shows empty although the two addresses are being sent.' },
+      meta: { description: 'Invite was clicked and the request is out: the button spins and the email box, still showing the two addresses, is disabled.' },
       on: { SENT: 'inviteSent', SEND_FAILS: 'inviteFailed' },
     },
     inviteSent: {
       meta: {
         description:
-          'The invitations went out: the role picker and button go away, a summary says "2 invitations sent", and the pending invites are listed.',
+          'The invitations went out: the email box empties, a grey box says "2 invitations sent" with the addresses, "Pending invites" lists both, and Cancel becomes Done.',
       },
       on: { INVITEE_OPENS_LINK: 'setPassword', INVITEE_OPENS_BROKEN_LINK: 'linkInvalid' },
     },
     inviteFailed: {
-      meta: { description: 'The invite request failed: "Internal Server Error" above the Invite button. The email box looks empty, yet Role and Invite stay because the addresses are still held; Invite would resend them unseen.' },
+      meta: { description: 'The invite request failed: a red sentence next to Cancel and Invite, and the two addresses stay in the box to try again.' },
     },
     setPassword: {
       meta: {
@@ -109,7 +110,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     linkInvalid: {
       meta: {
         description:
-          'An invitation link whose key is cut short: a plain Frappe page, "This invitation link is no longer valid", "Status: 404" and a Home button.',
+          'An invitation link whose key is wrong, opened signed out: the server sends it to /g/invitation-invalid, a page without the app shell: the Gameplan logo, "This invitation link is no longer valid", "Ask the person who invited you to send a new one." and a "Sign in" button.',
       },
     },
   },
@@ -128,7 +129,7 @@ function settingsDialog(scene: Scene) {
 }
 
 function inviteDialog(scene: Scene) {
-  return scene.page.getByRole('dialog').filter({ hasText: 'Invite People' }).last()
+  return scene.page.getByRole('dialog').filter({ hasText: 'Invite people' }).last()
 }
 
 async function visitor(scene: Scene): Promise<Page> {
@@ -157,7 +158,8 @@ export const members = defineFlow<Event>({
   async enter(scene) {
     holds.set(scene, await scene.hold(PEOPLE_URL))
     await scene.goto('/people')
-    await expect(scene.page.getByText('0 members')).toBeVisible({ timeout: 20_000 })
+    await expect(scene.page.getByLabel('Loading member').first()).toBeVisible({ timeout: 20_000 })
+    await expect(scene.page.getByText('Members', { exact: true }).filter({ visible: true })).toBeVisible()
   },
   events: {
     async LOADS(scene) {
@@ -167,7 +169,8 @@ export const members = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Internal Server Error')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load people.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
     async SEARCH_MISS(scene) {
       await scene.page.getByPlaceholder('Search', { exact: true }).first().fill('Zoltan')
@@ -182,10 +185,14 @@ export const members = defineFlow<Event>({
     },
     async OPEN_MISSING_PROFILE(scene) {
       await scene.goto('/people/ruth@moonhollow.studio')
-      await expect(scene.page.getByText(/not found/i).first()).toBeVisible({ timeout: 20_000 })
+      await expect(scene.page.getByText('Profile not found')).toBeVisible({ timeout: 20_000 })
+      await expect(scene.page.getByRole('link', { name: 'Go to Home' })).toBeVisible()
     },
     async MANAGE_USERS(scene) {
-      await scene.page.getByRole('button', { name: 'Invite' }).first().click()
+      await pressEmpty(scene.page)
+      await scene.page.getByRole('button', { name: /^Account menu/ }).click()
+      await scene.page.getByRole('menuitem', { name: /^Settings/ }).click()
+      await settingsDialog(scene).getByRole('tab', { name: 'Users' }).click()
       await expect(scene.page).toHaveURL(/\/settings\/users$/)
       await expect(settingsDialog(scene).getByText('Priya Sharma')).toBeVisible({ timeout: 20_000 })
       await scene.page.mouse.move(700, 20)
@@ -199,32 +206,35 @@ export const members = defineFlow<Event>({
         .last()
       await row.getByRole('combobox').click()
       await scene.page.getByRole('option', { name: 'Admin' }).click()
-      await expect(scene.page.getByRole('dialog').filter({ hasText: 'Change Role' })).toBeVisible()
+      await expect(scene.page.getByRole('dialog').filter({ hasText: "Change Priya Sharma's role to Admin?" })).toBeVisible()
       await scene.page.mouse.move(700, 20)
     },
     async OPEN_INVITE(scene) {
-      await settingsDialog(scene).getByRole('button', { name: 'Invite' }).click()
+      await scene.page.getByRole('button', { name: 'Invite', exact: true }).filter({ visible: true }).first().click()
+      await expect(scene.page).toHaveURL(/\/people$/)
       await expect(inviteDialog(scene).getByLabel('Invite by email')).toBeVisible()
+      await expect(inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true })).toBeDisabled()
       await scene.page.mouse.move(700, 20)
     },
     async TYPE_EMAILS(scene) {
       await inviteDialog(scene).getByLabel('Invite by email').fill(INVITEES.join(', '))
-      await expect(inviteDialog(scene).getByRole('button', { name: 'Invite' })).toBeVisible()
+      await expect(inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true })).toBeEnabled()
     },
     async SEND(scene) {
       holds.set(scene, await scene.hold(INVITE_URL))
-      await inviteDialog(scene).getByRole('button', { name: 'Invite' }).click()
+      await inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true }).click()
       await expect(inviteDialog(scene).getByLabel('Invite by email')).toBeDisabled()
       await scene.page.mouse.move(700, 20)
     },
     async SENT(scene) {
       await holds.get(scene)?.release()
       await expect(inviteDialog(scene).getByText('2 invitations sent')).toBeVisible({ timeout: 20_000 })
-      await expect(inviteDialog(scene).getByText('Pending Invites')).toBeVisible()
+      await expect(inviteDialog(scene).getByText('Pending invites')).toBeVisible()
     },
     async SEND_FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(inviteDialog(scene).getByText('Internal Server Error')).toBeVisible({ timeout: 30_000 })
+      await expect(inviteDialog(scene).getByRole('alert')).toBeVisible({ timeout: 30_000 })
+      await expect(inviteDialog(scene).getByLabel('Invite by email')).toHaveValue(INVITEES.join(', '))
     },
     async INVITEE_OPENS_LINK(scene) {
       // The sent email's key exists only in the mail, so mint Nadia a link of her own.
@@ -240,7 +250,8 @@ export const members = defineFlow<Event>({
     async INVITEE_OPENS_BROKEN_LINK(scene) {
       const page = await visitor(scene)
       await page.goto('/api/method/gameplan.api.accept_invitation?key=4f1c9e2a7b')
-      await expect(page.getByText('This invitation link is no longer valid').first()).toBeVisible()
+      await expect(page).toHaveURL(/\/g\/invitation-invalid/, { timeout: 20_000 })
+      await expect(page.getByText('This invitation link is no longer valid')).toBeVisible()
     },
   },
   frame(scene, state) {

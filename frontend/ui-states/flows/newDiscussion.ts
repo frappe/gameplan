@@ -28,12 +28,12 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     blank: {
       meta: {
         description:
-          'A blank composer in Common Room: "Select Space" in the header, an empty title, and Publish disabled.',
+          'A blank composer in Common Room: "New discussion" in the breadcrumb, a "Select space" picker with a folder icon in the header, an empty title, and Publish disabled.',
       },
       on: { OPEN_SPACE_PICKER: 'spacePicker', WRITE: 'filled', WRITE_OFFLINE: 'saveFailed', OPEN_DRAFT: 'draftLoading' },
     },
     spacePicker: {
-      meta: { description: 'The space picker open: a searchable list of every space Maya can post in, grouped by community.' },
+      meta: { description: 'The space picker open: a "Search spaces" box over a list of every space Maya can post in, grouped by community.' },
     },
     filled: {
       meta: {
@@ -45,15 +45,15 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     saveFailed: {
       meta: {
         description:
-          'Writing while draft saves fail: a toast says a local copy is kept and retried. The breadcrumb still says "New Discussion" and Publish looks ready.',
+          'Writing while draft saves fail: a toast says a local copy is kept and retried, and a red "Not saved" status sits next to Publish. The breadcrumb still says "New discussion".',
       },
     },
     publishing: {
-      meta: { description: 'Publish is in flight: the Publish button spins and the menu beside it is disabled.' },
+      meta: { description: 'Publish is in flight: the Publish button spins at its usual width, and the solid chevron beside it ignores clicks.' },
       on: { PUBLISHED: 'posted', PUBLISH_FAILS: 'publishFailed' },
     },
     publishFailed: {
-      meta: { description: 'Publishing failed: the server message shows in red above the title, and the draft stays as it was.' },
+      meta: { description: 'Publishing failed: a red line above the title repeats the server\'s message ("Something went wrong.") with a Retry button, and the draft stays as it was.' },
     },
     posted: {
       meta: { description: 'Published: the composer is replaced by the new discussion in Releases.' },
@@ -66,7 +66,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     draftLoading: {
       meta: {
         description:
-          "Opening Maya's saved draft while it loads: \"Loading draft…\" over an empty title, a blank breadcrumb after Drafts, a dimmed toolbar and no Publish button.",
+          "Opening Maya's saved draft while it loads: \"Loading draft…\" over an empty title, \"Loading…\" in the breadcrumb after Drafts, a dimmed toolbar and space picker, and no Publish button.",
       },
       on: { DRAFT_LOADS: 'draftRestored', DRAFT_FAILS: 'draftLoadFailed' },
     },
@@ -76,7 +76,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     draftLoadFailed: {
       meta: {
         description:
-          'The draft could not be loaded: only a toast asks for a reload. The page keeps a blank breadcrumb, a read-only empty title and no Publish button.',
+          'The draft could not be loaded: "Could not load this draft." with a Retry button in place of the title and editor, "Draft" in the breadcrumb, a dimmed toolbar and space picker, and no Publish button.',
       },
     },
   },
@@ -104,7 +104,7 @@ function publishButton(scene: Scene) {
 }
 
 function spaceTrigger(scene: Scene) {
-  return scene.page.getByText('Select Space').filter({ visible: true })
+  return scene.page.getByText('Select space').filter({ visible: true })
 }
 
 async function writePost(scene: Scene) {
@@ -160,6 +160,7 @@ export const newDiscussion = defineFlow<Event>({
       await hold.abort(500)
       await writePost(scene)
       await expect(scene.page.getByText('Could not save your draft to the server')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Not saved', { exact: true }).filter({ visible: true })).toBeVisible()
       await scene.page.mouse.move(700, 20)
     },
     async PUBLISH(scene) {
@@ -176,7 +177,9 @@ export const newDiscussion = defineFlow<Event>({
     async PUBLISH_FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(publishButton(scene)).toBeEnabled({ timeout: 30_000 })
-      await expect(title(scene).locator('..').getByText(/went wrong|Could not/)).toBeVisible()
+      const alert = scene.page.getByRole('alert').filter({ hasText: /went wrong|Could not/ })
+      await expect(alert).toBeVisible()
+      await expect(alert.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
     async LEAVE(scene) {
       await title(scene).fill(`${TITLE} (Friday at the latest)`)
@@ -190,6 +193,7 @@ export const newDiscussion = defineFlow<Event>({
       holds.set(scene, await scene.hold(DRAFT_READ))
       await scene.goto(`/community/${COMMUNITY}/new-discussion?draft=${name}`)
       await expect(scene.page.getByText('Loading draft…')).toBeVisible()
+      await expect(scene.page.getByText('Loading…', { exact: true }).filter({ visible: true })).toBeVisible()
     },
     async DRAFT_LOADS(scene) {
       await holds.get(scene)?.release()
@@ -199,6 +203,7 @@ export const newDiscussion = defineFlow<Event>({
     async DRAFT_FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(scene.page.getByText('Could not load this draft')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
       await expect(scene.page.getByText('Loading draft…')).toBeHidden()
     },
   },

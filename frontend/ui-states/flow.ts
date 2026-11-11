@@ -1,4 +1,4 @@
-import type { Locator } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import type { AnyStateMachine, EventObject } from "xstate";
 import type { Scene } from "./scene";
 
@@ -39,4 +39,28 @@ export type AnyFlow = Flow<EventObject>;
 
 export function defineFlow<TEvent extends EventObject>(flow: Flow<TEvent>): AnyFlow {
 	return flow as unknown as AnyFlow;
+}
+
+/**
+ * Presses the mouse on an empty part of the page's scroll area. When the first
+ * mouse press on a page opens a frappe-ui Dropdown, a dialog opened from that
+ * menu shows a focus ring on its X. A press that focuses the scroll area first
+ * prevents it; a press on a part of the page that takes no focus does not.
+ * Call this before opening such a menu.
+ */
+export async function pressEmpty(page: Page): Promise<void> {
+	const point = await page.evaluate(() => {
+		const candidates: [number, number][] = [[1400, 600], [1400, 300], [1400, 850]];
+		const interactive =
+			'a, button, input, textarea, select, label, [contenteditable], ' +
+			'[role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="radio"], [role="checkbox"], [role="combobox"]';
+		return (
+			candidates.find(([x, y]) => {
+				const target = document.elementFromPoint(x, y);
+				return target?.closest('[data-slot="scroll-area-viewport"]') && !target.closest(interactive);
+			}) ?? null
+		);
+	});
+	if (!point) throw new Error("No empty spot in the page's scroll area to press");
+	await page.mouse.click(point[0], point[1]);
 }

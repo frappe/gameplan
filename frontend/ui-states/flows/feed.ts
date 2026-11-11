@@ -11,43 +11,58 @@ type Event =
   | { type: 'SHOW_UNREAD' }
   | { type: 'CATCH_UP' }
   | { type: 'SORT_BY_CREATED' }
+  | { type: 'RETRY' }
 
 /**
  * A community's discussion feed: the first load, its tabs, and its sort.
- * In the code this is `Discussions.vue` over `DiscussionList.vue`, whose
- * template picks skeleton rows, the list, or "No discussions" from
- * `discussions.loading` and `discussions.data?.length`.
+ * In the code this is `Discussions.vue` over `DiscussionFeedBar.vue` (tabs and
+ * sort) and `DiscussionList.vue`, whose template picks skeleton rows, the
+ * list, `LoadError` or the feed's empty box from `discussions.loading`,
+ * `discussions.error` and `discussions.data?.length`.
  */
 const machine = setup({ types: { events: {} as Event } }).createMachine({
   id: 'feed',
   initial: 'skeleton',
   states: {
     skeleton: {
-      meta: { description: 'The feed request is still out: three skeleton rows under the tabs.' },
+      meta: { description: 'The feed request is still out: three skeleton rows under the tabs and the sort.' },
       on: { LOADS: 'recent', FAILS: 'failed' },
     },
     failed: {
       meta: {
         description:
-          'The feed request failed. No error and no rows: only a "Load more" button under the tabs.',
+          'The feed request failed: a cloud icon, "Could not load discussions." and a Retry button where the rows would be. No "Load more".',
+      },
+      on: { RETRY: 'retried' },
+    },
+    retried: {
+      meta: {
+        description:
+          'After Retry: the feed is back as it loads normally, the Pinned group on top and every post below it. Retry reloads the pinned request along with the main list.',
       },
     },
     recent: {
-      meta: { description: 'All Discussions in Common Room: pinned posts on top, then every post, newest activity first.' },
+      meta: {
+        description:
+          'All discussions in Common Room, sorted by "Latest activity": pinned posts on top, then every post, newest activity first. The header button reads "New discussion".',
+      },
       on: { SHOW_PARTICIPATING: 'participating', SHOW_UNREAD: 'unread', SORT_BY_CREATED: 'sortedByCreated' },
     },
     participating: {
-      meta: { description: 'Participating: posts Maya wrote or replied to.' },
+      meta: { description: 'The Participating tab: posts Maya wrote or replied to.' },
     },
     unread: {
-      meta: { description: 'Unread: posts by others that Maya has not opened, with the count beside the tab.' },
+      meta: { description: 'The Unread tab: posts by others that Maya has not opened, with the unread count after the tab label.' },
       on: { CATCH_UP: 'unreadEmpty' },
     },
     unreadEmpty: {
-      meta: { description: 'Unread once everything is read: the generic "No discussions" box.' },
+      meta: { description: 'The Unread tab once everything is read: a check icon, "You\'re caught up" and "Discussions with new activity will show up here.".' },
     },
     sortedByCreated: {
-      meta: { description: 'The same feed sorted by when each post was created instead of by its last activity.' },
+      meta: {
+        description:
+          'The same feed sorted by "Newest created": newest posts first, and each row\'s date is when the post was created, not its last activity.',
+      },
     },
   },
 })
@@ -83,7 +98,17 @@ export const feed = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByRole('button', { name: 'Load more' })).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Load more' })).toBeHidden()
+    },
+    async RETRY(scene) {
+      await holds.get(scene)?.release()
+      await scene.page.getByRole('button', { name: 'Retry' }).click()
+      await expect(scene.page.getByText('Pinned', { exact: true })).toBeVisible()
+      await expect(rows(scene).nth(5)).toBeVisible()
+      await expect(scene.page.getByText('Could not load discussions.')).toBeHidden()
+      await scene.page.mouse.move(700, 20)
     },
     async SHOW_PARTICIPATING(scene) {
       await openTab(scene, 'Participating')
@@ -100,13 +125,13 @@ export const feed = defineFlow<Event>({
         await scene.method(scene.api, 'GP Project', space, 'mark_all_as_read')
       }
       await scene.page.reload()
-      await expect(scene.page.getByText('No discussions')).toBeVisible()
+      await expect(scene.page.getByText("You're caught up")).toBeVisible()
     },
     async SORT_BY_CREATED(scene) {
       const sort = scene.page.getByRole('combobox').first()
       await sort.click()
-      await scene.page.getByRole('option', { name: 'Creation date' }).click()
-      await expect(sort).toContainText('Creation date')
+      await scene.page.getByRole('option', { name: 'Newest created' }).click()
+      await expect(sort).toContainText('Newest created')
       await expect(rows(scene).first()).toBeVisible()
       // The click leaves the pointer over the first row, which would show its hover.
       await scene.page.mouse.move(700, 20)

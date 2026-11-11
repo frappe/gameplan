@@ -14,8 +14,8 @@ type Event =
   | { type: 'PICK_ABSENT_AUTHOR' }
   | { type: 'FILTER_SPACE' }
   | { type: 'FILTER_COMMUNITY' }
-  | { type: 'FILTER_TYPE' }
   | { type: 'REFINED' }
+  | { type: 'RETRY' }
 
 /**
  * Full-text search at /search. In the code the summary line is a v-if chain
@@ -28,7 +28,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
   initial: 'empty',
   states: {
     empty: {
-      meta: { description: 'No query yet: an unfocused search box, the five filter buttons, and nothing below them.' },
+      meta: { description: 'No query yet: the search box with "Search discussions and comments", the four filter buttons (Author, Space, Community, Tags), and nothing below them.' },
       on: { TYPE: 'typed', SEARCH_MISS: 'noResults' },
     },
     typed: {
@@ -36,55 +36,52 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { SUBMIT: 'searching' },
     },
     searching: {
-      meta: { description: 'The search request is out: "Searching..." and no rows yet.' },
+      meta: { description: 'The search request is out: a spinner with "Searching…" and no rows yet.' },
       on: { LOADS: 'results', FAILS: 'failed' },
     },
     failed: {
-      meta: { description: 'The search failed: "Internal Server Error" in red where the match count would be, no rows and no way to retry but pressing Enter again.' },
+      meta: { description: 'The search failed: "Search failed. Try again." with a Retry button where the results would be, and no summary line.' },
+      on: { RETRY: 'results' },
     },
     results: {
       meta: {
         description:
-          'Results for "capsule": the match count and time, a "Helpful?" prompt, and discussions, tasks, pages and comments with the word highlighted.',
+          'Results for "capsule": the match count and time, a "Helpful?" prompt, and discussions, tasks and comments with the word highlighted.',
       },
       on: {
         OPEN_AUTHOR_MENU: 'authorMenu',
-        FILTER_SPACE: 'bySpace',
+        FILTER_SPACE: 'refining',
         FILTER_COMMUNITY: 'byCommunity',
-        FILTER_TYPE: 'refining',
       },
     },
     noResults: {
-      meta: { description: 'A query with no matches: "0 matches" in the summary line and an empty page below. No empty state.' },
+      meta: { description: 'A query with no matches: "0 matches" in the summary line and a "No results" box suggesting different words or fewer filters.' },
     },
     authorMenu: {
       meta: { description: 'The Author filter open over the results: every user, with a count of all their indexed posts (not of matches for this query) beside the name.' },
       on: { PICK_AUTHOR: 'byAuthor', PICK_ABSENT_AUTHOR: 'filterEmpty' },
     },
     byAuthor: {
-      meta: { description: 'Filtered to Lena Sorensen: her four capsule posts, tasks and replies, with "1 filter(s) applied".' },
+      meta: { description: 'Filtered to Lena Sorensen: her four capsule posts, tasks and replies, with "1 filter" and a "Clear filters" button.' },
     },
     filterEmpty: {
       meta: {
         description:
-          'Filtered to Felix, whom the menu credits with 29 posts but who never wrote about the capsule: "0 matches • 1 filter(s) applied" and a blank page.',
+          'Filtered to Felix, whom the menu credits with posts but who never wrote about the capsule: "0 matches • 1 filter", "Clear filters", and the "No results" box.',
       },
     },
     bySpace: {
-      meta: { description: 'Filtered to the Art space: the Space button names it, and only Art results remain.' },
+      meta: { description: 'Filtered to the Art space: the Space button names it, only Art results remain, and the summary says "1 filter" with "Clear filters".' },
     },
     byCommunity: {
-      meta: { description: 'Filtered to Community & Marketing: only results from its spaces remain.' },
+      meta: { description: 'Filtered to Community & Marketing: only results from its spaces remain, with "1 filter" and "Clear filters".' },
     },
     refining: {
       meta: {
         description:
-          'Type set to Discussion while the new request is out: "Searching..." above the previous, unfiltered results.',
+          'Space set to Art while the new request is out: "Searching…" above the previous, unfiltered results.',
       },
-      on: { REFINED: 'byType' },
-    },
-    byType: {
-      meta: { description: 'Filtered to Discussions: only top-level posts, no comments, tasks or pages.' },
+      on: { REFINED: 'bySpace' },
     },
   },
 })
@@ -96,7 +93,7 @@ const MISS = 'xylophone'
 const holds = new WeakMap<Scene, Hold>()
 
 function input(scene: Scene) {
-  return scene.page.getByPlaceholder('Start typing to Search')
+  return scene.page.getByPlaceholder('Search discussions and comments')
 }
 
 function summary(scene: Scene) {
@@ -104,7 +101,7 @@ function summary(scene: Scene) {
 }
 
 function rows(scene: Scene) {
-  return scene.page.locator('a[href*="/discussion/"], a[href*="/task/"], a[href*="/page/"]')
+  return scene.page.locator('a[href*="/discussion/"]')
 }
 
 function filterButton(scene: Scene, label: string) {
@@ -125,7 +122,8 @@ async function runSearch(scene: Scene, query: string) {
 }
 
 async function filtered(scene: Scene, count: RegExp) {
-  await expect(scene.page.getByText('filter(s) applied')).toBeVisible()
+  await expect(scene.page.getByText(/• 1 filter\b/)).toBeVisible()
+  await expect(scene.page.getByRole('button', { name: 'Clear filters' })).toBeVisible()
   await expect(summary(scene)).toHaveText(count)
   await scene.page.mouse.move(700, 20)
 }
@@ -148,7 +146,7 @@ export const search = defineFlow<Event>({
     async SUBMIT(scene) {
       holds.set(scene, await scene.hold(SEARCH_URL))
       await input(scene).press('Enter')
-      await expect(scene.page.getByText('Searching...')).toBeVisible()
+      await expect(scene.page.getByText('Searching…')).toBeVisible()
     },
     async LOADS(scene) {
       await holds.get(scene)?.release()
@@ -157,12 +155,19 @@ export const search = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Searching...')).toBeHidden({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible({ timeout: 30_000 })
       await expect(summary(scene)).toBeHidden()
+    },
+    async RETRY(scene) {
+      await holds.get(scene)?.release()
+      await scene.page.getByRole('button', { name: 'Retry' }).click()
+      await expect(summary(scene)).toBeVisible()
+      await expect(rows(scene).first()).toBeVisible()
     },
     async SEARCH_MISS(scene) {
       await runSearch(scene, MISS)
       await expect(summary(scene)).toHaveText(/^0 matches/)
+      await expect(scene.page.getByText('No results', { exact: true })).toBeVisible()
     },
     async OPEN_AUTHOR_MENU(scene) {
       await filterButton(scene, 'Author').click()
@@ -179,18 +184,14 @@ export const search = defineFlow<Event>({
       await filtered(scene, /^0 matches/)
     },
     async FILTER_SPACE(scene) {
+      holds.set(scene, await scene.hold(SEARCH_URL))
       await pick(scene, 'Space', /^Art\b/)
-      await filtered(scene, /^[1-9]\d* match/)
+      await expect(scene.page.getByText('Searching…')).toBeVisible()
+      await scene.page.mouse.move(700, 20)
     },
     async FILTER_COMMUNITY(scene) {
       await pick(scene, 'Community', /^Community & Marketing/)
       await filtered(scene, /^[1-9]\d* match/)
-    },
-    async FILTER_TYPE(scene) {
-      holds.set(scene, await scene.hold(SEARCH_URL))
-      await pick(scene, 'Type', /^Discussion/)
-      await expect(scene.page.getByText('Searching...')).toBeVisible()
-      await scene.page.mouse.move(700, 20)
     },
     async REFINED(scene) {
       await holds.get(scene)?.release()

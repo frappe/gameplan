@@ -289,14 +289,30 @@ function settleJobs(baseURL: string): void {
   waitForIdleWorker()
 }
 
+/**
+ * Runs a bench command for the site. A request the last scene's page left in
+ * flight can still hold SQLite's write lock, so a "database is locked" failure
+ * is retried a few times.
+ */
 function frappe(baseURL: string, ...args: string[]): void {
   if (!BENCH) throw new Error('UI_STATES_BENCH must name the Pilot bench that serves BASE_URL')
   const site = new URL(baseURL).hostname
-  try {
-    execFileSync(PILOT, ['-b', BENCH, 'frappe', '--site', site, ...args], { stdio: 'pipe', timeout: 120_000 })
-  } catch (error) {
-    const stderr = (error as { stderr?: Buffer }).stderr?.toString().trim().split('\n').slice(-15).join('\n')
-    throw new Error(`frappe ${args.slice(0, 2).join(' ')} failed:\n${stderr ?? error}`)
+  for (let attempt = 1; ; attempt++) {
+    try {
+      execFileSync(PILOT, ['-b', BENCH, 'frappe', '--site', site, ...args], { stdio: 'pipe', timeout: 120_000 })
+      return
+    } catch (error) {
+      const { stdout, stderr, status, signal } = error as { stdout?: Buffer; stderr?: Buffer; status?: number; signal?: string }
+      const output = `${stderr ?? ''}\n${stdout ?? ''}`
+      if (attempt < 3 && output.includes('database is locked')) {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2_000)
+        continue
+      }
+      // SQLite's SQL translator warns on every ALTER SEQUENCE; drop those lines so the real error shows.
+      const noise = /ALTER SEQUENCE|unsupported syntax|^Syntax error in query:$/
+      const tail = output.trim().split('\n').filter((line) => !noise.test(line.trim())).slice(-20).join('\n')
+      throw new Error(`frappe ${args.slice(0, 2).join(' ')} failed (status ${status}, signal ${signal}):\n${tail}`)
+    }
   }
 }
 

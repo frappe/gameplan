@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { setup } from 'xstate'
 import { reply } from '../content'
-import { defineFlow } from '../flow'
+import { defineFlow, pressEmpty } from '../flow'
 import { communities, type Hold, type Scene } from '../scene'
 
 type Event =
@@ -16,16 +16,18 @@ type Event =
   | { type: 'OPEN_OPTIONS' }
   | { type: 'CLOSE' }
   | { type: 'CONFIRM_CLOSE' }
+  | { type: 'DELETE' }
   | { type: 'OPEN_POLL' }
   | { type: 'OPEN_MISSING' }
 
 /**
  * One discussion thread: the post, its timeline of replies, activities and
  * polls, and the fixed reply composer. `DiscussionView.vue` picks the skeleton,
- * the thread, "Discussion not found" or "Could not load this discussion" from
- * `discussion.loading`, `discussion.doc`, the error type and `isFinished`;
- * `CommentsArea.vue` shows the composer as a button, a minimised bar or the
- * open editor from `showCommentBox` and `composerMinimized`.
+ * the thread, "Discussion not found" or `LoadError` ("Could not load this
+ * discussion.") from `discussion.loading`, `discussion.doc`, the error type and
+ * `isFinished`; `CommentsArea.vue` shows the closed bar, or the composer as a
+ * button, a minimised bar or the open editor from `closed`, `showCommentBox`
+ * and `composerMinimized`.
  */
 const machine = setup({ types: { events: {} as Event } }).createMachine({
   id: 'discussion',
@@ -41,13 +43,13 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     failed: {
       meta: {
         description:
-          'The discussion request failed with a 500, yet the thread renders as if it had loaded, with no error: the page already had a copy of the post in frappe-ui\'s document store, and DiscussionView checks for a doc before it checks for an error. "Could not load this discussion" never shows on this path.',
+          'The discussion request failed with a 500, yet the thread renders as if it had loaded, with no error: the page already had a copy of the post in frappe-ui\'s document store, and DiscussionView checks for a doc before it checks for an error. The "Could not load this discussion." box with Retry never shows on this path.',
       },
     },
     read: {
       meta: {
         description:
-          'Maya\'s own checklist post, read, scrolled to its latest reply, with the "Add a comment" bar fixed at the bottom.',
+          'Maya\'s own checklist post, read, scrolled to its latest reply, with relative dates on each reply and the "Add a comment" bar fixed at the bottom.',
       },
       on: {
         NEW_REPLY: 'unread',
@@ -70,19 +72,19 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { SUBMIT: 'posting' },
     },
     posting: {
-      meta: { description: 'The reply is being saved: the Submit button spins and the text stays in the editor.' },
+      meta: { description: 'The reply is being saved: the Submit button spins, Discard is disabled, and the text stays in the editor.' },
       on: { POST_FAILS: 'postFailed' },
     },
     postFailed: {
       meta: {
         description:
-          'Saving the reply failed: a bare red "Internal Server Error" under the editor toolbar, with the reply text kept and Submit ready to try again.',
+          'Saving the reply failed: "Couldn\'t post your comment. Your text is kept, so try again." in red, right-aligned on its own line above Discard and Submit. The reply text is kept and Submit is ready to try again.',
       },
     },
     editing: {
       meta: {
         description:
-          'Editing the post in place: the post gets a border, the title becomes an input and the body editable, with Save and Discard below the fold. The reply bar is hidden.',
+          'Editing the post in place: Discard and Save sit in the post header beside "…", the title becomes an input and the body editable, with no buttons under the editor. The reply bar is hidden.',
       },
     },
     reactionPicker: {
@@ -91,27 +93,39 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     optionsMenu: {
       meta: {
         description:
-          'The post\'s options menu for its author: Edit, Revisions, Copy link, Mark as unread, Bookmark, Pin, Close, Move to and Delete.',
+          'The post\'s "Discussion options" menu for its author, in three groups: Edit, Copy link, Mark as unread, Bookmark, "Pin discussion…"; "Revisions…", "Move to…"; then "Close discussion…" and a red "Delete…".',
       },
-      on: { CLOSE: 'closeConfirm' },
+      on: { CLOSE: 'closeConfirm', DELETE: 'deleteConfirm' },
     },
     closeConfirm: {
-      meta: { description: 'The confirmation before closing the discussion, saying replies will be disabled.' },
+      meta: {
+        description:
+          'The confirm before closing: "Close this discussion?", "No one can comment on it until it is re-opened.", with Cancel and Close.',
+      },
       on: { CONFIRM_CLOSE: 'closed' },
     },
     closed: {
       meta: {
         description:
-          'The closed discussion: a lock before the title, and the "Add a comment" bar is gone with nothing in its place to say why.',
+          'The closed discussion: a lock before the title, and where "Add a comment" was, a muted bar with a lock, "This discussion is closed" and a "Re-open" button.',
+      },
+    },
+    deleteConfirm: {
+      meta: {
+        description:
+          'The confirm before deleting: "Delete this discussion?", "The post and all its comments will be deleted. This can\'t be undone.", with Cancel and a red Delete. No icon in the title.',
       },
     },
     poll: {
-      meta: { description: 'A poll in the timeline under the post: "Which lobby rug?" with 10 votes, four options Maya has not voted on, and Stop Poll for its author. (The demo leaves it open, though a later reply says it closed.)' },
+      meta: {
+        description:
+          'A poll in the timeline under the post: "Which lobby rug?" with four options Maya has not voted on, and in its header "End poll", "Results" and the "Poll options" menu. (The demo leaves it open, though a later reply says it closed.)',
+      },
     },
     missing: {
       meta: {
         description:
-          'A link to a discussion that does not exist. The router answers before the page loads, with the app-wide "Page not found", not the discussion page\'s own "Discussion not found".',
+          'A link to a discussion that does not exist: the discussion page shows "Discussion not found" in place, with "Go to Home", under a breadcrumb that reads "Releases / Not found".',
       },
     },
   },
@@ -222,12 +236,16 @@ export const discussion = defineFlow<Event>({
     async POST_FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(composer(scene).getByRole('alert')).toBeVisible({ timeout: 60_000 })
+      await expect(composer(scene).getByRole('button', { name: 'Submit' })).toBeEnabled()
     },
     async EDIT(scene) {
       await scrollToPost(scene)
-      await scene.page.getByRole('button', { name: 'Discussion Options' }).click()
+      await pressEmpty(scene.page)
+      await scene.page.getByRole('button', { name: 'Discussion options' }).click()
       await scene.page.getByRole('menuitem', { name: 'Edit' }).click()
       await expect(scene.page.getByPlaceholder('Title')).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Save', exact: true })).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Discard', exact: true })).toBeVisible()
       await expect(scene.page.getByRole('button', { name: 'Add a comment' })).toBeHidden()
     },
     async OPEN_REACTIONS(scene) {
@@ -239,19 +257,25 @@ export const discussion = defineFlow<Event>({
     },
     async OPEN_OPTIONS(scene) {
       await scrollToPost(scene)
-      await scene.page.getByRole('button', { name: 'Discussion Options' }).click()
-      await expect(scene.page.getByRole('menuitem', { name: 'Close discussion...' })).toBeVisible()
+      await pressEmpty(scene.page)
+      await scene.page.getByRole('button', { name: 'Discussion options' }).click()
+      await expect(scene.page.getByRole('menuitem', { name: 'Close discussion…' })).toBeVisible()
     },
     async CLOSE(scene) {
-      await scene.page.getByRole('menuitem', { name: 'Close discussion...' }).click()
-      await expect(scene.page.getByRole('dialog').getByText('commenting is disabled')).toBeVisible()
+      await scene.page.getByRole('menuitem', { name: 'Close discussion…' }).click()
+      await expect(scene.page.getByRole('dialog').getByText('Close this discussion?')).toBeVisible()
     },
     async CONFIRM_CLOSE(scene) {
       // The dialog's X is also labelled "Close"; the confirm button is the one with the text.
       await scene.page.getByRole('dialog').locator('button').filter({ hasText: /^\s*Close\s*$/ }).click()
       await expect(scene.page.getByRole('dialog')).toBeHidden()
       await expect(scene.page.getByRole('button', { name: 'Add a comment' })).toBeHidden()
-      await expect(scene.page.locator('h1 .lucide-lock')).toBeVisible()
+      await expect(scene.page.getByText('This discussion is closed', { exact: true })).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Re-open' })).toBeVisible()
+    },
+    async DELETE(scene) {
+      await scene.page.getByRole('menuitem', { name: 'Delete…' }).click()
+      await expect(scene.page.getByRole('dialog').getByText('Delete this discussion?')).toBeVisible()
     },
     async OPEN_POLL(scene) {
       const name = await scene.find('GP Discussion', { title: POLL_POST_TITLE })
@@ -264,10 +288,13 @@ export const discussion = defineFlow<Event>({
       await scene.settle(300)
       await poll.scrollIntoViewIfNeeded()
       await expect(poll).toBeInViewport()
+      await expect(scene.page.getByRole('button', { name: 'End poll' })).toBeVisible()
+      await expect(scene.page.getByRole('button', { name: 'Results' })).toBeVisible()
     },
     async OPEN_MISSING(scene) {
       await scene.goto(`/community/${COMMUNITY}/space/${spaceOf(scene)}/discussion/99999`)
-      await expect(scene.page.getByText('Page not found')).toBeVisible()
+      await expect(scene.page.getByText('Discussion not found', { exact: true })).toBeVisible()
+      await expect(scene.page.getByText('Not found', { exact: true })).toBeVisible()
     },
   },
 })
