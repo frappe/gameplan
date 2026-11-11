@@ -97,26 +97,6 @@ export function isEditorContentEmpty(content: string | null | undefined): boolea
 }
 
 /**
- * Pull the human-readable text out of a frappe-ui request error.
- *
- * `frappeRequest`/`call` put the clean `frappe.throw()` text on the error's
- * `messages` array (parsed out of `_server_messages`) and leave the noisy
- * "<method> <ExcType>" string on `message`, so prefer `messages`.
- */
-export function extractServerMessage(error: unknown): string {
-  if (!(error instanceof Error)) return typeof error === 'string' ? error : ''
-
-  let serverMessages = (error as Error & { messages?: unknown }).messages
-  if (Array.isArray(serverMessages)) {
-    let messages = serverMessages.filter(
-      (message): message is string => typeof message === 'string',
-    )
-    if (messages.length) return stripHtml(messages.join('\n'))
-  }
-  return error.message ? stripHtml(error.message) : ''
-}
-
-/**
  * One readable sentence about a failed request, to put in front of a person.
  *
  * Frappe's own message is used when it reads as a sentence, without the exception name

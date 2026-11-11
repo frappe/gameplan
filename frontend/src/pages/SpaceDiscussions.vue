@@ -63,7 +63,14 @@
         open-on-click
         autofocus
       />
-      <ErrorMessage class="mt-2" :message="bulkMoveDiscussions.error" />
+      <ErrorMessage
+        class="mt-2"
+        :message="
+          bulkMoveDiscussions.error
+            ? errorText(bulkMoveDiscussions.error, 'Could not move the discussions.')
+            : undefined
+        "
+      />
       <template #actions>
         <Button
           class="w-full"
@@ -108,7 +115,7 @@ import {
   archiveSpace,
   unarchiveSpace,
 } from '@/data/spaces'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, errorText } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
 
 interface BulkUpdateResponse {
@@ -301,8 +308,8 @@ function moveDiscussions() {
       showMoveDialog.value = false
       isBulkMoveMode.value = false
     })
-    .catch(() => {
-      toast.error(bulkMoveDiscussions.error || 'Failed to move discussions')
+    .catch((error: unknown) => {
+      toast.error(errorText(error, 'Could not move the discussions.'))
     })
 }
 </script>

@@ -1,5 +1,5 @@
 import { dialog, toast } from 'frappe-ui'
-import { extractServerMessage } from '@/utils'
+import { errorText } from '@/utils'
 import { isPermissionError } from '@/utils/errorMessage'
 
 /**
@@ -44,5 +44,5 @@ function getRestoreErrorMessage(error: unknown) {
   if (isPermissionError(error)) {
     return 'You do not have permission to change this profile layout'
   }
-  return extractServerMessage(error) || 'Could not restore the default layout'
+  return errorText(error, 'Could not restore the default layout.')
 }

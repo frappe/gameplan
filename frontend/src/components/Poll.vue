@@ -215,7 +215,7 @@ import type { RadioValue } from 'frappe-ui'
 import UserAvatar from './UserAvatar.vue'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import UserProfileLink from './UserProfileLink.vue'
-import { copyToClipboard, relativeTimestamp } from '@/utils'
+import { copyToClipboard, errorText, relativeTimestamp } from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import Reactions from './Reactions.vue'
 import StickyRowFade from './StickyRowFade.vue'
@@ -275,9 +275,12 @@ const owner = computed(() => useUser(_poll.value.owner))
 const participated = computed(() =>
   _poll.value.votes.some((vote) => vote.user === sessionUser.name),
 )
-const voteError = computed(
-  () => pollResource.submitVote.error?.message || pollResource.retractVote.error?.message || null,
-)
+const voteError = computed(() => {
+  const { submitVote, retractVote } = pollResource
+  if (submitVote.error) return errorText(submitVote.error, 'Could not save your vote.')
+  if (retractVote.error) return errorText(retractVote.error, 'Could not retract your vote.')
+  return undefined
+})
 // An anonymous poll records that you voted but not what you chose, so there is no answer
 // to replace or retract: that vote is final. Every other poll lets you change your mind.
 const voteIsFinal = computed(() => Boolean(_poll.value.anonymous) && participated.value)

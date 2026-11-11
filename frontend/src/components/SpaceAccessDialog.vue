@@ -119,7 +119,14 @@
             </div>
           </div>
         </section>
-        <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
+        <ErrorMessage
+          class="mt-2"
+          :message="
+            spaces.runDocMethod.error
+              ? errorText(spaces.runDocMethod.error, 'Could not update access to this space.')
+              : undefined
+          "
+        />
         <Dialog v-bind="removeDialog.options || {}" v-model:open="removeDialog.open" />
       </div>
     </template>
@@ -133,6 +140,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser, useUser, users } from '@/data/users'
+import { errorText } from '@/utils'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
 
