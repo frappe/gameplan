@@ -22,7 +22,7 @@ import {
   onScopeDispose,
   type MaybeRefOrGetter,
 } from 'vue'
-import { call, debounce, dayjsLocal, useDoctype } from 'frappe-ui'
+import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
 import { isEditorContentEmpty } from '@/utils'
@@ -77,6 +77,9 @@ export interface UseDraftSyncOptions {
   initialPayload?: () => DraftPayload
   /** Called once when the server row is created — lets standalone callers sync the URL. */
   onCreate?: (serverName: string) => void
+  /** How a failed server push is reported. 'toast' (the default) shows one toast per failure
+   *  streak; 'inline' leaves it to the caller, which reads `lastError`. */
+  saveErrors?: 'toast' | 'inline'
 }
 
 function hasContent(payload: DraftPayload): boolean {
@@ -361,6 +364,11 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // new-discussion drafts that never land here are adopted later by
       // recoverOrphanedDrafts(), so a missed push no longer strands a draft locally.
       captureError(error, { action: 'draft-push', draft: serverName.value })
+      // Toast once per failure streak, so a silently failing save can't quietly lose
+      // server-side persistence. Reset on the next success above.
+      if (options.saveErrors !== 'inline' && !lastError.value) {
+        toast.error("Couldn't save your draft. Your changes are kept here and saving will retry.")
+      }
       lastError.value = error
     } finally {
       saving.value = false

@@ -64,6 +64,7 @@ export function useNewDiscussion() {
   const draftName = computed(() => (route.query.draft as string) || null)
 
   const draft = useDraftSync({
+    saveErrors: 'inline',
     identity: { type: 'Discussion', mode: 'New' },
     draftName,
     canSave: hasMeaningfulContent,
