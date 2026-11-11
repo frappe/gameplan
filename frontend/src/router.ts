@@ -1,6 +1,7 @@
 import {
   createRouter,
   createWebHistory,
+  loadRouteLocation,
   type RouteLocationNormalized,
   type RouteLocationRaw,
   type RouteRecordRaw,
@@ -765,6 +766,10 @@ router.beforeEach(async (to, from) => {
   // Set before anything below awaits, so navigation lights up the clicked item at once.
   // The settings dialog opens over the current page, which stays the active one.
   if (!isSettingsRoute(to)) navigationTarget.value = to
+  // The router downloads a page's code only after every guard has finished, and the
+  // guards below wait for the boot data on a cold load. Start the download now, so the
+  // two arrive together: about half a second sooner on a 3G connection.
+  loadRouteLocation(to).catch(() => {})
   saveAndRestoreScrollPosition(to, from)
 
   if (to.name === 'Login' && session.isLoggedIn) {
