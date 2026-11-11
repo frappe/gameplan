@@ -1,4 +1,4 @@
-import { io, type Socket } from 'socket.io-client'
+import type { Socket } from 'socket.io-client'
 import { socketio_port } from '../../../../sites/common_site_config.json'
 
 /** Payload published by GP Activity on every new discussion/comment activity.
@@ -9,6 +9,12 @@ export type NewActivityEvent = {
   reference_name: string
 }
 
+/** Frappe's events for one document, received after `subscribeToDoc` joins its room. */
+export type DocRoomEvents = {
+  new_activity: NewActivityEvent
+  doc_update: { doctype?: string; name?: string | number }
+}
+
 /**
  * Every realtime event Gameplan's own backend publishes, and what each one carries.
  *
@@ -17,8 +23,8 @@ export type NewActivityEvent = {
  * client knows how it stores the data.
  *
  * Frappe's own events (`new_activity`, `doc_update`, ...) are not listed here. Components
- * that want those still reach for `useSocket()` directly, since they are scoped to a
- * document room the component subscribes to for its own lifetime.
+ * listen for those with `onDocEvent()`, since they are scoped to a document room the
+ * component subscribes to for its own lifetime.
  */
 export type GameplanSocketEvents = {
   'gameplan:unread_counts_changed': void
@@ -39,6 +45,10 @@ const GAMEPLAN_SOCKET_EVENTS = [
 
 let socket: Socket | null = null
 
+// Handlers to attach to the socket, kept here because the socket is created after the
+// first page draws, and a component on that page may register one before it exists.
+const socketHandlers = new Set<{ event: string; handler: (...args: any[]) => void }>()
+
 const listeners = new Map<SocketEventName, Set<(payload: any) => void>>()
 const reconnectListeners = new Set<() => void>()
 
@@ -48,8 +58,8 @@ const HANDSHAKE_RETRY_DELAY = 5000
  * Listen for a backend event. Returns an unsubscribe function.
  *
  * Handlers live in this module's own registry rather than on the socket, which buys two
- * things. Registration order does not matter: `initSocket()` runs inside `setupApp()`, long
- * after module-level code in `data/*.ts` has run, so a bare `socket.on()` there would attach
+ * things. Registration order does not matter: `initSocket()` runs after the first page draws,
+ * long after module-level code in `data/*.ts` has run, so a bare `socket.on()` there would attach
  * to nothing. And unsubscribing removes exactly one handler — `socket.off(event)` drops every
  * listener for that event, so two components listening to the same one clobber each other.
  */
@@ -81,7 +91,32 @@ export function onSocketReconnect(handler: () => void) {
   }
 }
 
-export function initSocket() {
+/** Attach `handler` to the socket now, or when it is created. Returns the detach function. */
+function onSocket(event: string, handler: (...args: any[]) => void) {
+  const entry = { event, handler }
+  socketHandlers.add(entry)
+  socket?.on(event, handler)
+  return () => {
+    socketHandlers.delete(entry)
+    socket?.off(event, handler)
+  }
+}
+
+/**
+ * Listen for a Frappe event in a document room joined with `subscribeToDoc`. Returns an
+ * unsubscribe function. Safe to call before the socket exists.
+ */
+export function onDocEvent<K extends keyof DocRoomEvents>(
+  event: K,
+  handler: (payload: DocRoomEvents[K]) => void,
+) {
+  return onSocket(event, handler)
+}
+
+/** Connect to the realtime server. socket.io's code downloads here, not with the app. */
+export async function initSocket() {
+  const { io } = await import('socket.io-client')
+
   let host = window.location.hostname
   let siteName = window.site_name
   let port = window.location.port ? `:${socketio_port}` : ''
@@ -92,6 +127,7 @@ export function initSocket() {
   // and a socket that stops retrying leaves every live count frozen until a page reload.
   const appSocket = io(url, { withCredentials: true })
   socket = appSocket
+  for (const { event, handler } of socketHandlers) appSocket.on(event, handler)
 
   // `connect`, not the Manager's `reconnect`: the server joins this user's room during the
   // handshake, so refetching any earlier could miss a push sent before the room was joined.
@@ -115,7 +151,6 @@ export function initSocket() {
       runEach(listeners.get(event) ?? [], `Listener for "${event}"`, payload)
     })
   }
-  return appSocket
 }
 
 /**
@@ -136,10 +171,6 @@ export function runEach<A extends unknown[]>(
   }
 }
 
-export function useSocket() {
-  return socket
-}
-
 /**
  * Join a document's realtime room so this tab receives events published for it
  * (see `frappe.publish_realtime(..., doctype=, docname=)`).
@@ -151,10 +182,10 @@ export function useSocket() {
 export function subscribeToDoc(doctype: string, name: string) {
   const subscribe = () => socket?.emit('doc_subscribe', doctype, name)
   subscribe()
-  socket?.on('connect', subscribe)
+  const stopResubscribing = onSocket('connect', subscribe)
 
   return () => {
-    socket?.off('connect', subscribe)
+    stopResubscribing()
     socket?.emit('doc_unsubscribe', doctype, name)
   }
 }

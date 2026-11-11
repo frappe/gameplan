@@ -4,10 +4,8 @@ import {
   TextInput,
   ErrorMessage,
   Dialog,
-  Alert,
   Badge,
   frappeRequest,
-  FrappeUI,
   setConfig,
   useCall,
 } from 'frappe-ui'
@@ -27,7 +25,6 @@ let globalComponents = {
   TextInput,
   ErrorMessage,
   Dialog,
-  Alert,
   Badge,
 }
 let app = createApp(App)
@@ -47,7 +44,6 @@ app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$platform = getPlatform()
 app.config.globalProperties.$isSessionUser = isSessionUser
 
-let socket: ReturnType<typeof initSocket>
 if (import.meta.env.DEV) {
   useCall<Record<string, unknown>>({
     url: '/api/v2/method/gameplan.www.g.get_context_for_dev',
@@ -64,8 +60,6 @@ if (import.meta.env.DEV) {
 // Runs once boot values are on `window` (inline script in prod, the dev
 // context call above in dev) so frappe-ui gets its full config in one place.
 function setupApp() {
-  // UnsplashImageBrowser.vue still uses the v1 resources Options API.
-  app.use(FrappeUI, { resources: true })
   setConfig('resourceFetcher', frappeRequest)
   setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
   setConfig('systemTimezone', window.system_timezone || null)
@@ -73,9 +67,9 @@ function setupApp() {
   // this is unset. A long list formats several timestamps per row, so resolve it once.
   setConfig('localTimezone', Intl.DateTimeFormat().resolvedOptions().timeZone)
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
-  socket = initSocket()
-  app.config.globalProperties.$socket = socket
   app.mount('#app')
+  // The first page draws without the realtime connection, so its code downloads after.
+  router.isReady().then(initSocket)
 }
 
 if (import.meta.env.DEV) {

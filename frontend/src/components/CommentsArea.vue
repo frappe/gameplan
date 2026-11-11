@@ -228,7 +228,7 @@ import Activity from './Activity.vue'
 import Poll from './Poll.vue'
 import UserAvatar from './UserAvatar.vue'
 import { dialog, shellScrollContainer } from 'frappe-ui'
-import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
+import { onDocEvent, subscribeToDoc } from '@/socket'
 import { GPActivity, GPBookmark, GPComment, GPPoll } from '@/types/doctypes'
 import type { Editor } from '@tiptap/vue-3'
 import { tags } from '@/data/tags'
@@ -290,8 +290,8 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const route = useRoute()
-const socket = useSocket()
 let unsubscribeFromDoc: (() => void) | null = null
+let stopActivityUpdates: (() => void) | null = null
 const sessionUser = useSessionUser()
 const isMobileViewport = useIsMobile()
 
@@ -799,7 +799,7 @@ onMounted(() => {
     highlightComment,
   })
   unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
-  socket.on('new_activity', (data: NewActivityEvent) => {
+  stopActivityUpdates = onDocEvent('new_activity', (data) => {
     // The payload stringifies the id (activity.py) but doctypes that autoname to an
     // integer hand this component a number, so a strict compare never matches and the
     // timeline silently stops updating. Compare as strings.
@@ -812,7 +812,7 @@ onMounted(() => {
 onUnmounted(() => {
   richQuotes?.setReplyTarget(null)
   richQuotes?.setCommentNavigator(null)
-  socket.off('new_activity')
+  stopActivityUpdates?.()
   unsubscribeFromDoc?.()
   mutationObserver?.disconnect()
   resizeObserver?.disconnect()

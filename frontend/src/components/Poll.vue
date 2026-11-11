@@ -221,7 +221,7 @@ import { useUser, useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
 import type { GPPoll, GPPollOption } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
-import { subscribeToDoc, useSocket } from '@/socket'
+import { onDocEvent, subscribeToDoc } from '@/socket'
 
 interface Props {
   poll: GPPoll
@@ -249,7 +249,6 @@ const props = withDefaults(defineProps<Props>(), {
 const [DefinePollActions, ReusePollActions] = createReusableTemplate()
 const showDialog = ref(false)
 const sessionUser = useSessionUser()
-const socket = useSocket()
 const selectedAnswers = reactive<Record<string, boolean>>({})
 // An anonymous vote records the voter but not their choice, so the server can never tell
 // us which option to tick. Remember it for this mount so the poll doesn't look untouched
@@ -393,12 +392,13 @@ watch(
 )
 
 let unsubscribeFromPoll: (() => void) | null = null
+let stopPollUpdates: (() => void) | null = null
 onMounted(() => {
   unsubscribeFromPoll = subscribeToDoc('GP Poll', String(props.poll.name))
-  socket?.on('doc_update', handlePollUpdate)
+  stopPollUpdates = onDocEvent('doc_update', handlePollUpdate)
 })
 onUnmounted(() => {
-  socket?.off('doc_update', handlePollUpdate)
+  stopPollUpdates?.()
   unsubscribeFromPoll?.()
 })
 
