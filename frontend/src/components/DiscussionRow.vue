@@ -54,50 +54,57 @@
         </div>
       </div>
     </ListCell>
-    <ListCell class="justify-end gap-2">
-      <div>
-        <Tooltip :text="timestamp.tooltip">
-          <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(timestamp.at) }}
-          </div>
-        </Tooltip>
-        <div class="mt-1.5 flex items-center justify-end space-x-3">
-          <Tooltip text="Ongoing poll" v-if="discussion.ongoing_polls?.length">
-            <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
-          </Tooltip>
-          <Tooltip v-if="discussion.unread">
-            <!-- Amber is deliberate and owner-requested. Known AA trade: white on amber-600 is
-                 about 3.22:1, below the 4.5:1 floor. Do not swap it for a gray Badge. -->
-            <div
-              class="bg-amber-600 dark:bg-dark-amber-500 text-white rounded-full h-4 min-w-4 px-1 grid place-content-center text-xs"
-            >
-              {{ discussion.unread }}
+    <ListCell class="justify-end">
+      <!-- The remove button shares one grid cell with the date and badge and replaces them
+           on hover or keyboard focus, so it reserves no width of its own. -->
+      <div class="group/meta grid items-center justify-items-end">
+        <div
+          class="[grid-area:1/1]"
+          :class="removable && 'sm:group-hover:invisible group-has-[:focus-visible]/meta:invisible'"
+        >
+          <Tooltip :text="timestamp.tooltip">
+            <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
+              {{ relativeTimestamp(timestamp.at) }}
             </div>
-            <template #content>
-              <div v-if="discussion.comments_count + 1 === discussion.unread">New unread post</div>
-              <div v-else-if="discussion.comments_count > 0" class="p-0.5">
-                <div>{{ discussion.unread }} unread</div>
-                <div class="text-ink-gray-3 mt-0.5">
-                  {{ discussion.comments_count }}
-                  {{ discussion.comments_count == 1 ? 'comment' : 'comments' }}
-                </div>
-              </div>
-            </template>
           </Tooltip>
-          <Badge v-else>{{ (discussion.comments_count || 0) + 1 }}</Badge>
+          <div class="mt-1.5 flex items-center justify-end space-x-3">
+            <Tooltip text="Ongoing poll" v-if="discussion.ongoing_polls?.length">
+              <span class="lucide-bar-chart-2 h-4 w-4 -rotate-90" />
+            </Tooltip>
+            <Tooltip v-if="discussion.unread">
+              <!-- Amber is deliberate and owner-requested. Known AA trade: white on amber-600 is
+                   about 3.22:1, below the 4.5:1 floor. Do not swap it for a gray Badge. -->
+              <div
+                class="bg-amber-600 dark:bg-dark-amber-500 text-white rounded-full h-4 min-w-4 px-1 grid place-content-center text-xs"
+              >
+                {{ discussion.unread }}
+              </div>
+              <template #content>
+                <div v-if="discussion.comments_count + 1 === discussion.unread">New unread post</div>
+                <div v-else-if="discussion.comments_count > 0" class="p-0.5">
+                  <div>{{ discussion.unread }} unread</div>
+                  <div class="text-ink-gray-3 mt-0.5">
+                    {{ discussion.comments_count }}
+                    {{ discussion.comments_count == 1 ? 'comment' : 'comments' }}
+                  </div>
+                </div>
+              </template>
+            </Tooltip>
+            <Badge v-else>{{ (discussion.comments_count || 0) + 1 }}</Badge>
+          </div>
         </div>
+        <!-- Hover only, so hidden on touch screens. stop+prevent keep the click out of
+             row navigation. -->
+        <Tooltip v-if="removable" text="Remove bookmark">
+          <Button
+            variant="ghost"
+            icon="lucide-bookmark-minus"
+            label="Remove bookmark"
+            class="[grid-area:1/1] opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:hidden"
+            @click.stop.prevent="emit('remove')"
+          />
+        </Tooltip>
       </div>
-      <!-- Shown on hover, so not on touch screens. stop+prevent keep the click out of
-           row navigation. -->
-      <Tooltip v-if="removable" text="Remove bookmark">
-        <Button
-          variant="ghost"
-          icon="lucide-bookmark-minus"
-          label="Remove bookmark"
-          class="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:hidden"
-          @click.stop.prevent="emit('remove')"
-        />
-      </Tooltip>
     </ListCell>
   </ListRow>
 </template>

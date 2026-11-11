@@ -17,24 +17,27 @@
       >
         {{ author.full_name }}'s draft. Only they can edit or publish it.
       </p>
-      <div
+      <!-- One slot above the title for failures. A failed publish wins over a failed
+           autosave: publishing flushes first, so its message already covers the save. -->
+      <Alert
         v-if="submitError"
-        role="alert"
-        class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-p-sm text-ink-red-7"
-      >
-        <span class="flex items-center gap-1.5">
-          <span class="lucide-circle-alert size-4 shrink-0" aria-hidden="true" />
-          {{ submitError.message }}
-        </span>
-        <Button
-          v-if="submitError.retry"
-          variant="subtle"
-          icon-left="lucide-rotate-ccw"
-          label="Retry"
-          :loading="publishing"
-          @click="submitError.retry"
-        />
-      </div>
+        class="mb-3"
+        theme="red"
+        :title="submitError.message"
+        :primary-action="
+          submitError.retry
+            ? { label: 'Retry', loading: publishing, onClick: submitError.retry }
+            : undefined
+        "
+      />
+      <Alert
+        v-else-if="saveFailed"
+        class="mb-3"
+        theme="amber"
+        title="Couldn't save your draft"
+        description="Your changes are still on this page. Gameplan tries again as you edit."
+        :primary-action="{ label: 'Retry', onClick: retrySave }"
+      />
       <ErrorMessage v-else :message="errorMessage || scheduleWarning" />
       <textarea
         ref="titleTextarea"
@@ -58,7 +61,7 @@
 <script setup lang="ts">
 import { computed, nextTick, watch } from 'vue'
 import { useTextareaAutosize } from '@vueuse/core'
-import { Button, ErrorMessage, LoadingText } from 'frappe-ui'
+import { Alert, ErrorMessage, LoadingText } from 'frappe-ui'
 import LoadError from '@/components/LoadError.vue'
 import { EditorContent } from 'frappe-ui/editor'
 import { useNewDiscussionContext } from './useNewDiscussion'
@@ -87,6 +90,8 @@ const {
   isDraftLoading,
   draftLoadFailed,
   retryDraftLoad,
+  saveFailed,
+  retrySave,
   isComposerEditable,
   showDraftLoadingStatus,
   author,

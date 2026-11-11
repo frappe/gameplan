@@ -79,8 +79,11 @@ export function useNewDiscussion() {
   const isPersisted = computed(() => Boolean(draft.serverName.value))
   const draftLoadFailed = draft.loadFailed
   const retryDraftLoad = () => draft.reload()
-  // A failed autosave toasts once; this keeps a status on screen until a save succeeds.
+  // The composer shows an alert from a failed autosave until a save succeeds.
   const saveFailed = computed(() => Boolean(draft.lastError.value))
+  const retrySave = async () => {
+    await draft.flush()
+  }
 
   const scheduledAt = ref<string | null>(null)
   const scheduling = ref(false)
@@ -461,6 +464,7 @@ export function useNewDiscussion() {
     isDraftLoading,
     draftLoadFailed,
     saveFailed,
+    retrySave,
     isComposerEditable,
     showDraftLoadingStatus,
     publishing,

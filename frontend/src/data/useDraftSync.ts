@@ -22,7 +22,7 @@ import {
   onScopeDispose,
   type MaybeRefOrGetter,
 } from 'vue'
-import { call, debounce, toast, dayjsLocal, useDoctype } from 'frappe-ui'
+import { call, debounce, dayjsLocal, useDoctype } from 'frappe-ui'
 import { session } from './session'
 import { createDraft, drafts } from './drafts'
 import { isEditorContentEmpty } from '@/utils'
@@ -237,9 +237,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   const data = ref<DraftPayload | null>(null)
   const saving = ref(false)
   const restored = ref(false)
-  // The error from the most recent failed push, cleared by the next success. Doubles as the
-  // "are we in a failure streak" flag (so we toast once, not per keystroke) and as the reason
-  // a caller like publish() can report when the draft is still unsynced.
+  // The error from the most recent failed push, cleared by the next success. Callers show
+  // it while it is set, and publish() reports it when the draft is still unsynced.
   const lastError = ref<unknown>(null)
   const serverName = ref<string | null>(toValue(options.draftName ?? null))
 
@@ -362,11 +361,6 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // new-discussion drafts that never land here are adopted later by
       // recoverOrphanedDrafts(), so a missed push no longer strands a draft locally.
       captureError(error, { action: 'draft-push', draft: serverName.value })
-      // Tell the user once per failure streak so a silently-failing save can't quietly
-      // lose server-side persistence. Reset on the next success above.
-      if (!lastError.value) {
-        toast.error('Could not save your draft to the server — keeping a local copy and retrying.')
-      }
       lastError.value = error
     } finally {
       saving.value = false

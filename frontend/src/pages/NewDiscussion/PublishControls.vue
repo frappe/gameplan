@@ -1,58 +1,46 @@
 <template>
-  <div class="flex items-center gap-2">
-    <Tooltip v-if="saveFailed" text="Saved on this device only. Gameplan tries again as you edit.">
-      <span
-        class="flex items-center gap-1.5 text-sm text-ink-red-7"
-        role="status"
-        aria-label="Not saved"
+  <div class="flex items-center">
+    <Tooltip :text="blockedReason">
+      <!-- Fixed width, so the spinner does not push the space picker aside. -->
+      <Button
+        variant="solid"
+        :size="size"
+        class="min-w-[5.75rem] rounded-r-none"
+        :loading="publishing"
+        :disabled="Boolean(blockedReason) || scheduling"
+        @click="publish"
       >
-        <span class="lucide-cloud-off size-4 shrink-0" aria-hidden="true" />
-        <span class="hidden sm:inline">Not saved</span>
-      </span>
+        Publish
+      </Button>
     </Tooltip>
-    <div class="flex items-center">
-      <Tooltip :text="blockedReason">
-        <!-- Fixed width, so the spinner does not push the space picker aside. -->
+    <div
+      ref="menuHost"
+      class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
+    >
+      <!-- While a request is out the chevron stays solid, like the Publish half, and
+           ignores clicks instead of turning grey. -->
+      <Dropdown
+        :options="options"
+        align="end"
+        :portal-to="menuHost ?? undefined"
+        :disabled="menuDisabled"
+      >
         <Button
           variant="solid"
           :size="size"
-          class="min-w-[5.75rem] rounded-r-none"
-          :loading="publishing"
-          :disabled="Boolean(blockedReason) || scheduling"
-          @click="publish"
-        >
-          Publish
-        </Button>
-      </Tooltip>
-      <div
-        ref="menuHost"
-        class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
-      >
-        <!-- While a request is out the chevron stays solid, like the Publish half, and
-             ignores clicks instead of turning grey. -->
-        <Dropdown
-          :options="options"
-          align="end"
-          :portal-to="menuHost ?? undefined"
+          class="rounded-l-none"
+          :class="{
+            '!bg-surface-gray-2 !text-ink-gray-4 hover:!bg-surface-gray-3':
+              blockedReason && !menuDisabled,
+            'pointer-events-none': busy,
+          }"
+          icon="lucide-chevron-down"
+          label="More publish options"
           :disabled="menuDisabled"
-        >
-          <Button
-            variant="solid"
-            :size="size"
-            class="rounded-l-none"
-            :class="{
-              '!bg-surface-gray-2 !text-ink-gray-4 hover:!bg-surface-gray-3':
-                blockedReason && !menuDisabled,
-              'pointer-events-none': busy,
-            }"
-            icon="lucide-chevron-down"
-            label="More publish options"
-            :disabled="menuDisabled"
-            :tabindex="busy ? -1 : undefined"
-            :aria-disabled="busy || undefined"
-          />
-        </Dropdown>
-      </div>
+          :tabindex="busy ? -1 : undefined"
+          :aria-disabled="busy || undefined"
+        />
+      </Dropdown>
     </div>
   </div>
 
@@ -80,7 +68,6 @@ const {
   author,
   deleteDraft,
   canPublish,
-  saveFailed,
 } = useNewDiscussionContext()
 
 const blockedReason = computed(() => {

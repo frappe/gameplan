@@ -2,14 +2,15 @@
   <div
     ref="fade"
     aria-hidden="true"
-    class="pointer-events-none absolute inset-x-0 top-full h-4 bg-gradient-to-b from-surface-base to-transparent transition-opacity duration-150 print:hidden"
+    class="pointer-events-none absolute inset-x-0 top-full h-8 bg-gradient-to-b from-surface-base/60 via-surface-base/20 via-40% to-transparent transition-opacity duration-150 print:hidden"
     :class="isStuck ? 'opacity-100' : 'opacity-0'"
   />
 </template>
 
 <script setup lang="ts">
 // Place inside a sticky row. While the row is pinned to the top of the shell scroller,
-// a short fade under it softens the line where the content scrolls out of sight.
+// a soft fade under it shades the line where the content scrolls out of sight. It starts
+// below full opacity and eases out, so it reads as a shadow rather than a band.
 import { computed, ref, useTemplateRef } from 'vue'
 import { useIntersectionObserver } from '@vueuse/core'
 import { shellScrollContainer, useShellScrolled } from 'frappe-ui'

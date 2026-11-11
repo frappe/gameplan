@@ -78,9 +78,7 @@
           :message="errorText(inviteByEmail.error, 'Could not send the invitations. Try again.')"
         />
         <Button :label="result ? 'Done' : 'Cancel'" @click="close" />
-        <!-- Wide enough for the spinner beside the label, so sending doesn't move Cancel. -->
         <Button
-          class="min-w-20"
           variant="solid"
           label="Invite"
           :disabled="!parsed.emails.length"

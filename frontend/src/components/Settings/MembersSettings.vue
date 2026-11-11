@@ -78,7 +78,7 @@
       <!-- Virtualized: only the rows in/near the viewport mount, so a large team
            never instantiates hundreds of role Selects at once. -->
       <ListRows :items="filteredUsers" virtual v-slot="{ item: user }">
-        <ListRow>
+        <ListRow class="group">
           <ListCell>
             <UserAvatar :user="user.name" size="xl" />
             <div class="ml-3 min-w-0">
@@ -102,10 +102,13 @@
             <span v-if="user.creation">{{ getMemberSince(user) }}</span>
           </ListCell>
           <ListCell class="justify-end">
+            <!-- Shown on row hover or keyboard focus. Screens that cannot hover (touch)
+                 keep it visible. -->
             <Button
               variant="ghost"
               icon="lucide-user-x"
               :label="`Disable ${user.full_name}`"
+              class="transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
               @click="disableUser(user)"
             />
           </ListCell>
