@@ -1,21 +1,5 @@
 <template>
   <div class="h-full touch-pan-y">
-    <div class="mb-5" v-if="pinnedDiscussions.data?.length">
-      <div class="px-3 flex items-center space-x-1 mb-2">
-        <Pin class="h-4 w-4 text-ink-gray-4" />
-        <span class="text-ink-gray-8 text-base"> Pinned </span>
-      </div>
-      <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
-        <DiscussionRow
-          v-for="discussion of pinnedDiscussions.data"
-          :key="discussion.name"
-          :discussion="discussion"
-          :showSpaceName="!filters || !filters.project"
-          :showCommunityName="showCommunity"
-        />
-      </List>
-    </div>
-
     <template v-if="isInitialLoading">
       <ListRowSkeleton
         v-for="index in skeletonRowCount"
@@ -25,7 +9,16 @@
       />
     </template>
 
+    <!-- Pinned rows lead the list, marked by a pin icon rather than a heading. -->
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
+      <DiscussionRow
+        v-for="discussion of visiblePinnedDiscussions"
+        :key="'pinned-' + discussion.name"
+        :discussion="discussion"
+        :showSpaceName="!filters || !filters.project"
+        :showCommunityName="showCommunity"
+        pinned
+      />
       <DiscussionRow
         v-for="discussion of visibleDiscussions"
         :key="rowKey(discussion)"
@@ -47,7 +40,7 @@
       />
       <EmptyStateBox
         class="mx-3"
-        v-else-if="!discussions.loading && discussions.data && visibleDiscussions.length === 0"
+        v-else-if="!discussions.loading && discussions.data && isEmpty"
         v-bind="emptyState"
       />
       <div class="flex items-center justify-center p-3" v-if="showLoadMoreButton">
@@ -69,7 +62,6 @@ import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox, { type EmptyState } from './EmptyStateBox.vue'
 import { feedEmptyStates } from '@/data/discussionFeeds'
-import Pin from './icons/Pin.vue'
 
 interface Props {
   filters: UseDiscussionOptions['filters']
@@ -137,15 +129,26 @@ const pinnedDiscussions = useDiscussions({
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(
-  () => discussions.hasNextPage && visibleDiscussions.value.length > 0,
-)
+const showLoadMoreButton = computed(() => discussions.hasNextPage && !isEmpty.value)
 const isSortedByCreation = computed(() => toValue(props.orderBy) === 'creation desc')
 
-// Rows removed here hide at once; the list reloads once the server agrees.
+// Held back until the first page arrives, so they do not sit above the skeleton rows.
+const visiblePinnedDiscussions = computed(() =>
+  isInitialLoading.value ? [] : pinnedDiscussions.data || [],
+)
+const pinnedNames = computed(() => new Set(visiblePinnedDiscussions.value.map((d) => d.name)))
+const isEmpty = computed(
+  () => visiblePinnedDiscussions.value.length === 0 && visibleDiscussions.value.length === 0,
+)
+
+// Rows removed here hide at once; the list reloads once the server agrees. A pinned
+// discussion already leads the list, so it is not shown again in its date position.
 const removedRowKeys = ref(new Set<string>())
 const visibleDiscussions = computed(() =>
-  (discussions.data || []).filter((discussion) => !removedRowKeys.value.has(rowKey(discussion))),
+  (discussions.data || []).filter(
+    (discussion) =>
+      !removedRowKeys.value.has(rowKey(discussion)) && !pinnedNames.value.has(discussion.name),
+  ),
 )
 
 // The pinned list fails with the main one on a failed first load, so retry both.

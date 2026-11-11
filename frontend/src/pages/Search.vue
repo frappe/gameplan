@@ -238,25 +238,29 @@
               </ListCell>
               <ListCell class="self-start">
                 <div class="w-full">
-                  <div class="flex items-center">
+                  <div class="flex items-center gap-3">
+                    <!-- A discussion's title comes highlighted from the server. A comment shows
+                         its discussion's title as plain text. -->
                     <div
                       v-if="item.title"
-                      class="text-base-medium text-ink-gray-9"
+                      class="min-w-0 truncate text-base-medium text-ink-gray-9"
                       v-html="item.title"
                     />
-                    <div class="text-base-medium text-ink-gray-9" v-else>
-                      {{ $user(item.author).full_name }}
+                    <div v-else class="min-w-0 truncate text-base-medium text-ink-gray-9">
+                      {{ item.reference_title || $user(item.author).full_name }}
                     </div>
-                    <span class="px-1 leading-none text-sm text-ink-gray-5">
-                      &middot; {{ item.doctype.replace('GP ', '') }}
-                    </span>
-                    <div class="ml-auto text-sm text-ink-gray-5">
-                      {{ dayjs.unix(item.modified).format('lll') }}
-                    </div>
+                    <Tooltip :text="fullTimestamp(item.modified)">
+                      <div class="ml-auto shrink-0 whitespace-nowrap text-sm text-ink-gray-5">
+                        {{ relativeTimestamp(siteDatetime(item.modified)) }}
+                      </div>
+                    </Tooltip>
+                  </div>
+                  <div class="mt-1 truncate text-sm text-ink-gray-5">
+                    {{ resultMeta(item) }}
                   </div>
                   <div
                     v-if="item.content"
-                    class="mt-1 text-p-base text-ink-gray-6"
+                    class="mt-1.5 line-clamp-3 text-p-base text-ink-gray-6"
                     v-html="item.content"
                   ></div>
                 </div>
@@ -283,16 +287,18 @@ import {
   TextInput,
   Tooltip,
   dayjs,
+  dayjsLocal,
   debounce,
+  getConfig,
   usePageMeta,
 } from 'frappe-ui'
 import { useCall, useNewDoc } from 'frappe-ui'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
-import { useSessionUser } from '@/data/users'
+import { useSessionUser, useUser } from '@/data/users'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import LoadError from '@/components/LoadError.vue'
-import { errorText } from '@/utils'
+import { errorText, relativeTimestamp } from '@/utils'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
@@ -322,6 +328,8 @@ interface SearchResultItem {
   team?: string
   reference_doctype: string
   reference_name: string
+  // Comments only: the title of the discussion the comment is on.
+  reference_title?: string
   modified: number
   author: string
   score: number
@@ -785,6 +793,24 @@ function isSearchResultVisible(item: SearchResultItem) {
   // if the space isn't in the local cache, still show it (the server allowed it).
   const space = getSpace(item.project)
   return !space || !space.archived_at
+}
+
+// "Dev Patel · Comment · Design"
+function resultMeta(item: SearchResultItem) {
+  const type = item.doctype.replace('GP ', '')
+  const space = item.project ? getSpace(item.project)?.title : undefined
+  return [useUser(item.author).full_name, type, space].filter(Boolean).join(' · ')
+}
+
+function fullTimestamp(unix: number) {
+  return dayjsLocal(siteDatetime(unix)).format('D MMM YYYY [at] h:mm A')
+}
+
+// relativeTimestamp() reads a site-time string, but the index stores Unix seconds.
+function siteDatetime(unix: number) {
+  const systemTimezone = getConfig('systemTimezone')
+  const at = dayjs.unix(unix)
+  return (systemTimezone ? at.tz(systemTimezone) : at).format('YYYY-MM-DD HH:mm:ss')
 }
 
 // Feedback System

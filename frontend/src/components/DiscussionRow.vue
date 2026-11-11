@@ -5,7 +5,10 @@
     </ListCell>
     <ListCell>
       <div class="min-w-0 flex-1">
-        <div class="overflow-hidden text-ellipsis whitespace-nowrap leading-none text-ink-gray-8">
+        <div class="flex min-w-0 items-center gap-1.5 leading-none text-ink-gray-8">
+          <Tooltip v-if="pinned" text="Pinned">
+            <PushPin class="size-3.5 shrink-0 text-ink-gray-5" role="img" aria-label="Pinned" />
+          </Tooltip>
           <span
             class="overflow-hidden text-ellipsis whitespace-nowrap"
             :class="[
@@ -103,6 +106,7 @@ import { computed } from 'vue'
 import { Tooltip, Badge, Button, dayjsLocal } from 'frappe-ui'
 import { ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
+import PushPin from './icons/PushPin.vue'
 import { getCommunity } from '@/data/communities'
 import { getSpace, useSpace } from '@/data/spaces'
 import { Discussion } from '@/data/discussions'
@@ -117,6 +121,8 @@ const props = defineProps<{
   showCreatedAt?: boolean
   // Adds a hover button that emits `remove` (the bookmarks list).
   removable?: boolean
+  // Marks the row with a pin icon. Pinned rows lead the list with no heading.
+  pinned?: boolean
 }>()
 
 const emit = defineEmits<{ remove: [] }>()
