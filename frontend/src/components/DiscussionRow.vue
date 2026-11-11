@@ -60,7 +60,10 @@
       <div class="group/meta grid items-center justify-items-end">
         <div
           class="[grid-area:1/1]"
-          :class="removable && 'sm:group-hover:invisible group-has-[:focus-visible]/meta:invisible'"
+          :class="
+            removable &&
+            'group-hover:invisible group-has-[:focus-visible]/meta:invisible [@media(hover:none)]:invisible'
+          "
         >
           <Tooltip :text="timestamp.tooltip">
             <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
@@ -80,7 +83,9 @@
                 {{ discussion.unread }}
               </div>
               <template #content>
-                <div v-if="discussion.comments_count + 1 === discussion.unread">New unread post</div>
+                <div v-if="discussion.comments_count + 1 === discussion.unread">
+                  New unread post
+                </div>
                 <div v-else-if="discussion.comments_count > 0" class="p-0.5">
                   <div>{{ discussion.unread }} unread</div>
                   <div class="text-ink-gray-3 mt-0.5">
@@ -93,14 +98,15 @@
             <Badge v-else>{{ (discussion.comments_count || 0) + 1 }}</Badge>
           </div>
         </div>
-        <!-- Hover only, so hidden on touch screens. stop+prevent keep the click out of
-             row navigation. -->
+        <!-- Shares the grid cell with the time and count, so it takes no width. With a mouse
+             it shows on row hover or focus; on touch screens it always shows, in their place.
+             stop+prevent keep the click out of row navigation. -->
         <Tooltip v-if="removable" text="Remove bookmark">
           <Button
             variant="ghost"
             icon="lucide-bookmark-minus"
             label="Remove bookmark"
-            class="[grid-area:1/1] opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 max-sm:hidden"
+            class="[grid-area:1/1] transition-opacity focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:hover)]:opacity-0"
             @click.stop.prevent="emit('remove')"
           />
         </Tooltip>
