@@ -62,10 +62,11 @@ class GPUserProfile(HasAttachments, Document):
 			or frappe.flags.in_install
 			or frappe.flags.in_migrate
 			or frappe.flags.in_fixtures
+			or frappe.session.user == "Administrator"
 		):
 			return
-		user = frappe.session.user
-		if user != "Administrator" and self.user != user:
+		# Check the stored owner: `self.user` already holds the submitted value.
+		if self.get_doc_before_save().user != frappe.session.user:
 			frappe.throw("Cannot modify another user's profile", frappe.PermissionError)
 
 	def autoname(self):

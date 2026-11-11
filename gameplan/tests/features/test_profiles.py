@@ -139,6 +139,23 @@ class TestProfiles(GameplanTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			alice_profile.save(ignore_permissions=True)
 
+	def test_member_cannot_take_over_another_profile_by_reassigning_user(self):
+		"""Reassigning `user` to the session user must not grant edit of that row."""
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.bob.name)
+		alice_profile.user = self.bob.name
+		alice_profile.bio = "taken over by bob"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("GP User Profile", alice_profile.name, "user"), self.alice.name)
+
+	def test_owner_cannot_reassign_their_profile_to_another_user(self):
+		frappe.set_user(self.alice.name)
+		profile = get_profile(self.alice.name)
+		profile.user = self.bob.name
+		with self.assertRaises(frappe.CannotChangeConstantError):
+			profile.save(ignore_permissions=True)
+
 	def test_admin_cannot_edit_others_profile(self):
 		alice_profile = get_profile(self.alice.name)
 		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.admin.name))
