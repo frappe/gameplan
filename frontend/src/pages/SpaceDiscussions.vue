@@ -41,7 +41,9 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <div class="mb-4 flex items-center justify-between">
+    <!-- Same layout as the community feed: a phone is too narrow for the tabs and the
+         sort side by side, so the sort takes its own row there. -->
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <SpaceTabs :spaceId="spaceId" />
       <Select
         class="shrink-0 !w-fit"
