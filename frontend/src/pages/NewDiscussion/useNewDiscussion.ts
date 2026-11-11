@@ -1,6 +1,6 @@
 import { ref, computed, onMounted, provide, inject, watch, type InjectionKey } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
-import { call, useDoctype, dialog, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
+import { call, useDoctype, dayjs, dayjsLocal, getConfig, toast } from 'frappe-ui'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 import { useDraftSync, type DraftPayload } from '@/data/useDraftSync'
 import { drafts } from '@/data/drafts'
@@ -8,8 +8,9 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { canPostInSpace, getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
-import { extractServerMessage, isEditorContentEmpty } from '@/utils'
+import { errorText, isEditorContentEmpty } from '@/utils'
 import { captureError } from '@/utils/errorReporting'
+import { confirmDelete } from '@/utils/confirmDelete'
 import type { GPDiscussion } from '@/types/doctypes'
 
 const PUBLISH_DRAFT = 'gameplan.gameplan.doctype.gp_draft.gp_draft.publish_draft'
@@ -24,7 +25,17 @@ function toSiteTime(localDateTime: string) {
   return dayjs.tz(localDateTime, localTimezone).tz(systemTimezone).format(SERVER_DATETIME)
 }
 const LOADING_STATUS_DELAY_MS = 200
+const PUBLISH_FAILED = 'Could not publish. Your draft is saved.'
+const UNSYNCED_DRAFT =
+  'Could not save your draft to the server. Check your connection and try again.'
 const FLUSH_ATTEMPTS = 3
+
+/** A failed publish, schedule or unschedule. `retry` repeats a publish; the others are
+ *  retried from the menu they started in. */
+export interface SubmitError {
+  message: string
+  retry?: () => void
+}
 
 /** Title or non-empty body — the threshold for persisting a draft at all. */
 function hasMeaningfulContent(payload: Partial<DraftPayload>): boolean {
@@ -41,7 +52,7 @@ export function useNewDiscussion() {
   const communityId = computed(() => optionalParam(route.params.communityId))
 
   const errorMessage = ref<string | null>(null)
-  const publishError = ref<string | null>(null)
+  const submitError = ref<SubmitError | null>(null)
   const publishing = ref(false)
   const isPublishingSuccessfully = ref(false)
   const isDeletingDraft = ref(false)
@@ -66,6 +77,10 @@ export function useNewDiscussion() {
 
   const draftData = draft.data
   const isPersisted = computed(() => Boolean(draft.serverName.value))
+  const draftLoadFailed = draft.loadFailed
+  const retryDraftLoad = () => draft.reload()
+  // A failed autosave toasts once; this keeps a status on screen until a save succeeds.
+  const saveFailed = computed(() => Boolean(draft.lastError.value))
 
   const scheduledAt = ref<string | null>(null)
   const scheduling = ref(false)
@@ -268,7 +283,7 @@ export function useNewDiscussion() {
   // row is deleted server-side by publish, so we only forget the local copy afterwards.
   async function publish() {
     hasInteracted.value = true
-    publishError.value = null
+    submitError.value = null
     if (!validateDraft(true)) return
 
     publishing.value = true
@@ -278,8 +293,7 @@ export function useNewDiscussion() {
           action: 'publish-discussion-unsynced-draft',
           draft: draft.serverName.value,
         })
-        publishError.value =
-          'Could not save your draft to the server. Check your connection and try again.'
+        submitError.value = { message: UNSYNCED_DRAFT, retry: publish }
         publishing.value = false
         return
       }
@@ -307,7 +321,7 @@ export function useNewDiscussion() {
           action: 'publish-discussion-no-id',
           draft: draft.serverName.value,
         })
-        publishError.value = 'Could not publish this post.'
+        submitError.value = { message: PUBLISH_FAILED, retry: publish }
         publishing.value = false
         return
       }
@@ -324,9 +338,9 @@ export function useNewDiscussion() {
         params: { communityId: targetCommunityId, spaceId, postId: discussionId },
       })
       tags.reload()
-    } catch (error: any) {
+    } catch (error) {
       captureError(error, { action: 'publish-discussion', draft: draft.serverName.value })
-      publishError.value = extractServerMessage(error) || 'Could not publish this post.'
+      submitError.value = { message: errorText(error, PUBLISH_FAILED), retry: publish }
       publishing.value = false
     } finally {
       isPublishingSuccessfully.value = false
@@ -335,13 +349,12 @@ export function useNewDiscussion() {
 
   async function scheduleDraft(localDateTime: string) {
     hasInteracted.value = true
-    publishError.value = null
+    submitError.value = null
     if (!validateDraft(true)) return false
     scheduling.value = true
     try {
       if (!(await flushUntilPushed()) || !draft.serverName.value) {
-        publishError.value =
-          'Could not save your draft to the server. Check your connection and try again.'
+        submitError.value = { message: UNSYNCED_DRAFT }
         return false
       }
       const name = draft.serverName.value
@@ -353,9 +366,9 @@ export function useNewDiscussion() {
       drafts.reload()
       await router.replace({ name: 'Drafts' })
       return true
-    } catch (error: any) {
+    } catch (error) {
       captureError(error, { action: 'schedule-discussion', draft: draft.serverName.value })
-      publishError.value = extractServerMessage(error) || 'Could not schedule this post.'
+      submitError.value = { message: errorText(error, 'Could not schedule this post.') }
       return false
     } finally {
       scheduling.value = false
@@ -371,9 +384,9 @@ export function useNewDiscussion() {
       scheduledAt.value = null
       toast.success('Schedule removed. Your draft is still in Drafts.')
       drafts.reload()
-    } catch (error: any) {
+    } catch (error) {
       captureError(error, { action: 'unschedule-discussion', draft: draft.serverName.value })
-      publishError.value = extractServerMessage(error) || 'Could not remove the schedule.'
+      submitError.value = { message: errorText(error, 'Could not remove the schedule.') }
     } finally {
       scheduling.value = false
     }
@@ -387,11 +400,10 @@ export function useNewDiscussion() {
       return
     }
 
-    dialog.danger({
+    confirmDelete({
       title: 'Delete this draft?',
-      message: 'This will permanently delete the draft and cannot be undone.',
-      confirmLabel: 'Delete draft',
-      onConfirm: async () => {
+      message: "The draft will be deleted. This can't be undone.",
+      onDelete: async () => {
         isDeletingDraft.value = true
         await draft.clear()
         leaveDraft()
@@ -438,7 +450,7 @@ export function useNewDiscussion() {
     selectedSpace,
     canPublish,
     isPersisted,
-    publishError,
+    submitError,
     errorMessage,
     sessionUser,
     author,
@@ -447,6 +459,8 @@ export function useNewDiscussion() {
 
     // State
     isDraftLoading,
+    draftLoadFailed,
+    saveFailed,
     isComposerEditable,
     showDraftLoadingStatus,
     publishing,
@@ -461,6 +475,7 @@ export function useNewDiscussion() {
     scheduleDraft,
     unscheduleDraft,
     deleteDraft,
+    retryDraftLoad,
     handleTitleInput,
     handleTitleBlur,
     handleSpaceChange,

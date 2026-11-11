@@ -1,5 +1,5 @@
 <template>
-  <ListRow :route="linkTo" :value="discussion.name" class="h-[68px] sm:h-15">
+  <ListRow :route="linkTo" :value="discussion.name" class="group h-[68px] sm:h-15">
     <ListCell>
       <UserAvatarWithHover :user="discussion.owner" size="2xl" />
     </ListCell>
@@ -53,9 +53,9 @@
     </ListCell>
     <ListCell class="justify-end">
       <div>
-        <Tooltip :text="dayjsLocal(post.at).format('D MMM YYYY [at] h:mm A')">
+        <Tooltip :text="timestamp.tooltip">
           <div class="shrink-0 whitespace-nowrap text-sm text-ink-gray-5 text-right">
-            {{ relativeTimestamp(post.at || discussion.creation) }}
+            {{ relativeTimestamp(timestamp.at) }}
           </div>
         </Tooltip>
         <div class="mt-1.5 flex items-center justify-end space-x-3">
@@ -85,11 +85,24 @@
         </div>
       </div>
     </ListCell>
+    <!-- Shown on hover, so not on touch screens. stop+prevent keep the click out of
+         row navigation. -->
+    <ListCell v-if="removable" class="max-sm:hidden">
+      <Tooltip text="Remove bookmark">
+        <Button
+          variant="ghost"
+          icon="lucide-bookmark-minus"
+          label="Remove bookmark"
+          class="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          @click.stop.prevent="emit('remove')"
+        />
+      </Tooltip>
+    </ListCell>
   </ListRow>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Tooltip, Badge, dayjsLocal } from 'frappe-ui'
+import { Tooltip, Badge, Button, dayjsLocal } from 'frappe-ui'
 import { ListRow, ListCell } from 'frappe-ui/list'
 import UserAvatarWithHover from './UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
@@ -101,7 +114,14 @@ const props = defineProps<{
   discussion: Discussion
   showSpaceName: boolean
   showCommunityName?: boolean
+  // Under "Newest created" the time on the right is when the discussion started, so the
+  // order of the rows matches the times they show.
+  showCreatedAt?: boolean
+  // Adds a hover button that emits `remove` (the bookmarks list).
+  removable?: boolean
 }>()
+
+const emit = defineEmits<{ remove: [] }>()
 
 const placeLabel = computed(() => {
   if (!props.showCommunityName) return props.discussion.project_title
@@ -141,6 +161,14 @@ const post = computed(() => {
     content: d.last_comment_content || d.last_poll_title,
     at: d.last_post_at,
   }
+})
+
+const timestamp = computed(() => {
+  const at = props.showCreatedAt
+    ? props.discussion.creation
+    : post.value.at || props.discussion.creation
+  const date = dayjsLocal(at).format('D MMM YYYY [at] h:mm A')
+  return { at, tooltip: props.showCreatedAt ? `Started ${date}` : date }
 })
 
 function isSpacePrivate(spaceId: string) {

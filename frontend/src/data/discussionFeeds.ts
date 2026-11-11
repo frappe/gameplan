@@ -7,7 +7,7 @@ const discussionFeeds = ['recent', 'participating', 'unread'] as const
 export type FeedType = (typeof discussionFeeds)[number]
 
 export const feedTitles: Record<FeedType, string> = {
-  recent: 'All Discussions',
+  recent: 'All discussions',
   participating: 'Participating',
   unread: 'Unread',
 }

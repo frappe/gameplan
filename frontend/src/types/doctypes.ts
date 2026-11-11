@@ -120,10 +120,12 @@ export interface GPMember extends ChildDocType {
   is_admin?: 0 | 1
 }
 
-// Last updated: 2026-07-31 10:15:00.000000
+// Last updated: 2026-11-12 12:00:00.000000
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
+  /** Reacted By: JSON */
+  reacted_by?: any
   /** To User: Link (User) */
   to_user: string
   /** Type: Select */

@@ -27,37 +27,44 @@
 
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
       <DiscussionRow
-        v-for="discussion of discussions.data"
-        :key="discussion.bookmark || discussion.name"
+        v-for="discussion of visibleDiscussions"
+        :key="rowKey(discussion)"
         :discussion="discussion"
         :showSpaceName="!filters || !filters.project"
         :showCommunityName="showCommunity"
+        :showCreatedAt="isSortedByCreation"
+        :removable="removableBookmarks"
+        @remove="removeBookmarkRow(discussion)"
       />
     </List>
     <div class="px-2 sm:px-0">
+      <LoadError
+        v-if="discussions.error && !discussions.data?.length"
+        class="mx-3"
+        :message="errorText(discussions.error, 'Could not load discussions.')"
+        :retrying="discussions.loading"
+        @retry="discussions.reload()"
+      />
       <EmptyStateBox
         class="mx-3"
-        v-if="!discussions.loading && discussions.data?.length === 0"
+        v-else-if="!discussions.loading && discussions.data && visibleDiscussions.length === 0"
         v-bind="emptyState"
       />
       <div class="flex items-center justify-center p-3" v-if="showLoadMoreButton">
-        <Button
-          icon-left="lucide-refresh-cw"
-          @click="discussions.next"
-          :loading="discussions.loading"
-        >
-          {{ discussions.loading ? 'Loading...' : 'Load more' }}
-        </Button>
+        <Button label="Load more" :loading="discussions.loading" @click="discussions.next" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, toValue } from 'vue'
-import type { OrderBy } from 'frappe-ui'
+import { computed, ref, toValue } from 'vue'
+import { toast, type OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
-import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import { type Discussion, UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import { removeBookmark, restoreBookmark } from '@/data/bookmarks'
+import { errorText } from '@/utils'
+import LoadError from './LoadError.vue'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox, { type EmptyState } from './EmptyStateBox.vue'
@@ -74,12 +81,15 @@ interface Props {
   // alone is ambiguous there.
   showCommunity?: boolean
   emptyState?: EmptyState
+  // Bookmark rows get a hover button that removes the bookmark, with Undo.
+  removableBookmarks?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showPinned: true,
   selectable: false,
   showCommunity: false,
+  removableBookmarks: false,
   emptyState: () => feedEmptyStates.recent,
 })
 
@@ -127,7 +137,52 @@ const pinnedDiscussions = useDiscussions({
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)
+const showLoadMoreButton = computed(
+  () => discussions.hasNextPage && visibleDiscussions.value.length > 0,
+)
+const isSortedByCreation = computed(() => toValue(props.orderBy) === 'creation desc')
+
+// Rows removed here hide at once; the list reloads once the server agrees.
+const removedRowKeys = ref(new Set<string>())
+const visibleDiscussions = computed(() =>
+  (discussions.data || []).filter((discussion) => !removedRowKeys.value.has(rowKey(discussion))),
+)
+
+function rowKey(discussion: Discussion) {
+  return discussion.bookmark || discussion.name
+}
+
+function removeBookmarkRow(discussion: Discussion) {
+  const key = rowKey(discussion)
+  setRowRemoved(key, true)
+  removeBookmark(discussion)
+    .then(() => {
+      discussions.reload()
+      toast.success('Bookmark removed', {
+        action: { label: 'Undo', onClick: () => undoRemoveBookmark(discussion, key) },
+      })
+    })
+    .catch((error: unknown) => {
+      setRowRemoved(key, false)
+      toast.error(errorText(error, 'Could not remove the bookmark.'))
+    })
+}
+
+function undoRemoveBookmark(discussion: Discussion, key: string) {
+  restoreBookmark(discussion)
+    .then(() => {
+      setRowRemoved(key, false)
+      discussions.reload()
+    })
+    .catch((error: unknown) => toast.error(errorText(error, 'Could not restore the bookmark.')))
+}
+
+function setRowRemoved(key: string, removed: boolean) {
+  const keys = new Set(removedRowKeys.value)
+  if (removed) keys.add(key)
+  else keys.delete(key)
+  removedRowKeys.value = keys
+}
 
 defineExpose({ discussions, pinnedDiscussions })
 </script>

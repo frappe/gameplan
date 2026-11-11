@@ -52,8 +52,8 @@
       <div class="flex w-full items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <SpaceBreadcrumbs :spaceId="spaceId" />
-          <SpaceHeaderActionsTarget placement="title" class="shrink-0" />
           <Badge v-if="space?.archived_at">Archived</Badge>
+          <SpaceHeaderActionsTarget placement="title" class="shrink-0" />
         </div>
         <SpaceHeaderActionsTarget />
       </div>
@@ -67,13 +67,19 @@
   </router-view>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BottomSheet, PageHeaderMobile, PageHeaderMobileTitle, PageHeader, Button } from 'frappe-ui'
 import PageHeaderUpButton from '@/components/PageHeaderUpButton.vue'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
 import PushPin from '@/components/icons/PushPin.vue'
-import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
+import {
+  useSpace,
+  canPostInSpace,
+  forgetArchivedSpace,
+  spaces as spaceList,
+  trackSpaceVisit,
+} from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import NotFound from '@/pages/NotFound.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
@@ -94,7 +100,7 @@ const currentRoute = useRoute()
 const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
 const space = useSpace(() => props.spaceId)
-// The mobile twin of the "Add new" button in SpaceDiscussions, so it asks the same
+// The mobile twin of the "New discussion" button in SpaceDiscussions, so it asks the same
 // question: who may start a discussion here, not who may edit the space.
 const canStartDiscussion = computed(() => canPostInSpace(space.value))
 
@@ -127,4 +133,11 @@ function routeParam(value: string | string[] | undefined) {
 onMounted(() => {
   if (space.value) trackSpaceVisit(props.spaceId)
 })
+
+// A space archived here stays in the sidebar only while you are on it.
+watch(
+  () => props.spaceId,
+  (_spaceId, previousSpaceId) => forgetArchivedSpace(previousSpaceId),
+)
+onUnmounted(() => forgetArchivedSpace(props.spaceId))
 </script>

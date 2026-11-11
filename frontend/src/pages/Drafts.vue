@@ -18,7 +18,7 @@
           />
           <Button
             v-if="!readOnlyMode"
-            variant="subtle"
+            variant="solid"
             size="md"
             icon="lucide-plus"
             label="New discussion"
@@ -31,7 +31,7 @@
           theme="red"
           size="md"
           :disabled="selectedDrafts.length === 0"
-          @click="showDeleteConfirm = true"
+          @click="confirmDeleteDrafts"
         >
           Delete{{ selectedDrafts.length ? ` ${selectedDrafts.length}` : '' }}
         </Button>
@@ -50,12 +50,11 @@
         />
         <Button
           v-if="!readOnlyMode"
-          variant="subtle"
+          variant="solid"
           icon-left="lucide-plus"
+          label="New discussion"
           @click="showNewDiscussionDialog = true"
-        >
-          New discussion
-        </Button>
+        />
       </template>
       <template v-else>
         <Button variant="ghost" @click="cancelBulkDelete">Cancel</Button>
@@ -63,17 +62,32 @@
           v-if="selectedDrafts.length > 0"
           theme="red"
           icon-left="lucide-trash-2"
-          @click="showDeleteConfirm = true"
+          @click="confirmDeleteDrafts"
         >
-          Delete {{ selectedDrafts.length }} draft{{ selectedDrafts.length > 1 ? 's' : '' }}
+          Delete {{ draftCountLabel(selectedDrafts.length) }}
         </Button>
       </template>
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
     <div>
+      <div v-if="phase === 'skeleton'" class="-mx-3">
+        <ListRowSkeleton
+          v-for="index in 3"
+          :key="index"
+          :show-separator="index < 3"
+          label="Loading draft"
+        />
+      </div>
+      <LoadError
+        v-else-if="phase === 'failed'"
+        class="mx-3"
+        :message="errorText(drafts.error, 'Could not load your drafts.')"
+        :retrying="drafts.loading"
+        @retry="drafts.reload()"
+      />
       <EmptyStateBox
-        v-if="drafts.data?.length === 0"
+        v-else-if="phase === 'empty'"
         class="mx-3"
         icon="lucide-file-pen-line"
         title="No drafts"
@@ -105,7 +119,7 @@
                   <span
                     class="overflow-hidden text-ellipsis whitespace-nowrap text-ink-gray-8 text-base-medium"
                   >
-                    {{ draft.title }}
+                    {{ draft.title || 'Untitled draft' }}
                   </span>
                   <Tooltip
                     v-if="draft.scheduled_at"
@@ -118,17 +132,17 @@
                 </div>
                 <div class="flex mt-1.5 items-center min-w-0">
                   <div
-                    class="overflow-hidden text-ellipsis whitespace-nowrap text-base inline-flex items-center text-ink-gray-5"
+                    class="flex min-w-0 items-center overflow-hidden whitespace-nowrap text-base text-ink-gray-5"
                   >
-                    <div v-if="draft.space_title" class="inline-flex items-center">
-                      <span>{{ draft.space_title }}</span>
+                    <div v-if="draft.space_title" class="inline-flex shrink-0 items-center">
+                      <span>{{ placeLabel(draft) }}</span>
                       <span
                         v-if="draft.is_private"
                         class="lucide-lock h-3 w-3 text-ink-gray-6 ml-0.5"
                       />
                       <span>:&nbsp;</span>
                     </div>
-                    <span class="overflow-hidden text-ellipsis whitespace-nowrap">
+                    <span class="min-w-0 truncate">
                       {{ contentPreview(draft.content) }}
                     </span>
                   </div>
@@ -148,20 +162,6 @@
     </div>
   </div>
 
-  <Dialog
-    title="Delete drafts"
-    message="Are you sure you want to delete selected drafts? This action cannot be undone."
-    :actions="[
-      {
-        label: 'Delete',
-        variant: 'solid',
-        theme: 'red',
-        onClick: deleteDrafts,
-      },
-    ]"
-    v-model:open="showDeleteConfirm"
-  />
-
   <NewDiscussionSpaceDialog v-model="showNewDiscussionDialog" />
 </template>
 <script setup lang="ts">
@@ -173,18 +173,21 @@ import {
   dayjsLocal,
   Breadcrumbs,
   Button,
-  Dialog,
   useCall,
   toast,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
+import LoadError from '@/components/LoadError.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import NewDiscussionSpaceDialog from '@/components/NewDiscussionSpaceDialog.vue'
 import { readOnlyMode } from '@/data/readOnlyMode'
-import { relativeTimestamp } from '@/utils'
-import { onMounted, ref } from 'vue'
+import { errorText, relativeTimestamp } from '@/utils'
+import { confirmDelete } from '@/utils/confirmDelete'
+import { getCommunity } from '@/data/communities'
+import { computed, onMounted, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import { recoverOrphanedDrafts } from '@/data/useDraftSync'
 import { drafts, type DraftRow } from '@/data/drafts'
@@ -199,8 +202,15 @@ interface DeleteDraftsResponse {
 
 const isBulkDeleteMode = ref(false)
 const selectedDrafts = ref<string[]>([])
-const showDeleteConfirm = ref(false)
 const showNewDiscussionDialog = ref(false)
+
+// useList keeps `data` undefined until the first load lands, and after it fails.
+const phase = computed(() => {
+  if (drafts.data?.length) return 'rows'
+  if (drafts.data) return 'empty'
+  if (drafts.error && !drafts.loading) return 'failed'
+  return 'skeleton'
+})
 
 const draftActions = [
   {
@@ -258,41 +268,48 @@ let deleteDraftsCall = useCall<DeleteDraftsResponse, { names: string[] }>({
   immediate: false,
 })
 
+function confirmDeleteDrafts() {
+  const count = selectedDrafts.value.length
+  confirmDelete({
+    title: `Delete ${draftCountLabel(count)}?`,
+    message:
+      count === 1
+        ? "The draft will be deleted. This can't be undone."
+        : "The drafts will be deleted. This can't be undone.",
+    onDelete: deleteDrafts,
+  })
+}
+
 function deleteDrafts() {
-  deleteDraftsCall
-    .submit({ names: selectedDrafts.value })
-    .then(() => {
-      let response = deleteDraftsCall.data
-      let deletedCount = response?.success_count || 0
-      let failedCount = response?.failure_count || 0
+  return deleteDraftsCall.submit({ names: selectedDrafts.value }).then(() => {
+    let response = deleteDraftsCall.data
+    // useCall can resolve with no data instead of rejecting. Throwing keeps the dialog
+    // open with the error in it.
+    if (!response) throw deleteDraftsCall.error ?? new Error('Could not delete the drafts')
+    let deletedCount = response?.success_count || 0
+    let failedCount = response?.failure_count || 0
 
-      // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
-      // drop the rows the list is still holding.
-      response?.deleted.forEach((name) => drafts.removeRow(name))
+    // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
+    // drop the rows the list is still holding.
+    response?.deleted.forEach((name) => drafts.removeRow(name))
 
-      if (deletedCount > 0) {
-        toast.success(deletedCount === 1 ? 'Draft deleted' : `${deletedCount} drafts deleted`)
-      }
+    if (deletedCount > 0) {
+      toast.success(deletedCount === 1 ? 'Draft deleted' : `${deletedCount} drafts deleted`)
+    }
 
-      if (failedCount > 0) {
-        selectedDrafts.value = response?.failed.map((f) => f.name) || []
-        toast.error(
-          failedCount === 1
-            ? '1 draft could not be deleted'
-            : `${failedCount} drafts could not be deleted`,
-        )
-        showDeleteConfirm.value = false
-        return
-      }
+    if (failedCount > 0) {
+      selectedDrafts.value = response?.failed.map((f) => f.name) || []
+      toast.error(
+        failedCount === 1
+          ? '1 draft could not be deleted'
+          : `${failedCount} drafts could not be deleted`,
+      )
+      return
+    }
 
-      selectedDrafts.value = []
-      showDeleteConfirm.value = false
-      isBulkDeleteMode.value = false
-    })
-    .catch(() => {
-      toast.error('Failed to delete drafts')
-      showDeleteConfirm.value = false
-    })
+    selectedDrafts.value = []
+    isBulkDeleteMode.value = false
+  })
 }
 
 // Drafts whose server row never got created (a push that never landed) live only in
@@ -302,10 +319,21 @@ onMounted(() => {
   recoverOrphanedDrafts()
 })
 
+function draftCountLabel(count: number) {
+  return count === 1 ? '1 draft' : `${count} drafts`
+}
+
+function placeLabel(draft: DraftRow) {
+  const communityTitle = draft.community ? getCommunity(draft.community)?.title : undefined
+  return [communityTitle, draft.space_title].filter(Boolean).join(' / ')
+}
+
+// One line of plain text. Block tags become spaces so paragraphs do not run together;
+// the row's text-ellipsis does the cutting.
 function contentPreview(content?: string | null) {
-  if (content) {
-    // remove html tags
-    return content.replace(/<[^>]*>?/gm, '').slice(0, 100)
-  }
+  if (!content) return ''
+  const spaced = content.replace(/<\/?(p|div|li|h[1-6]|blockquote|pre|br)\b[^>]*>/gi, ' ')
+  const text = new DOMParser().parseFromString(spaced, 'text/html').body.textContent ?? ''
+  return text.replace(/\s+/g, ' ').trim()
 }
 </script>

@@ -43,6 +43,7 @@
               :key="space.name"
               :route="{ name: 'Space', params: { communityId: space.team, spaceId: space.name } }"
               :active="isActiveSpace(space.name)"
+              :class="space.archived_at && 'opacity-60'"
             >
               <template #prefix>
                 <SpaceIcon :icon="space.icon" class="size-4" />

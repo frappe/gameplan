@@ -11,9 +11,9 @@
               v-if="isAdmin"
               variant="ghost"
               size="md"
-              icon="lucide-user-plus-2"
+              icon="lucide-user-plus"
               label="Invite"
-              @click="showSettingsDialog('Users')"
+              @click="showInviteDialog = true"
             />
           </template>
         </PageHeaderMobile>
@@ -23,7 +23,13 @@
         </PageHeader>
         <div class="mx-auto w-full body-container pt-6">
           <div class="flex items-center justify-between">
-            <h2 class="text-2xl-semibold text-ink-gray-7">{{ peopleList.length }} members</h2>
+            <!-- The count waits for the list: "0 members" while loading reads as an empty site. -->
+            <h2 class="text-2xl-semibold text-ink-gray-7">
+              <template v-if="phase !== 'loading' && phase !== 'failed'">
+                {{ peopleList.length }} {{ peopleList.length === 1 ? 'member' : 'members' }}
+              </template>
+              <template v-else>Members</template>
+            </h2>
             <div class="flex items-center gap-2">
               <Select
                 class="shrink-0 !w-fit"
@@ -46,11 +52,10 @@
                 v-if="isAdmin"
                 class="hidden sm:inline-flex"
                 variant="solid"
-                icon-left="lucide-user-plus-2"
-                @click="showSettingsDialog('Users')"
-              >
-                Invite
-              </Button>
+                icon-left="lucide-user-plus"
+                label="Invite"
+                @click="showInviteDialog = true"
+              />
             </div>
           </div>
           <div class="sm:hidden mt-4">
@@ -66,10 +71,33 @@
               </template>
             </TextInput>
           </div>
-          <div class="mt-4 pb-16 -mx-3">
+          <LoadError
+            v-if="phase === 'failed'"
+            class="mt-4"
+            :message="errorText(people.error, 'Could not load people.')"
+            :retrying="people.loading"
+            @retry="people.reload()"
+          />
+          <EmptyStateBox
+            v-else-if="phase === 'empty' || phase === 'noMatch'"
+            class="mt-4"
+            :icon="phase === 'noMatch' ? 'lucide-search-x' : 'lucide-users'"
+            :title="phase === 'noMatch' ? 'No members match your search' : 'No members yet'"
+          />
+          <!-- -mx-3 lets the rows' hover surface reach past the text column. -->
+          <div v-else class="mt-4 pb-16 -mx-3">
+            <template v-if="phase === 'loading'">
+              <ListRowSkeleton
+                v-for="index in skeletonRowCount"
+                :key="index"
+                :show-separator="index < skeletonRowCount"
+                label="Loading member"
+              />
+            </template>
             <!-- Desktop: header + numeric columns. The avatar gets its own track so
                  the inset divider starts at the name text (grid line 2). -->
             <List
+              v-else
               class="max-sm:hidden list-gap-3"
               :columns="['2.5rem', 'minmax(8rem,1fr)', '6.25rem', '6.25rem', '6.25rem', '6.25rem']"
               divider="inset"
@@ -189,6 +217,7 @@
             <!-- Mobile: avatar + details, stats inline under the name. The avatar
                  track keeps the inset divider starting at the name text. -->
             <List
+              v-if="phase === 'rows'"
               class="sm:hidden list-gap-3"
               :columns="['2.5rem', 'minmax(0,1fr)']"
               divider="inset"
@@ -231,21 +260,14 @@
               </ListRow>
             </List>
 
-            <ErrorMessage class="mt-2" :message="people.error" />
-            <EmptyStateBox
-              v-if="isEmpty"
-              class="mt-2"
-              :icon="search ? 'lucide-search-x' : 'lucide-users'"
-              :title="search ? 'No members match your search' : 'No members yet'"
-            />
-
-            <div class="p-3" v-if="people.hasNextPage">
+            <div class="p-3" v-if="phase === 'rows' && people.hasNextPage">
               <Button @click="people.next" :loading="people.loading"> Load more </Button>
             </div>
           </div>
         </div>
       </div>
     </div>
+    <InvitePeople v-if="isAdmin" v-model:open="showInviteDialog" />
   </div>
 </template>
 <script setup lang="ts">
@@ -259,11 +281,10 @@ import {
   Button,
   Select,
   TextInput,
-  ErrorMessage,
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListCell, ListHeader, ListHeaderCellSort, ListRow } from 'frappe-ui/list'
-import { showSettingsDialog } from '@/components/Settings'
+import InvitePeople from '@/components/Settings/InvitePeople.vue'
 import { isGameplanAdmin, useSessionUser, useUser } from '@/data/users'
 import {
   people,
@@ -274,8 +295,11 @@ import {
   type PeopleSortField,
 } from '@/data/people'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
+import LoadError from '@/components/LoadError.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
+import { errorText } from '@/utils'
 
 defineOptions({
   name: 'People',
@@ -283,6 +307,8 @@ defineOptions({
 
 const search = ref('')
 const isAdmin = computed(() => isGameplanAdmin())
+const showInviteDialog = ref(false)
+const skeletonRowCount = 3
 
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
@@ -339,7 +365,15 @@ const peopleList = computed(() => {
   return myProfile ? [myProfile, ...list.filter((profile) => profile !== myProfile)] : list
 })
 
-const isEmpty = computed(() => !people.loading && !people.error && peopleList.value.length === 0)
+/** What the list area shows. A cached list stays on screen while it refetches. */
+const phase = computed((): 'loading' | 'failed' | 'empty' | 'noMatch' | 'rows' => {
+  if (!people.data?.length) {
+    if (people.error) return 'failed'
+    if (people.loading || !people.isFinished) return 'loading'
+  }
+  if (peopleList.value.length) return 'rows'
+  return search.value ? 'noMatch' : 'empty'
+})
 
 usePageMeta(() => ({
   title: 'People',

@@ -262,6 +262,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // Until then, and for anyone else's shared draft, it is read-only: nothing may save it.
   const owner = ref<string | null>(serverName.value ? null : draftOwner)
   const readOnly = computed(() => owner.value === null || owner.value !== draftOwner)
+  // A named draft resolves to no owner only when neither its server row nor a local copy
+  // could be read, so this is the failed load.
+  const loadFailed = computed(() => data.value !== null && owner.value === null)
   const isSingleton = computed(() => {
     const id = toValue(identity)
     return id.mode === 'Edit' || Boolean(id.referenceName)
@@ -411,13 +414,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function fetchServerDraft(): Promise<ServerDraftDoc | null> {
     try {
       if (serverName.value) {
-        try {
-          return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
-        } catch (error) {
-          // Without the row its owner is unknown, so the draft stays read-only. Say why.
-          toast.error('Could not load this draft. Reload the page to try again.')
-          throw error
-        }
+        // Without the row its owner is unknown, so the draft opens read-only and
+        // `loadFailed` turns true. The composer shows that inline, with Retry.
+        return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
       }
       if (isSingleton.value) {
         const id = toValue(identity)
@@ -516,6 +515,14 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       })
     })()
     return opening
+  }
+
+  /** Look the draft up again after a failed load. */
+  function reload(): Promise<void> {
+    if (!loadFailed.value) return Promise.resolve()
+    opening = null
+    data.value = null
+    return open()
   }
 
   watch(
@@ -634,6 +641,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     /** The composer's buffer, or null until the draft has been resolved. */
     data,
     isLoading,
+    /** The draft could not be read, so it is open read-only. `reload` tries again. */
+    loadFailed,
+    reload,
     /** There are local edits not yet pushed to the server. */
     dirty,
     /** Why the last push failed, or null if the last one succeeded. */

@@ -2,7 +2,7 @@ import { computed, reactive } from 'vue'
 import { useCall } from 'frappe-ui'
 import { communityState } from './communityState'
 import { isSpacePinned } from './pinnedSpaces'
-import { joinedSpaces, spaces } from './spaces'
+import { isLingeringArchivedSpace, joinedSpaces, spaces } from './spaces'
 import {
   currentHideInactiveSpaces,
   currentSpaceSidebarSort,
@@ -38,7 +38,10 @@ const communitySpaceList = computed(() => {
     )
   }
 
-  return sortSpaces(visibleSpaces, currentSpaceSidebarSort.value)
+  return [
+    ...sortSpaces(visibleSpaces, currentSpaceSidebarSort.value),
+    ...archivedCommunitySpaceList.value.filter((space) => isLingeringArchivedSpace(space.name)),
+  ]
 })
 
 const archivedCommunitySpaceList = computed(() => {

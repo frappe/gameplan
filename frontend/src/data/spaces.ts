@@ -1,10 +1,11 @@
-import { computed, MaybeRefOrGetter, toValue } from 'vue'
-import { useCall, useList, useDoctype, dialog } from 'frappe-ui'
+import { computed, MaybeRefOrGetter, ref, toValue } from 'vue'
+import { useCall, useList, useDoctype, dialog, toast } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
 import { readOnlyMode } from './readOnlyMode'
+import { errorText } from '@/utils'
 
 interface Member extends Pick<GPMember, 'user'> {}
 
@@ -66,15 +67,11 @@ export function useSpace(name: MaybeRefOrGetter<string | undefined>) {
  * about who may edit vs. manage a space. `canEditSpace` only says the space is writable at all
  * (live, and not read-only mode); `canManageAccess` mirrors the backend `can_manage_space`;
  * `canEditSettings` is both, and gates everything that writes GP Project itself (rename, change
- * community, merge, archive, delete); `canChangeMembership` gates joining and leaving, and
- * `canMoveDiscussions` the bulk move. The last two are neither edits nor admin actions, and both
- * are closed to guests.
+ * community, merge, archive, delete); `canMoveDiscussions` gates the bulk move, which is neither
+ * an edit nor an admin action.
  *
- * They are kept off `canEditSpace` because a guest may edit content in a space they were
- * granted while being unable to do either of these. For membership, `get_joined_spaces` unions
- * GP Member rows with GP Guest Access rows, so a granted space looks "joined" to a guest while
- * `leave_spaces` only touches member rows; for the move, the backend refuses it outright.
- * Either way, offering the control produces a button that can never do anything.
+ * The move is kept off `canEditSpace` because a guest may edit content in a space they were
+ * granted, but the backend refuses a move from a guest outright.
  */
 export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined>) {
   const space = useSpace(spaceId)
@@ -88,7 +85,6 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
   // says the space is writable at all (not archived, not read-only), so it is never
   // enough on its own — every member can read a public space they do not manage.
   const canEditSettings = computed(() => canEditSpace.value && canManageAccess.value)
-  const canChangeMembership = computed(() => canEditSpace.value && !isGuestUser.value)
   const canMoveDiscussions = computed(() => canEditSpace.value && !isGuestUser.value)
   return {
     space,
@@ -96,7 +92,6 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
     canEditSpace,
     canEditSettings,
     canManageAccess,
-    canChangeMembership,
     canMoveDiscussions,
   }
 }
@@ -125,10 +120,6 @@ export const joinedSpaces = useCall<string[]>({
   initialData: [],
 })
 
-export function hasJoined(spaceId: MaybeRefOrGetter<string>) {
-  return joinedSpaces.data?.includes(toValue(spaceId))
-}
-
 export function getSpaceUnreadCount(spaceId: string) {
   return getProjectUnreadCount(spaceId)
 }
@@ -145,52 +136,33 @@ const spaceDoctype = useDoctype<GPProject>('GP Project')
 // shared runMethod request so the two calls cannot cross-resolve each other's state.
 const spaceVisitApi = useDoctype<GPProject>('GP Project')
 
-export function joinSpace(space: Space) {
-  return spaceDoctype.runMethod
-    .submit({
-      method: 'join_spaces',
-      params: { spaces: [space.name] },
-    })
-    .then(() => {
-      joinedSpaces.reload()
-    })
-}
-
-export function leaveSpace(space: Space) {
-  return spaceDoctype.runMethod
-    .submit({
-      method: 'leave_spaces',
-      params: { spaces: [space.name] },
-    })
-    .then(() => {
-      joinedSpaces.reload()
-    })
-}
-
 /**
- * Ask before leaving. Leaving a public space is reversible from the space itself, but a
- * private space's view permission *is* its membership (backend `can_view_space`), so the
- * moment you leave you can no longer see the space — or the Join action on it. Getting back
- * in needs another member (or a global admin) to add you, which is worth a warning up front.
+ * The space just archived from its own page. The sidebar drops archived spaces, so it keeps
+ * this one, dimmed, until the person leaves the page; otherwise the page they are on has no
+ * row in the sidebar.
  */
-export function confirmLeaveSpace(space: Space) {
-  dialog.confirm({
-    title: `Leave "${space.title}"?`,
-    message: space.is_private
-      ? "This space is private. You won't be able to rejoin unless a member adds you back."
-      : 'You can rejoin at any time.',
-    confirmLabel: 'Leave',
-    onConfirm: () => leaveSpace(space),
-  })
+const lingeringArchivedSpaceId = ref<string | null>(null)
+
+export function isLingeringArchivedSpace(spaceId: string) {
+  return lingeringArchivedSpaceId.value === spaceId
+}
+
+export function forgetArchivedSpace(spaceId: string) {
+  if (isLingeringArchivedSpace(spaceId)) lingeringArchivedSpaceId.value = null
 }
 
 export function archiveSpace(space: Space) {
   dialog.confirm({
-    title: 'Archive space',
-    message:
-      'You cannot create new discussions, pages or tasks in an archived space. It will remain read-only. You can unarchive it again at any time.',
+    title: `Archive ${space.title}?`,
+    message: 'The space becomes read-only, and its discussions no longer show in feeds.',
     confirmLabel: 'Archive',
-    onConfirm: () => spaceDoctype.runDocMethod.submit({ method: 'archive', name: space.name }),
+    onConfirm: async () => {
+      await spaceDoctype.runDocMethod.submit({ method: 'archive', name: space.name })
+      lingeringArchivedSpaceId.value = space.name
+      toast.success('Space archived', {
+        action: { label: 'Undo', onClick: () => undoArchiveSpace(space) },
+      })
+    },
   })
 }
 
@@ -203,11 +175,19 @@ export function unarchiveSpace(space: Space) {
 
 export function markAllAsRead(spaceIds: string[], groupTitle: string) {
   dialog.confirm({
-    title: 'Mark all as read',
-    message: `Are you sure you want to mark all discussions in ${groupTitle} as read? This action cannot be undone.`,
+    title: `Mark all discussions in ${groupTitle} as read?`,
+    message: 'Their unread counts will be cleared.',
     confirmLabel: 'Mark all as read',
-    onConfirm: () => markSpacesAsRead(spaceIds),
+    onConfirm: async () => {
+      await markSpacesAsRead(spaceIds)
+    },
   })
+}
+
+function undoArchiveSpace(space: Space) {
+  unarchiveSpace(space).catch((error: unknown) =>
+    toast.error(errorText(error, `Could not unarchive ${space.title}.`)),
+  )
 }
 
 export function isDocMethodLoading(docname: string, method: string) {

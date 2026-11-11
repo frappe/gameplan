@@ -13,7 +13,7 @@
             <TextInput
               ref="searchInput"
               class="flex-1"
-              placeholder="Start typing to Search"
+              placeholder="Search discussions and comments"
               aria-label="Search"
               v-focus
               :model-value="query"
@@ -79,7 +79,7 @@
                     </div>
                     <template #suffix>
                       <span
-                        class="lucide-chevron-down ml-2 h-4 w-4 transition-transform"
+                        class="lucide-chevron-down ml-2 h-4 w-4 text-ink-gray-4 transition-transform"
                         :class="{ 'rotate-180': open }"
                       />
                     </template>
@@ -125,21 +125,6 @@
                 </template>
               </MultiSelect>
 
-              <!-- Document Type Filter -->
-              <MultiSelect
-                variant="outline"
-                :options="doctypesFilterOptions"
-                :model-value="activeFilters.doctype || []"
-                @update:model-value="(values) => updateFilter('doctype', values)"
-                placeholder="Type"
-              >
-                <template #item-suffix="{ item }">
-                  <span v-if="(item.count ?? 0) > 0" class="text-xs text-ink-gray-5">{{
-                    item.count
-                  }}</span>
-                </template>
-              </MultiSelect>
-
               <!-- Tags Filter -->
               <MultiSelect
                 variant="outline"
@@ -163,22 +148,13 @@
         </div>
 
         <!-- Search Summary -->
-        <div class="mt-2 text-sm flex items-center justify-between min-h-6">
+        <div v-if="!search.error" class="mt-2 text-sm flex items-center justify-between min-h-6">
           <div>
-            <template v-if="search.error">
-              <ErrorMessage
-                :message="
-                  search.error.type == 'GameplanSearchIndexMissingError'
-                    ? 'Search index does not exist. Please build the index first.'
-                    : search.error
-                "
-              />
-            </template>
-            <template v-else-if="newSearch && query.length > 3">
+            <template v-if="newSearch && query.length > 3">
               <p class="text-ink-gray-6">Press enter to search</p>
             </template>
             <template v-else-if="search.loading">
-              <p class="text-ink-gray-6">Searching...</p>
+              <LoadingText class="!text-sm" text="Searching…" />
             </template>
             <template v-else-if="searchResponse?.summary">
               <div class="space-y-1">
@@ -187,11 +163,17 @@
                   {{ visibleSearchResults.length === 1 ? 'match' : 'matches' }} ({{
                     searchResponse.summary.duration
                   }}s)
-                  <span v-if="hasActiveFilters()">
+                  <template v-if="activeFilterCount">
                     •
-                    {{ Object.keys(searchResponse.summary.applied_filters || {}).length }} filter(s)
-                    applied
-                  </span>
+                    {{ activeFilterCount === 1 ? '1 filter' : `${activeFilterCount} filters` }}
+                    <Button
+                      class="ml-1"
+                      variant="ghost"
+                      size="xs"
+                      label="Clear filters"
+                      @click="clearFilters"
+                    />
+                  </template>
                 </p>
                 <p v-if="searchResponse.summary.corrected_query" class="text-ink-gray-6">
                   <span class="text-ink-gray-5">Searched for:</span>
@@ -228,14 +210,21 @@
           <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
+        <LoadError
+          v-if="search.error"
+          class="mt-5"
+          :message="searchErrorText"
+          :retrying="search.loading"
+          @retry="submit()"
+        />
         <EmptyStateBox
-          v-if="hasNoResults"
+          v-else-if="hasNoResults"
           class="mt-5"
           icon="lucide-search-x"
           title="No results"
           description="Try different words or fewer filters."
         />
-        <div class="mt-5 -mx-2.5 pb-20">
+        <div v-else class="mt-5 -mx-2.5 pb-20">
           <List :columns="['auto', 'minmax(0,1fr)']" class="list-row-px-2.5" divider="inset">
             <ListRow
               v-for="item in visibleSearchResults"
@@ -287,6 +276,7 @@ import {
   Avatar,
   Breadcrumbs,
   Button,
+  LoadingText,
   MultiSelect,
   ScrollArea,
   TextInput,
@@ -300,6 +290,8 @@ import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser } from '@/data/users'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import LoadError from '@/components/LoadError.vue'
+import { errorText } from '@/utils'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { getSpace } from '@/data/spaces'
@@ -348,7 +340,6 @@ interface SearchFilters {
   owner?: string[]
   project?: string[]
   team?: string[]
-  doctype?: string[]
   tags?: string[]
 }
 
@@ -395,6 +386,17 @@ const hasNoResults = computed(
     !visibleSearchResults.value.length &&
     !search.loading &&
     !search.error,
+)
+
+// The index-missing message is meant for an admin, so it is shown as the server wrote it.
+const searchErrorText = computed(() =>
+  search.error?.type == 'GameplanSearchIndexMissingError'
+    ? 'Search index does not exist. Please build the index first.'
+    : errorText(search.error, 'Search failed. Try again.'),
+)
+
+const activeFilterCount = computed(() =>
+  Object.values(activeFilters.value).reduce((count, values) => count + (values?.length ?? 0), 0),
 )
 
 // API Calls Setup
@@ -501,30 +503,6 @@ const authorsFilterOptions = computed(() => {
       image: user.user_image,
       count: authorCounts.get(user.name) || 0,
     }))
-})
-
-const doctypesFilterOptions = computed(() => {
-  // Convert the doctypes dict from API to a Map for lookups
-  const doctypeCounts = new Map()
-  if (filterOptions.data?.doctypes) {
-    Object.entries(filterOptions.data.doctypes).forEach(([doctypeName, count]) => {
-      doctypeCounts.set(doctypeName, count)
-    })
-  }
-
-  // Static mapping of doctypes with their display labels
-  const doctypeMapping = [
-    { value: 'GP Discussion', label: 'Discussion' },
-    { value: 'GP Task', label: 'Task' },
-    { value: 'GP Page', label: 'Page' },
-    { value: 'GP Comment', label: 'Comment' },
-  ]
-
-  return doctypeMapping.map((doctype) => ({
-    value: doctype.value,
-    label: doctype.label,
-    count: doctypeCounts.get(doctype.value) || 0,
-  }))
 })
 
 const tagsFilterOptions = computed(() => {
@@ -661,6 +639,11 @@ function updateFilter(type: keyof SearchFilters, values: string[]) {
   submit()
 }
 
+function clearFilters() {
+  activeFilters.value = {}
+  submit()
+}
+
 function addFilter(type: keyof SearchFilters, value: string) {
   if (!activeFilters.value[type]) {
     activeFilters.value[type] = []
@@ -700,7 +683,9 @@ function loadSearchState(searchQuery: string) {
       searchResponse.value = state.results
       // Restore active filters if they exist
       if (state.filters) {
-        activeFilters.value = state.filters
+        // Searches saved before the Type filter was removed may still carry it.
+        const { doctype: _doctype, ...filters } = state.filters
+        activeFilters.value = filters
       }
       newSearch.value = false
       return true

@@ -1,7 +1,7 @@
 <template>
   <FrappeUIProvider>
     <div class="relative isolate h-full overflow-hidden">
-      <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
+      <router-view v-if="['Onboarding', 'Login'].includes($route.name) || $route.meta.public" />
       <Layout v-else-if="$session.isLoggedIn">
         <!-- While on a /settings/* URL, keep rendering the page the dialog was
              opened over (displayedRoute) so it stays visible behind the overlay. -->

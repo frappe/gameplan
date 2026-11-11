@@ -5,10 +5,12 @@
 import frappe
 from frappe import _
 from frappe.query_builder import Criterion
+from frappe.utils import get_fullname
 
 from gameplan.utils.document import with_stored_document
 
 REACTION_FIELDS = ["name", "reference_doctype", "reference_name", "emoji", "user"]
+REACTION_TARGET_NOUNS = {"GP Discussion": "post", "GP Comment": "reply", "GP Poll": "poll"}
 
 
 class HasReactions:
@@ -97,22 +99,20 @@ class HasReactions:
 		# Only a reaction that was ADDED is news. A withdrawal is not: it would re-raise a
 		# bell the owner already cleared, about a reaction that no longer exists.
 		# Your own reaction never notifies you and is never counted: the row would
-		# otherwise read "1 person reacted to your post" about yourself.
+		# otherwise name you among the people who reacted to your post.
 		if not any(user != self.owner for user, _emoji in added):
 			return
 
 		# Several changes can land in one call (the frontend debounces a quick tap-tap
 		# into one batch). The message describes the post as it now stands, not the
 		# delta, so it stays true however many rows moved.
-		people = {r.user for r in reactions if r.user != self.owner}
 		if not can_view_content(self.owner, self):
 			return
 
-		match len(people):
-			case 1:
-				message = "1 person reacted to your post"
-			case _:
-				message = f"{len(people)} people reacted to your post"
+		people = reactors_latest_first(reactions, exclude=self.owner)
+		if not people:
+			return
+		message = reaction_message(people, REACTION_TARGET_NOUNS.get(self.doctype, "post"))
 		values = frappe._dict(
 			to_user=self.owner,
 			type="Reaction",
@@ -144,9 +144,31 @@ class HasReactions:
 				doc.discussion = self.reference_name if self.reference_doctype == "GP Discussion" else None
 				doc.task = self.reference_name if self.reference_doctype == "GP Task" else None
 		doc.message = message
+		# The bell draws these as stacked avatars. `from_user` is the latest of them.
+		doc.reacted_by = people
+		doc.from_user = people[0]
 		doc.read = 0
 		doc.flags.ignore_permissions = True
 		doc.save()
+
+
+def reactors_latest_first(reactions, exclude):
+	"""The users holding `reactions`, newest reaction first, each once. GP Reaction names autoincrement."""
+	newest_first = sorted(reactions, key=lambda r: int(r.name), reverse=True)
+	return list(dict.fromkeys(r.user for r in newest_first if r.user != exclude))
+
+
+def reaction_message(people, noun):
+	"""'Grace reacted…', 'Grace and Sam reacted…', 'Grace and 2 others reacted…'."""
+	first = get_fullname(people[0])
+	match len(people):
+		case 1:
+			who = first
+		case 2:
+			who = f"{first} and {get_fullname(people[1])}"
+		case _:
+			who = f"{first} and {len(people) - 1} others"
+	return f"{who} reacted to your {noun}"
 
 
 def get_reactions_on(posts):

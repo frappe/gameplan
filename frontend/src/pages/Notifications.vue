@@ -25,6 +25,14 @@
       />
     </template>
 
+    <LoadError
+      v-else-if="activeList.error && !notifications?.length"
+      class="mx-4 sm:mx-3"
+      :message="errorText(activeList.error, 'Could not load notifications.')"
+      :retrying="activeList.loading"
+      @retry="activeList.reload()"
+    />
+
     <List
       v-else-if="notifications?.length"
       class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
@@ -38,15 +46,20 @@
         @click="openNotification(notification)"
       >
         <ListCell>
+          <ReactorAvatars
+            v-if="reactors(notification).length"
+            :users="reactors(notification)"
+          />
           <UserAvatarWithHover
             size="2xl"
             :user="notification.from_user"
-            v-if="showAvatar(notification)"
+            v-else-if="notification.from_user && showAvatar(notification)"
           />
           <div
             class="grid size-10 place-items-center rounded-[8px] bg-surface-gray-2 group-hover:bg-surface-base"
             v-else
           >
+            <!-- Reaction rows written before `reacted_by` existed carry only a count. -->
             <ReactionFaceIcon
               class="size-5 text-ink-gray-6"
               v-if="notification.type === 'Reaction'"
@@ -98,15 +111,17 @@
                  `modified` so a re-lit notification resurfaces (see useNotificationList),
                  which can read slightly out of order here — an honest timestamp out of order
                  beats a wrong one in order. -->
-            <time
-              class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
-              :datetime="notification.creation"
-            >
-              <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
-              <span class="hidden sm:inline">
-                {{ dayjsLocal(notification.creation).fromNow() }}
-              </span>
-            </time>
+            <Tooltip :text="dayjsLocal(notification.creation).format('D MMM YYYY [at] h:mm A')">
+              <time
+                class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
+                :datetime="notification.creation"
+              >
+                <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
+                <span class="hidden sm:inline">
+                  {{ relativeTimestamp(notification.creation) }}
+                </span>
+              </time>
+            </Tooltip>
             <div
               class="mt-1.5 hidden whitespace-nowrap text-right text-sm text-ink-gray-5 sm:block"
               v-if="notificationLocation(notification)"
@@ -156,14 +171,17 @@ import {
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import LoadError from '@/components/LoadError.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
+import ReactorAvatars from '@/components/ReactorAvatars.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
+import { errorText, relativeTimestamp } from '@/utils'
 
 type ActiveTab = 'Unread' | 'Read'
 
@@ -172,9 +190,10 @@ type NotificationRow = GPNotification
 const activeTab = ref<ActiveTab>('Unread')
 const sessionUser = useSessionUser()
 
-const notificationFields = [
+const notificationFields: (keyof NotificationRow)[] = [
   'name',
   'from_user',
+  'reacted_by',
   'message',
   'read',
   'type',
@@ -394,13 +413,24 @@ function showAvatar(notification: NotificationRow) {
   return Boolean(notification.from_user && notification.type !== 'Reaction')
 }
 
+/** The people who reacted, newest first. The list API returns the JSON field as text. */
+function reactors(notification: NotificationRow): string[] {
+  const stored: unknown = notification.reacted_by
+  const value: unknown = typeof stored === 'string' && stored ? JSON.parse(stored) : stored
+  if (!Array.isArray(value)) return []
+  return value.filter((user): user is string => typeof user === 'string')
+}
+
 function confirmMarkAllAsRead() {
-  dialog.danger({
-    title: 'Mark all as read',
-    message:
-      'This clears every unread notification at once, so nothing is left flagged for you to come back to. You cannot undo this.',
+  // The badge count, not the list: the list stops at 100 rows.
+  const count = Math.max(unreadNotifications.data ?? 0, unreadNotificationList.data?.length ?? 0)
+  dialog.confirm({
+    title: 'Mark all as read?',
+    message: `${count === 1 ? 'The unread notification' : `All ${count} unread notifications`} will move to Read.`,
     confirmLabel: 'Mark all as read',
-    onConfirm: () => markAllAsRead.submit(),
+    onConfirm: async () => {
+      await markAllAsRead.submit()
+    },
   })
 }
 

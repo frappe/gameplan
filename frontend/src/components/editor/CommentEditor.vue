@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, useTemplateRef } from 'vue'
-import { Button, ScrollArea, TooltipProvider } from 'frappe-ui'
+import { Button, ErrorMessage, ScrollArea, TooltipProvider } from 'frappe-ui'
 import {
   Blockquote,
   Bold,
@@ -58,6 +58,8 @@ const props = withDefaults(
     // comment owner — stamped on quotes created from this comment's selection
     author?: string
     canAttachPoll?: boolean
+    // A failed submit, shown beside Discard and Submit so it sits next to the button pressed.
+    error?: string | null
   }>(),
   { value: '', placeholder: null, editable: true, toolbarExpanded: false },
 )
@@ -294,9 +296,12 @@ function canInsertCodeBlock(editor: Editor) {
             </template>
           </div>
         </ScrollArea>
-        <div class="flex items-center justify-end space-x-2">
-          <Button v-bind="discardButtonProps || {}"> Discard </Button>
-          <Button variant="solid" v-bind="submitButtonProps || {}"> Submit </Button>
+        <div class="flex items-center justify-end gap-2">
+          <ErrorMessage v-if="error" class="min-w-0 text-right" :message="error" />
+          <Button class="shrink-0" v-bind="discardButtonProps || {}"> Discard </Button>
+          <Button class="shrink-0" variant="solid" v-bind="submitButtonProps || {}">
+            Submit
+          </Button>
         </div>
       </div>
     </template>

@@ -18,7 +18,12 @@
               <span class="lucide-search h-4 w-4 text-ink-gray-4" />
             </template>
           </TextInput>
-          <Button icon-left="lucide-plus" @click="showInviteDialog = true">Invite</Button>
+          <Button
+            variant="solid"
+            icon-left="lucide-user-plus"
+            label="Invite"
+            @click="showInviteDialog = true"
+          />
         </div>
       </div>
 
@@ -99,7 +104,7 @@
           <ListCell class="justify-end">
             <Button
               variant="ghost"
-              icon="lucide-trash-2"
+              icon="lucide-user-x"
               :label="`Disable ${user.full_name}`"
               @click="disableUser(user)"
             />
@@ -109,16 +114,14 @@
     </List>
   </PanelBody>
 
-  <Dialog v-model:open="showInviteDialog">
-    <InvitePeople />
-  </Dialog>
+  <InvitePeople v-model:open="showInviteDialog" />
 </template>
 <script setup lang="ts">
 // Declared so the parent's @close-dialog isn't treated as a failed attribute
 // fallthrough (this component renders a fragment); it simply isn't emitted here.
 defineEmits<{ (e: 'close-dialog'): void }>()
 import { computed, ref, watch } from 'vue'
-import { Button, Dialog, Select, dialog, dayjsLocal, useCall, useList } from 'frappe-ui'
+import { Button, Select, dialog, dayjsLocal, useCall, useList } from 'frappe-ui'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import UserAvatar from '@/components/UserAvatar.vue'
@@ -144,6 +147,12 @@ const roleOptions = [
   { label: 'User', value: 'Gameplan Member', icon: 'lucide-user' },
   { label: 'Guest', value: 'Gameplan Guest', icon: 'lucide-user-lock' },
 ]
+
+const roleChangeEffects: Record<string, string> = {
+  'Gameplan Admin': 'They will be able to manage communities, spaces and people.',
+  'Gameplan Member': 'They will be able to join communities and post, but not manage them.',
+  'Gameplan Guest': 'They will only see the spaces they are added to.',
+}
 
 // Index used to rank roles (Admin first) when sorting by role.
 const roleRank: Record<string, number> = Object.fromEntries(
@@ -241,10 +250,11 @@ function getMemberSince(user: UserRow) {
 }
 
 function changeUserRole(user: UserRow, role: string) {
+  const label = roleOptions.find((option) => option.value === role)?.label ?? role
   dialog.confirm({
-    title: 'Change Role',
-    message: `Are you sure you want to change ${user.full_name}'s role to ${role}?`,
-    confirmLabel: 'Change Role',
+    title: `Change ${user.full_name}'s role to ${label}?`,
+    message: roleChangeEffects[role] ?? `${user.full_name} will get the ${label} role.`,
+    confirmLabel: 'Change role',
     onConfirm: () => {
       changeUserRoleCall.submit({ user: user.name, role }).catch(() => {})
     },
@@ -260,9 +270,9 @@ function onRoleChange(user: UserRow, role: unknown) {
 }
 
 function disableUser(user: UserRow) {
-  dialog.danger({
-    title: 'Disable user',
-    message: `${user.full_name} (${user.email}) will be disabled and can no longer sign in to Gameplan. You can re-enable them later from the Frappe admin.`,
+  dialog.confirm({
+    title: `Disable ${user.full_name}?`,
+    message: `${user.email} will no longer be able to sign in. You can enable the account again from the Frappe admin.`,
     confirmLabel: 'Disable',
     onConfirm: () => {
       disableUserCall.submit({ user: user.name }).catch(() => {})

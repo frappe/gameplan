@@ -13,6 +13,7 @@
       :filters="{ feed_type: 'bookmarks' }"
       :show-pinned="false"
       show-community
+      removable-bookmarks
       cacheKey="Bookmarks"
       :empty-state="{
         icon: 'lucide-bookmark',

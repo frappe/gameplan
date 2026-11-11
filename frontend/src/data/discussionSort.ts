@@ -5,9 +5,9 @@ import type { OrderBy } from 'frappe-ui'
 const defaultDiscussionOrderBy: OrderBy = 'last_post_at desc'
 
 const sortChoices: { label: string; value: OrderBy }[] = [
-  { label: 'Newest first', value: 'last_post_at desc' },
-  { label: 'Oldest first', value: 'last_post_at asc' },
-  { label: 'Creation date', value: 'creation desc' },
+  { label: 'Latest activity', value: 'last_post_at desc' },
+  { label: 'Oldest activity', value: 'last_post_at asc' },
+  { label: 'Newest created', value: 'creation desc' },
 ]
 
 const storedOrderBy = useLocalStorage<OrderBy>('gameplan:discussionSort', defaultDiscussionOrderBy)

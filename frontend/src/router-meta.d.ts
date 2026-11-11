@@ -8,5 +8,7 @@ declare module 'vue-router' {
     fullWidth?: boolean
     hideHeader?: boolean
     hideMobileNav?: boolean
+    // Open to guests, rendered without the app shell and without loading app data.
+    public?: boolean
   }
 }

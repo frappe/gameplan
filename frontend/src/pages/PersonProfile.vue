@@ -45,7 +45,17 @@
     </div>
   </div>
 
-  <NotFound v-else-if="profileNotFound" />
+  <NotFound
+    v-else-if="profileNotFound"
+    title="Profile not found"
+    description="This person may have left, or the link is wrong."
+  >
+    <template #header>
+      <PageHeader>
+        <Breadcrumbs :items="[{ label: 'People', route: { name: 'People' } }, { label: 'Not found' }]" />
+      </PageHeader>
+    </template>
+  </NotFound>
 </template>
 <script setup lang="ts">
 import { computed, inject, ref, watch } from 'vue'

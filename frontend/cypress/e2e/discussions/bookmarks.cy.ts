@@ -22,7 +22,7 @@ describe('Bookmarks', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`)
 
   const openDiscussionOptions = () =>
-    cy.get('button[aria-haspopup=menu][aria-label="Discussion Options"]').click()
+    cy.get('button[aria-haspopup=menu][aria-label="Discussion options"]').click()
 
   it('bookmarks a discussion, finds it under Bookmarks, and removes it', () => {
     cy.intercept('POST', `/api/v2/document/GP%20Discussion/${discussion}/method/add_bookmark`).as(
@@ -36,12 +36,12 @@ describe('Bookmarks', () => {
     visitDiscussion()
     cy.contains('h1', 'Welcome thread').should('be.visible')
 
-    cy.selectDropdownOption('Discussion Options', 'Bookmark')
+    cy.selectDropdownOption('Discussion options', 'Bookmark')
     cy.wait('@addBookmark')
 
     // The same menu now offers to take the bookmark back — without a reload.
     openDiscussionOptions()
-    cy.get('[role="menuitem"]:contains("Remove Bookmark"):visible').should('exist')
+    cy.get('[role="menuitem"]:contains("Remove bookmark"):visible').should('exist')
     cy.get('[role="menuitem"]:contains("Bookmark"):visible').should('have.length', 1)
     cy.get('body').type('{esc}')
 
@@ -49,7 +49,7 @@ describe('Bookmarks', () => {
     cy.contains('a', 'Welcome thread').should('be.visible').and('contain', 'Seed content').click()
     cy.url().should('include', `/discussion/${discussion}`)
 
-    cy.selectDropdownOption('Discussion Options', 'Remove Bookmark')
+    cy.selectDropdownOption('Discussion options', 'Remove bookmark')
     cy.wait('@removeBookmark')
 
     cy.visit('/g/bookmarks')
@@ -79,15 +79,15 @@ describe('Bookmarks', () => {
       visitDiscussion()
       cy.get(`div[data-id="${comment}"]`).should('contain', 'Ship it on Friday')
 
-      cy.selectDropdownOption('Comment Options', 'Bookmark')
+      cy.selectDropdownOption('Comment options', 'Bookmark')
       cy.wait('@addBookmark')
 
-      cy.get('button[aria-haspopup=menu][aria-label="Comment Options"]').click()
-      cy.get('[role="menuitem"]:contains("Remove Bookmark"):visible').should('exist')
+      cy.get('button[aria-haspopup=menu][aria-label="Comment options"]').click()
+      cy.get('[role="menuitem"]:contains("Remove bookmark"):visible').should('exist')
       cy.get('body').type('{esc}')
 
       openDiscussionOptions()
-      cy.get('[role="menuitem"]:contains("Remove Bookmark"):visible').should('not.exist')
+      cy.get('[role="menuitem"]:contains("Remove bookmark"):visible').should('not.exist')
       cy.get('body').type('{esc}')
 
       cy.visit('/g/bookmarks')
@@ -98,7 +98,7 @@ describe('Bookmarks', () => {
       cy.url().should('include', `/discussion/${discussion}`).and('include', `comment=${comment}`)
       cy.get(`div[data-id="${comment}"]`).should('be.visible')
 
-      cy.selectDropdownOption('Comment Options', 'Remove Bookmark')
+      cy.selectDropdownOption('Comment options', 'Remove bookmark')
       cy.wait('@removeBookmark')
 
       cy.visit('/g/bookmarks')

@@ -1,41 +1,65 @@
 <template>
   <div :aria-busy="isDraftLoading">
-    <div
-      v-if="showDraftLoadingStatus"
-      class="mb-3 flex items-center gap-2 text-sm text-ink-gray-5"
-      role="status"
-      aria-live="polite"
-      aria-atomic="true"
-    >
-      <LoadingIndicator class="size-3" aria-hidden="true" />
-      <span>Loading draft…</span>
-    </div>
-    <p v-else-if="author && author.name !== sessionUser.name" class="mb-3 text-sm text-ink-gray-5">
-      {{ author.full_name }}'s draft. Only they can edit or publish it.
-    </p>
-    <ErrorMessage :message="errorMessage || publishError || scheduleWarning" />
-    <textarea
-      ref="titleTextarea"
-      class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-3xl-semibold text-ink-gray-8 placeholder-ink-gray-3 focus:ring-0"
-      :value="draftData?.title"
-      placeholder="Title"
-      rows="1"
-      wrap="soft"
-      maxlength="140"
-      @keydown.enter.prevent="editor.commands.focus()"
-      @keydown.down.prevent="editor.commands.focus()"
-      @blur="handleTitleBlur"
-      :disabled="!isComposerEditable"
-      @input="handleTitleInput"
+    <LoadError
+      v-if="draftLoadFailed"
+      class="mt-4"
+      message="Could not load this draft."
+      :retrying="isDraftLoading"
+      @retry="retryDraftLoad"
     />
-    <EditorContent :editor="editor" :class="editorClass" aria-label="Discussion content" />
+    <template v-else>
+      <div v-if="showDraftLoadingStatus" class="mb-3" role="status" aria-live="polite">
+        <LoadingText text="Loading draft…" />
+      </div>
+      <p
+        v-else-if="author && author.name !== sessionUser.name"
+        class="mb-3 text-sm text-ink-gray-5"
+      >
+        {{ author.full_name }}'s draft. Only they can edit or publish it.
+      </p>
+      <div
+        v-if="submitError"
+        role="alert"
+        class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-p-sm text-ink-red-7"
+      >
+        <span class="flex items-center gap-1.5">
+          <span class="lucide-circle-alert size-4 shrink-0" aria-hidden="true" />
+          {{ submitError.message }}
+        </span>
+        <Button
+          v-if="submitError.retry"
+          variant="subtle"
+          icon-left="lucide-rotate-ccw"
+          label="Retry"
+          :loading="publishing"
+          @click="submitError.retry"
+        />
+      </div>
+      <ErrorMessage v-else :message="errorMessage || scheduleWarning" />
+      <textarea
+        ref="titleTextarea"
+        class="mt-1 w-full bg-transparent resize-none border-0 px-0 py-0.5 text-3xl-semibold text-ink-gray-8 placeholder-ink-gray-3 focus:ring-0"
+        :value="draftData?.title"
+        placeholder="Title"
+        rows="1"
+        wrap="soft"
+        maxlength="140"
+        @keydown.enter.prevent="editor.commands.focus()"
+        @keydown.down.prevent="editor.commands.focus()"
+        @blur="handleTitleBlur"
+        :disabled="!isComposerEditable"
+        @input="handleTitleInput"
+      />
+      <EditorContent :editor="editor" :class="editorClass" aria-label="Discussion content" />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, watch } from 'vue'
 import { useTextareaAutosize } from '@vueuse/core'
-import { ErrorMessage, LoadingIndicator } from 'frappe-ui'
+import { Button, ErrorMessage, LoadingText } from 'frappe-ui'
+import LoadError from '@/components/LoadError.vue'
 import { EditorContent } from 'frappe-ui/editor'
 import { useNewDiscussionContext } from './useNewDiscussion'
 import type { Editor } from '@tiptap/core'
@@ -57,9 +81,12 @@ const { textarea: titleTextarea, triggerResize } = useTextareaAutosize()
 
 const {
   errorMessage,
-  publishError,
+  submitError,
+  publishing,
   draftData,
   isDraftLoading,
+  draftLoadFailed,
+  retryDraftLoad,
   isComposerEditable,
   showDraftLoadingStatus,
   author,
