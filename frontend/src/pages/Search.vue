@@ -241,19 +241,23 @@
               </ListCell>
               <ListCell class="self-start">
                 <div class="w-full">
-                  <div class="flex items-center">
+                  <!-- Phones put the type and date on a line of their own under the
+                       title; beside a long title they squeezed into a three-line date. -->
+                  <div class="flex flex-wrap items-baseline gap-x-1 sm:flex-nowrap">
                     <div
                       v-if="item.title"
-                      class="text-base-medium text-ink-gray-9"
+                      class="text-base-medium text-ink-gray-9 max-sm:w-full"
                       v-html="item.title"
                     />
-                    <div class="text-base-medium text-ink-gray-9" v-else>
+                    <div class="text-base-medium text-ink-gray-9 max-sm:w-full" v-else>
                       {{ $user(item.author).full_name }}
                     </div>
-                    <span class="px-1 leading-none text-sm text-ink-gray-5">
-                      &middot; {{ item.doctype.replace('GP ', '') }}
+                    <span class="whitespace-nowrap text-sm text-ink-gray-5">
+                      <span class="max-sm:hidden">&middot; </span>
+                      {{ item.doctype.replace('GP ', '') }}
+                      <span class="sm:hidden">&middot;</span>
                     </span>
-                    <div class="ml-auto text-sm text-ink-gray-5">
+                    <div class="whitespace-nowrap text-sm text-ink-gray-5 sm:ml-auto">
                       {{ dayjs.unix(item.modified).format('lll') }}
                     </div>
                   </div>
