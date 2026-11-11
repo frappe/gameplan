@@ -38,7 +38,7 @@
   <div class="body-container pt-5 pb-40">
     <LastPostReminder class="mb-3" />
 
-    <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-3 flex items-center justify-between gap-2">
       <TabButtons :options="feedTabs" v-model="currentFeed" size="sm">
         <template #suffix="{ button }">
           <span
@@ -49,11 +49,7 @@
           </span>
         </template>
       </TabButtons>
-      <Select
-        class="shrink-0 !w-fit"
-        :options="discussionSortOptions"
-        v-model="discussionOrderBy"
-      />
+      <DiscussionSortDropdown />
     </div>
 
     <KeepAlive>
@@ -77,18 +73,18 @@ import {
   PageHeaderMobile,
   PageHeaderMobileTitle,
   Button,
-  Select,
   TabButtons,
   usePageMeta,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
+import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
+import { discussionOrderBy } from '@/data/discussionSort'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
-import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
 

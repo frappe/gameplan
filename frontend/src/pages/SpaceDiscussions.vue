@@ -41,15 +41,9 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <!-- Same layout as the community feed: a phone is too narrow for the tabs and the
-         sort side by side, so the sort takes its own row there. -->
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div class="mb-4 flex items-center justify-between gap-2">
       <SpaceTabs :spaceId="spaceId" />
-      <Select
-        class="shrink-0 !w-fit"
-        :options="discussionSortOptions"
-        v-model="discussionOrderBy"
-      />
+      <DiscussionSortDropdown />
     </div>
     <DiscussionList
       class="-mx-3"
@@ -92,7 +86,7 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Combobox, Dialog, ErrorMessage, Select, useCall, toast } from 'frappe-ui'
+import { Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
@@ -103,7 +97,8 @@ import PushPinSlash from '@/components/icons/PushPinSlash.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
-import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
+import { discussionOrderBy } from '@/data/discussionSort'
+import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
