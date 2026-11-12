@@ -21,7 +21,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type RouteLocationNormalized } from 'vue-router'
 import { DesktopShell } from 'frappe-ui'
 import AppRail from './AppRail'
 import AppSidebar from './AppSidebar.vue'
@@ -46,16 +46,16 @@ const effectiveRoute = computed(() => {
   return router.resolve(settingsBackgroundPath.value || getHomeRoute())
 })
 
-const onCommunityRoute = computed(() => {
-  return effectiveRoute.value.matched.some((record) => record.meta?.communityScope)
-})
+function isCommunityScoped(route: Pick<RouteLocationNormalized, 'matched'>) {
+  return route.matched.some((record) => record.meta?.communityScope)
+}
+
+const onCommunityRoute = computed(() => isCommunityScoped(effectiveRoute.value))
 
 // The rail follows a navigation that is still on its way, so a community lights up on click.
-const railShowsCommunity = computed(() => {
-  const target = navigationTarget.value
-  if (!target) return onCommunityRoute.value
-  return target.matched.some((record) => record.meta?.communityScope)
-})
+const railShowsCommunity = computed(() =>
+  isCommunityScoped(navigationTarget.value ?? effectiveRoute.value),
+)
 </script>
 
 <style scoped>
