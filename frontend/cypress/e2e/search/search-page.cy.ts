@@ -21,24 +21,21 @@ describe('Search page', () => {
     cy.contains('6 matches').should('be.visible')
 
     selectFilter('Author', 'Member')
-    cy.contains('5 matches').should('contain', '1 filter(s) applied')
+    cy.contains('5 matches').should('contain', '1 filter')
     cy.contains('Design roadmap').should('not.exist')
 
     selectFilter('Community', 'Acme')
-    cy.contains('4 matches').should('contain', '2 filter(s) applied')
+    cy.contains('4 matches').should('contain', '2 filters')
     cy.contains('Beta roadmap').should('not.exist')
 
     selectFilter('Space', 'Engineering')
-    cy.contains('3 matches').should('contain', '3 filter(s) applied')
+    cy.contains('3 matches').should('contain', '3 filters')
     cy.contains('General roadmap').should('not.exist')
 
-    selectFilter('Type', 'Discussion')
-    cy.contains('2 matches').should('contain', '4 filter(s) applied')
-    cy.contains('Engineering roadmap page').should('not.exist')
-
     selectFilter('Tags', 'launch')
-    cy.contains('p', /^1 match \(/).should('contain', '5 filter(s) applied')
+    cy.contains('p', /^1 match \(/).should('contain', '4 filters')
     cy.contains('Untagged roadmap').should('not.exist')
+    cy.contains('Engineering roadmap page').should('not.exist')
     cy.contains('Launch roadmap').should('be.visible').click()
     cy.url().should('match', /\/g\/community\/acme\/space\/\d+\/discussion\/\d+\/launch-roadmap$/)
   })

@@ -33,7 +33,7 @@ describe('Mobile header goes up', () => {
       cy.visit('/g/home')
       cy.contains('button', 'Acme').click()
       pathIs(communityPath)
-      cy.contains('button', 'All Discussions').click()
+      cy.contains('button', 'All discussions').click()
       cy.scope('dialog').button('Engineering').click()
       pathIs(spacePath)
       cy.contains('a:visible', 'Welcome thread').click()

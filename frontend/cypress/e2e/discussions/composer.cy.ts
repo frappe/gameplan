@@ -27,9 +27,9 @@ describe('Community composer and drafts', () => {
     cy.visit(`/g/community/${community}/discussions`)
 
     // The community discussions list is the only "+ New discussion" entry point.
-    cy.button('Add new').click()
+    cy.button('New discussion').click()
     cy.url().should('include', `/community/${community}/new-discussion`)
-    cy.contains('New Discussion').should('exist')
+    cy.contains('New discussion').should('exist')
 
     // Capture draft autosaves so we can wait for the content to actually reach the server
     // before publishing, rather than a fixed delay that races the autosave debounce (the row
@@ -49,7 +49,7 @@ describe('Community composer and drafts', () => {
     // The scoped space picker only offers spaces from the route's community.
     // The metadata combobox can sit under the sticky editor toolbar, so force
     // the trigger open, then pick the option.
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click({ force: true })
+    cy.contains('button', 'Select space').click({ force: true })
     cy.get('[role="option"]').contains(spaceTitle).click()
 
     // Retries until an autosave carrying the content (and so the title) has completed.
@@ -62,10 +62,12 @@ describe('Community composer and drafts', () => {
     cy.contains('Scoped composer discussion').should('exist')
   })
 
-  it('shows no "+ New" button on the global Drafts page', () => {
+  it('has no link to a community composer on the global Drafts page', () => {
     cy.visit('/g/drafts')
     cy.contains('Drafts').should('exist')
-    cy.scope('header').contains('button', 'Add new').should('not.exist')
+    // Drafts belong to no community, so its "New discussion" button asks for a space
+    // in a dialog instead of linking to a community's composer.
+    cy.scope('header').find('a[href*="new-discussion"]').should('not.exist')
   })
 
   it('opens a legacy draft without a project on the unscoped route', () => {

@@ -172,7 +172,7 @@ describe('Shared draft links', () => {
     cy.contains(`${personas.member.displayName}'s draft`).should('not.exist')
     cy.get('textarea[placeholder="Title"]').should('not.be.disabled').type('My own draft')
     cy.get('[contenteditable=true]').click().type('Typed by its owner.')
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click()
+    cy.contains('button', 'Select space').click()
     cy.get('[role="option"]').contains('General').click()
     cy.url().should('include', 'draft=')
     cy.button('Publish').should('not.be.disabled')

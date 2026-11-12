@@ -66,9 +66,9 @@ describe('Discussion actions', () => {
     cy.visit(`/g/community/${community}/space/${generalSpace}/discussions`)
     cy.contains('div', 'No discussions')
 
-    // "Add new" from a space carries that space in the route, so the composer
+    // "New discussion" from a space carries that space in the route, so the composer
     // needs no space picked.
-    cy.button('Add new').click()
+    cy.button('New discussion').click()
     // Type into the editor first so TipTap finishes initializing; otherwise it
     // steals focus while the title is being typed and drops the title's first
     // keystroke, which corrupts the published slug.
@@ -237,7 +237,7 @@ describe('Discussion actions', () => {
 
     cy.selectDropdownOption('Discussion options', 'Move to…')
     // "General" is the only other space in the seeded community.
-    cy.selectCombobox('Select a project', 'General')
+    cy.selectCombobox('Select a space', 'General')
     cy.button('Move to General').click()
 
     cy.url().should(

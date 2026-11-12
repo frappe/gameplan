@@ -20,7 +20,7 @@ describe('Community discussion feeds', () => {
   it('switches between the all, participating and unread feeds', () => {
     cy.visit(`/g/community/${community}/discussions`)
 
-    cy.contains('button:visible', 'All Discussions').should('be.visible')
+    cy.contains('button:visible', 'All discussions').should('be.visible')
     cy.contains('button:visible', 'Participating').should('be.visible')
     cy.contains('button:visible', 'Unread').should('be.visible')
     cy.contains('Unread thread').should('be.visible')

@@ -256,9 +256,9 @@ describe('Poll lifecycle', () => {
     cy.visit('/g/')
     cy.wait('@unreadCount')
     cy.get('button[aria-label="Notifications, 1 unread"]').click()
-    cy.contains('1 person reacted to your post').should('be.visible')
+    cy.contains('Member reacted to your poll').should('be.visible')
     cy.contains('Ship on Friday?').should('be.visible')
-    cy.contains('1 person reacted to your post').click()
+    cy.contains('Member reacted to your poll').click()
     cy.location('pathname').should(
       'eq',
       `/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`,
