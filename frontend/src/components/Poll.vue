@@ -221,7 +221,7 @@ import { useUser, useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
 import type { GPPoll, GPPollOption } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
-import { onDocEvent, subscribeToDoc } from '@/socket'
+import { onDocEvent, subscribeToDoc, type DocRoomEvents } from '@/socket'
 
 interface Props {
   poll: GPPoll
@@ -402,7 +402,7 @@ onUnmounted(() => {
   unsubscribeFromPoll?.()
 })
 
-async function handlePollUpdate(data: { doctype?: string; name?: string | number }) {
+async function handlePollUpdate(data: DocRoomEvents['doc_update']) {
   if (data.doctype === 'GP Poll' && String(data.name) === String(props.poll.name)) {
     await reloadPoll()
   }
