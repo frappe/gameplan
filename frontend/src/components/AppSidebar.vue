@@ -67,12 +67,15 @@
                 <!--
                     Count and options menu share one cell: the count fades out on
                     row hover/focus while the "…" menu fades in. The group is
-                    SidebarItem's root (`group/sidebar-item`).
+                    SidebarItem's root (`group/sidebar-item`). A touch screen has no
+                    hover, so there the menu always shows, beside the count.
                   -->
-                <div class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end">
+                <div
+                  class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end gap-1 [@media(hover:none)]:w-auto"
+                >
                   <span
                     v-if="getSpaceUnreadCount(space.name) > 0"
-                    class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/sidebar-item:opacity-0 group-focus-within/sidebar-item:opacity-0"
+                    class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/sidebar-item:opacity-0 group-focus-within/sidebar-item:opacity-0 [@media(hover:none)]:static [@media(hover:none)]:!opacity-100"
                   >
                     {{ getSpaceUnreadCount(space.name) }}
                   </span>
@@ -83,7 +86,7 @@
                         size="xs"
                         icon="lucide-more-horizontal text-ink-gray-5"
                         :label="`${space.title} options`"
-                        class="absolute right-0 -mr-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100"
+                        class="absolute right-0 -mr-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100 [@media(hover:none)]:static [@media(hover:none)]:opacity-100"
                         :class="open ? 'opacity-100' : ''"
                       />
                     </template>
@@ -144,7 +147,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   Button,
   Dropdown,
@@ -155,6 +157,7 @@ import {
   ScrollArea,
 } from 'frappe-ui'
 import { communityState } from '@/data/communityState'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelog'
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
@@ -168,7 +171,7 @@ import SpaceIcon from './SpaceIcon.vue'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
 
-const route = useRoute()
+const activeRoute = useActiveNavRoute()
 const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
@@ -179,6 +182,7 @@ const latestUnseenEntry = computed(() => unseenEntries.value[0])
 const changelogAction = { label: "See what's new", onClick: openChangelog }
 
 const activeSpaceId = computed(() => {
+  const route = activeRoute.value
   const routeName = route.name?.toString() || ''
   if (routeName.startsWith('Space') || routeName === 'Discussion') {
     return route.params.spaceId?.toString() || null

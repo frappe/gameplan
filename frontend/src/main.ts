@@ -2,17 +2,14 @@ import { createApp } from 'vue'
 import {
   Button,
   TextInput,
-  FormControl,
   ErrorMessage,
   Dialog,
-  Alert,
   Badge,
   frappeRequest,
-  FrappeUI,
   setConfig,
   useCall,
 } from 'frappe-ui'
-import router from './router'
+import router, { prefetchPages } from './router'
 import App from './App.vue'
 import './index.css'
 import { getPlatform } from './utils'
@@ -21,17 +18,18 @@ import { isSessionUser, session } from './data/session'
 import { initSocket } from './socket'
 import { installErrorReporting } from './utils/errorReporting'
 
+// Not FormControl: it imports every input frappe-ui has (date, time, combobox,
+// multi-select), so registering it here put all of them in the first download.
 let globalComponents = {
   Button,
   TextInput,
-  FormControl,
   ErrorMessage,
   Dialog,
-  Alert,
   Badge,
 }
 let app = createApp(App)
 app.use(router)
+router.isReady().then(prefetchPages)
 // Installed before anything else runs, so an error thrown during setup is reported too.
 installErrorReporting(app, router)
 for (let [key, component] of Object.entries(globalComponents)) {
@@ -46,7 +44,6 @@ app.config.globalProperties.$readOnlyMode = window.read_only_mode
 app.config.globalProperties.$platform = getPlatform()
 app.config.globalProperties.$isSessionUser = isSessionUser
 
-let socket: ReturnType<typeof initSocket>
 if (import.meta.env.DEV) {
   useCall<Record<string, unknown>>({
     url: '/api/v2/method/gameplan.www.g.get_context_for_dev',
@@ -63,15 +60,32 @@ if (import.meta.env.DEV) {
 // Runs once boot values are on `window` (inline script in prod, the dev
 // context call above in dev) so frappe-ui gets its full config in one place.
 function setupApp() {
-  // UnsplashImageBrowser.vue still uses the v1 resources Options API.
-  app.use(FrappeUI, { resources: true })
   setConfig('resourceFetcher', frappeRequest)
   setConfig('defaultListUrl', 'gameplan.extends.client.get_list')
   setConfig('systemTimezone', window.system_timezone || null)
+  // frappe-ui reads the browser timezone through Intl on every dayjsLocal() call when
+  // this is unset. A long list formats several timestamps per row, so resolve it once.
+  setConfig('localTimezone', Intl.DateTimeFormat().resolvedOptions().timeZone)
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
-  socket = initSocket()
-  app.config.globalProperties.$socket = socket
   app.mount('#app')
+  // The first page draws without the realtime connection, so its code downloads after.
+  router.isReady().then(connectSocket)
+}
+
+// If socket.io's code fails to download (the signal drops right after the first page),
+// try again on the next page change or when the browser is back online. Without this,
+// live updates would stay off until a reload.
+function connectSocket() {
+  initSocket().catch((error) => {
+    console.warn('Realtime connection failed to load, will retry', error)
+    const retry = () => {
+      stopOnNavigate()
+      window.removeEventListener('online', retry)
+      connectSocket()
+    }
+    const stopOnNavigate = router.afterEach(retry)
+    window.addEventListener('online', retry)
+  })
 }
 
 if (import.meta.env.DEV) {

@@ -15,7 +15,6 @@ declare module '@vue/runtime-core' {
     ErrorMessage: (typeof import('frappe-ui'))['ErrorMessage']
     Dialog: (typeof import('frappe-ui'))['Dialog']
     FeatherIcon: (typeof import('frappe-ui'))['FeatherIcon']
-    Alert: (typeof import('frappe-ui'))['Alert']
     Badge: (typeof import('frappe-ui'))['Badge']
     UserAvatar: typeof import('./components/UserAvatar.vue')
   }
@@ -37,6 +36,10 @@ declare global {
     max_file_size?: number | string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
+    /** Present only while Cypress drives the app. */
+    Cypress?: unknown
+    /** The realtime socket, exposed only under Cypress so specs can fake server events. */
+    gameplanSocket?: import('socket.io-client').Socket
   }
 }
 

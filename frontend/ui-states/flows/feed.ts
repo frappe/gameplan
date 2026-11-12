@@ -146,10 +146,10 @@ export const feed = defineFlow<Event>({
       await expect(scene.page.getByText("You're caught up")).toBeVisible()
     },
     async SORT_BY_CREATED(scene) {
-      const sort = scene.page.getByRole('combobox').first()
-      await sort.click()
-      await scene.page.getByRole('option', { name: 'Newest created' }).click()
-      await expect(sort).toContainText('Newest created')
+      // The sort is a menu button named after the current sort ("Sort: …" on phones).
+      await scene.page.getByRole('button', { name: 'Latest activity' }).click()
+      await scene.page.getByRole('menuitem', { name: 'Newest created' }).click()
+      await expect(scene.page.getByRole('button', { name: 'Newest created' })).toBeVisible()
       await expect(rows(scene).first()).toBeVisible()
       // The click leaves the pointer over the first row, which would show its hover.
       await scene.page.mouse.move(700, 20)

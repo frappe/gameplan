@@ -1,6 +1,7 @@
 import {
   createRouter,
   createWebHistory,
+  loadRouteLocation,
   type RouteLocationNormalized,
   type RouteLocationRaw,
   type RouteRecordRaw,
@@ -24,6 +25,7 @@ import {
   resolveOverlayBase,
 } from './components/Settings/overlayHistory'
 import { shellScrollContainer } from 'frappe-ui'
+import { navigationTarget } from './utils/navigationTarget'
 
 declare const __FRONTEND_ROUTE__: string
 
@@ -120,6 +122,7 @@ const routes: RouteRecordRaw[] = [
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/MobileHome.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
       await ensureCommunityDataLoaded()
 
@@ -158,7 +161,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/discussions',
     component: () => import('@/pages/Discussions.vue'),
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
   },
   {
     name: 'DiscussionsTab',
@@ -188,6 +191,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AllDiscussions',
     path: '/discussions',
     component: () => import('@/pages/AllDiscussions.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
       if (currentShowAllDiscussions.value) return
       return redirectToCommunityFeed('recent')
@@ -218,11 +222,13 @@ const routes: RouteRecordRaw[] = [
     name: 'Bookmarks',
     path: '/bookmarks',
     component: () => import('@/pages/Bookmarks.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'Drafts',
     path: '/drafts',
     component: () => import('@/pages/Drafts.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'MyTasks',
@@ -251,11 +257,13 @@ const routes: RouteRecordRaw[] = [
     path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/onboarding',
@@ -302,14 +310,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Space.vue'),
     redirect: { name: 'SpaceDiscussions' },
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
     children: [
       {
         name: 'SpaceDiscussions',
         path: 'discussions',
         component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
-        meta: { communityScope: true },
+        meta: { communityScope: true, prefetch: true },
       },
       {
         name: 'SpaceDiscussionsTab',
@@ -348,7 +356,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true, hideMobileNav: true },
+    meta: { communityScope: true, hideMobileNav: true, prefetch: 'last' },
   },
   {
     name: 'NewDiscussion',
@@ -373,6 +381,7 @@ const routes: RouteRecordRaw[] = [
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
+    meta: { prefetch: true },
     props: true,
     beforeEnter(to) {
       if (to.name === 'PersonProfile') {
@@ -384,6 +393,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PersonProfileProfile',
         path: '',
         component: () => import('@/pages/PersonProfileProfile.vue'),
+        meta: { prefetch: true },
       },
       {
         // The About tab is now a card in the profile grid.
@@ -416,6 +426,7 @@ const routes: RouteRecordRaw[] = [
     path: '/notifications',
     name: 'Notifications',
     component: () => import('@/pages/Notifications.vue'),
+    meta: { prefetch: true },
   },
   {
     // On desktop settings is an overlay: the URL changes to /settings/:tab but the
@@ -449,6 +460,7 @@ const routes: RouteRecordRaw[] = [
     path: '/more',
     name: 'More',
     component: () => import('@/pages/MoreMenu.vue'),
+    meta: { prefetch: true },
   },
   // Keep old shared space links working while moving canonical URLs under `/community/:communityId/...`.
   {
@@ -762,10 +774,22 @@ function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLo
 }
 
 router.afterEach((to, _from, failure) => {
+  navigationTarget.value = null
   if (!failure && isSettingsRoute(to)) recordOverlayBase()
 })
 
+router.onError(() => {
+  navigationTarget.value = null
+})
+
 router.beforeEach(async (to, from) => {
+  // Set before anything below awaits, so navigation lights up the clicked item at once.
+  // The settings dialog opens over the current page, which stays the active one.
+  if (!isSettingsRoute(to)) navigationTarget.value = to
+  // The router downloads a page's code only after every guard has finished, and the
+  // guards below wait for the boot data on a cold load. Start the download now, so the
+  // two arrive together: about half a second sooner on a 3G connection.
+  loadRouteLocation(to).catch(() => {})
   saveAndRestoreScrollPosition(to, from)
 
   if (to.meta.public) return true
@@ -863,6 +887,45 @@ router.beforeEach(async (to, from) => {
 })
 
 export default router
+
+/**
+ * Each page's code is a separate download, so the first visit to a page used to wait
+ * for it with nothing changing on screen: about 700 ms on a 3G connection. Fetch the
+ * common pages while the browser is idle, so that switching to one only has to render.
+ * Skipped when the person has asked their browser to save data.
+ */
+export function prefetchPages() {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+  if (connection?.saveData) return
+
+  // Routes marked `prefetch: 'last'` go after the rest: the discussion page carries the
+  // editor, about 1 MB before compression.
+  const prefetched = router.getRoutes().filter((route) => route.meta.prefetch)
+  const ordered = [
+    ...prefetched.filter((route) => route.meta.prefetch !== 'last'),
+    ...prefetched.filter((route) => route.meta.prefetch === 'last'),
+  ]
+  const loaders = ordered.flatMap((record) => {
+    return Object.values(record.components ?? {}).filter(
+      (component): component is () => Promise<unknown> => typeof component === 'function',
+    )
+  })
+
+  const whenIdle = (callback: () => void) =>
+    'requestIdleCallback' in window
+      ? window.requestIdleCallback(callback, { timeout: 3000 })
+      : window.setTimeout(callback, 200)
+
+  // One at a time, so the downloads never compete with what the current page is loading.
+  const loadNext = () => {
+    const load = loaders.shift()
+    if (!load) return
+    load()
+      .catch(() => {})
+      .finally(() => whenIdle(loadNext))
+  }
+  whenIdle(loadNext)
+}
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])

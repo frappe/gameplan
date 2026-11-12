@@ -15,13 +15,13 @@
           label="Notifications"
           icon="lucide-bell"
           :route="{ name: 'Notifications' }"
-          :active="route.name === 'Notifications'"
+          :active="activeRoute.name === 'Notifications'"
         />
         <MobileNavItem
           label="Search"
           icon="lucide-search"
           :route="{ name: 'Search' }"
-          :active="route.name === 'Search'"
+          :active="activeRoute.name === 'Search'"
         />
         <MobileNavItem label="You" :route="{ name: 'More' }" :active="isMoreRoute">
           <template #default="{ active }">
@@ -67,10 +67,13 @@ import UserAvatar from './UserAvatar.vue'
 import UnseenDot from './Changelog/UnseenDot.vue'
 import { hasUnseenEntries } from '@/data/changelog'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 
 const route = useRoute()
 const router = useRouter()
 const sessionUser = useSessionUser()
+// The tab bar lights up the tapped tab at once; `route` is where the page actually is.
+const activeRoute = useActiveNavRoute()
 
 // The app mounts before the first navigation settles, so on a reload `route` is still
 // the empty start location and its meta says nothing. Read the meta off the URL being
@@ -80,19 +83,21 @@ const hideMobileNav = computed(() => {
   return Boolean(current.meta.hideMobileNav)
 })
 
-const onCommunityRoute = computed(() => route.matched.some((record) => record.meta?.communityScope))
+const onCommunityRoute = computed(() =>
+  activeRoute.value.matched.some((record) => record.meta?.communityScope),
+)
 
 // Home stays lit across every community route and the All Discussions feed, not just the
 // Home page — tapping it still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
 const isHomeRoute = computed(() => {
-  const name = route.name?.toString() || ''
+  const name = activeRoute.value.name?.toString() || ''
   return ['Home', 'AllDiscussions', 'AllDiscussionsTab'].includes(name) || onCommunityRoute.value
 })
 
 // "You" spans the whole More section (profile, pages, tasks, bookmarks, drafts,
 // and the settings pages the More menu links to).
 const isMoreRoute = computed(() => {
-  const name = route.name?.toString() || ''
+  const name = activeRoute.value.name?.toString() || ''
   return [
     'More',
     'Bookmarks',

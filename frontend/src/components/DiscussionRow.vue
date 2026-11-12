@@ -18,39 +18,27 @@
             {{ discussion.title }}
           </span>
         </div>
-        <div class="mt-1.5 flex min-w-0 items-center justify-between">
-          <div
-            class="inline-flex items-center overflow-hidden text-ellipsis whitespace-nowrap text-md text-ink-gray-5 sm:text-base"
-          >
-            <div class="flex items-center min-w-0">
-              <div class="text-ink-gray-5">
-                <Tooltip v-if="discussion.closed_at" text="Closed">
-                  <span class="lucide-lock size-4 p-[1px] mr-1" />
-                </Tooltip>
-                <Tooltip v-else-if="post.type == 'GP Comment'" text="Comment">
-                  <span class="lucide-reply size-4 mr-1" />
-                </Tooltip>
-                <Tooltip v-else-if="post.type == 'GP Poll'" text="Poll">
-                  <span class="lucide-align-left size-4 p-[1px] mr-1" />
-                </Tooltip>
-              </div>
-              <div class="min-w-0 truncate">
-                <span>
-                  {{ $user(post.by).full_name.trim() }}
-                </span>
-                <span v-if="showSpaceName">
-                  <span>&nbsp;in {{ placeLabel }}</span>
-                  <span
-                    v-if="isSpacePrivate(discussion.project)"
-                    class="lucide-lock ml-0.5 inline-block h-3 w-3 align-[-1px] text-ink-gray-6"
-                  /> </span
-                >:&nbsp;
-              </div>
-              <div class="min-w-0 flex-1 truncate">
-                {{ post.content }}
-              </div>
-            </div>
-          </div>
+        <div class="mt-1.5 flex min-w-0 items-center text-md text-ink-gray-5 sm:text-base">
+          <Tooltip v-if="discussion.closed_at" text="Closed">
+            <span class="lucide-lock size-4 shrink-0 p-[1px] mr-1" />
+          </Tooltip>
+          <Tooltip v-else-if="post.type == 'GP Comment'" text="Comment">
+            <span class="lucide-reply size-4 shrink-0 mr-1" />
+          </Tooltip>
+          <Tooltip v-else-if="post.type == 'GP Poll'" text="Poll">
+            <span class="lucide-align-left size-4 shrink-0 p-[1px] mr-1" />
+          </Tooltip>
+          <!-- One run of text, so a long author or space name pushes the post out of view
+               and the line ends in a single ellipsis, not a stub of the post's first letter. -->
+          <p class="min-w-0 truncate">
+            <span>{{ $user(post.by).full_name.trim() }}</span>
+            <span v-if="showSpaceName">&nbsp;in {{ placeLabel }}</span>
+            <span
+              v-if="showSpaceName && isSpacePrivate(discussion.project)"
+              class="lucide-lock ml-0.5 inline-block h-3 w-3 align-[-1px] text-ink-gray-6"
+            />
+            <span>:&nbsp;{{ post.content }}</span>
+          </p>
         </div>
       </div>
     </ListCell>

@@ -45,7 +45,7 @@ export interface GPTask extends DocType {
   comments_count?: number
 }
 
-// Last updated: 2026-09-10 10:00:00.000000
+// Last updated: 2026-11-10 12:00:00.000000
 export interface GPUserProfile extends DocType {
   /** User: Link (User) */
   user: string
@@ -212,7 +212,7 @@ export interface GPTeam extends DocType {
   image?: string
 }
 
-// Last updated: 2023-05-08 16:57:35.133580
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPGuestAccess extends DocType {
   /** User: Link (User) */
   user: string
@@ -222,7 +222,7 @@ export interface GPGuestAccess extends DocType {
   team?: string
 }
 
-// Last updated: 2023-05-08 16:58:26.857607
+// Last updated: 2026-10-19 13:00:00.000000
 export interface GPInvitation extends DocType {
   /** Email: Data */
   email: string
@@ -236,6 +236,8 @@ export interface GPInvitation extends DocType {
   invited_by?: string
   /** Accepted At: Datetime */
   accepted_at?: string
+  /** Created Account: Check */
+  created_account: 0 | 1
   /** Teams: Small Text */
   teams?: string
   /** Projects: Small Text */
@@ -338,7 +340,7 @@ export interface GPPoll extends DocType {
   comment?: string
 }
 
-// Last updated: 2022-12-07 21:34:41.411618
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPActivity extends DocType {
   /** Reference DocType: Link (DocType) */
   reference_doctype?: string
@@ -352,7 +354,7 @@ export interface GPActivity extends DocType {
   data?: string
 }
 
-// Last updated: 2025-02-17 15:58:11.863114
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPSearchFeedback extends DocType {
   /** User: Link (User) */
   user: string
@@ -384,7 +386,7 @@ export interface GPTagLink extends ChildDocType {
   label?: string
 }
 
-// Last updated: 2025-05-22 12:26:40.729595
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPTag extends DocType {
   /** Label: Data */
   label?: string

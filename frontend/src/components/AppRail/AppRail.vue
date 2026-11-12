@@ -93,11 +93,12 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { SidebarRail, SidebarRailItem } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 import { hasUnseenEntries } from '@/data/changelog'
 import UnseenDot from '../Changelog/UnseenDot.vue'
 import { activeCommunities } from '@/data/communities'
@@ -124,8 +125,8 @@ interface RailShortcut {
   unreadCount?: number
 }
 
-const route = useRoute()
 const router = useRouter()
+const activeRoute = useActiveNavRoute()
 const sessionUser = useSessionUser()
 
 const communityScrollEl = useTemplateRef<HTMLElement>('communityScrollEl')
@@ -222,7 +223,7 @@ function getCommunityUnreadCount(communityId: string) {
 }
 
 function isRoute(...names: string[]) {
-  return names.includes(route.name?.toString() || '')
+  return names.includes(activeRoute.value.name?.toString() || '')
 }
 
 // Fade the community list under whichever edge still has content to scroll.

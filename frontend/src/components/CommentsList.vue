@@ -118,7 +118,7 @@ import Activity from './Activity.vue'
 import UserAvatar from './UserAvatar.vue'
 import { shellScrollContainer } from 'frappe-ui'
 import { dialog } from 'frappe-ui'
-import { subscribeToDoc, useSocket, type NewActivityEvent } from '@/socket'
+import { onDocEvent, subscribeToDoc } from '@/socket'
 import { GPActivity, GPComment } from '@/types/doctypes'
 import type { Space } from '@/data/spaces'
 import { useDraftSync } from '@/data/useDraftSync'
@@ -140,7 +140,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 const router = useRouter()
 const route = useRoute()
-const socket = useSocket()
 
 const showCommentBox = ref(false)
 
@@ -414,7 +413,7 @@ watch(
 
 const unsubscribeFromDoc = subscribeToDoc(props.doctype, String(props.name))
 
-socket.on('new_activity', (data: NewActivityEvent) => {
+const stopActivityUpdates = onDocEvent('new_activity', (data) => {
   // See CommentsArea.vue: the payload stringifies the id, but an integer-autonamed
   // doctype passes a number here, so a strict compare never matches.
   if (data.reference_doctype === props.doctype && data.reference_name === String(props.name)) {
@@ -423,7 +422,7 @@ socket.on('new_activity', (data: NewActivityEvent) => {
 })
 
 onUnmounted(() => {
-  socket.off('new_activity')
+  stopActivityUpdates()
   unsubscribeFromDoc()
 })
 </script>

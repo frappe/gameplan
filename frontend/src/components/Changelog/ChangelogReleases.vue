@@ -28,7 +28,10 @@
           loading="lazy"
         />
         <!-- The HTML comes from Markdown files in this repository, not from users. -->
-        <div class="prose prose-v3 max-w-none text-ink-gray-7 prose-p:my-3" v-html="entry.html" />
+        <div
+          class="prose prose-v3 max-w-none text-ink-gray-7 prose-p:my-3"
+          v-html="marked.parse(entry.body, { async: false })"
+        />
       </article>
     </section>
   </div>
@@ -36,6 +39,7 @@
 
 <script setup lang="ts">
 import { dayjsLocal } from 'frappe-ui'
+import { marked } from 'marked'
 import { changelogReleases, type ChangelogEntry } from '@/data/changelog'
 import { useTheme } from '@/utils/useTheme'
 

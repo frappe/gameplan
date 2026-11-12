@@ -187,7 +187,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, useTemplateRef } from 'vue'
 import { useRouter } from 'vue-router'
-import { useCall, ScrollArea, Tooltip } from 'frappe-ui'
+import { FormControl, ScrollArea, Tooltip, useCall } from 'frappe-ui'
 import EmailListInput, { parseEmailList } from '@/components/EmailListInput.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import IconPicker from '@/components/IconPicker.vue'

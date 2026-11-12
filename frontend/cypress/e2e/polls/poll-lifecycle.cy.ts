@@ -1,6 +1,7 @@
 import { resetData } from '../../support/seed'
+import { appSocket } from '../../support/realtime'
 
-type AppSocket = {
+type RawSocket = {
   nsp: string
   io: { engine: { emit: (event: string, data: string) => void } }
 }
@@ -346,12 +347,10 @@ function assertShare(label: string, share: string) {
 }
 
 function deliverSocketEvent(event: string, payload: unknown) {
-  cy.window({ log: false })
-    .its('document')
-    .then((doc) => {
-      const app = (doc.querySelector('#app') as { __vue_app__?: any } | null)?.__vue_app__
-      const socket = app?.config?.globalProperties?.$socket as AppSocket | undefined
-      expect(socket, 'app socket').to.exist
-      socket!.io.engine.emit('data', `2${socket!.nsp},${JSON.stringify([event, payload])}`)
-    })
+  appSocket().then((socket) => {
+    // What the server would send: an engine.io message packet carrying a socket.io event.
+    // The engine's raw emit and the namespace are not in socket.io's public types.
+    const raw = socket as unknown as RawSocket
+    raw.io.engine.emit('data', `2${raw.nsp},${JSON.stringify([event, payload])}`)
+  })
 }

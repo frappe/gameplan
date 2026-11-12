@@ -1,4 +1,4 @@
-import { dayjsLocal, toast } from 'frappe-ui'
+import { dayjs, dayjsLocal, toast, type Dayjs } from 'frappe-ui'
 
 export interface ImgDimensions {
   width: number
@@ -66,14 +66,32 @@ export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
   }
 }
 
-export function relativeTimestamp(timestamp: string): string {
-  if (dayjsLocal().diff(timestamp, 'day') < 3) {
-    return dayjsLocal(timestamp).fromNow()
+/**
+ * The same moment as `time`, as a plain dayjs object, for measuring time elapsed.
+ * Elapsed time does not depend on the timezone, and diffing timezone-aware objects is
+ * slow, which adds up in a list that does it for every row.
+ */
+export function plainInstant(time: Dayjs): Dayjs {
+  return dayjs(time.valueOf())
+}
+
+/** "3 hours ago" for a server timestamp. Same text as `dayjsLocal(timestamp).fromNow()`. */
+export function timeAgo(timestamp: string, withoutSuffix = false): string {
+  return plainInstant(dayjsLocal(timestamp)).fromNow(withoutSuffix)
+}
+
+/** Takes a server timestamp, or one already converted with `dayjsLocal`. */
+export function relativeTimestamp(timestamp: string | Dayjs): string {
+  const time = typeof timestamp === 'string' ? dayjsLocal(timestamp) : timestamp
+  const instant = plainInstant(time)
+  const now = dayjs()
+  if (now.diff(instant, 'day') < 3) {
+    return instant.fromNow()
   }
-  if (dayjsLocal().diff(timestamp, 'year') < 1) {
-    return dayjsLocal(timestamp).format('D MMM')
+  if (now.diff(instant, 'year') < 1) {
+    return time.format('D MMM')
   }
-  return dayjsLocal(timestamp).format('D MMM YYYY')
+  return time.format('D MMM YYYY')
 }
 
 /** The full date and time for the Tooltip next to a `relativeTimestamp()`. */

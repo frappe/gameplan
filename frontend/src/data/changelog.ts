@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
 import { StorageSerializers, useLocalStorage } from '@vueuse/core'
-import { marked } from 'marked'
 
 /**
  * What's new in Gameplan, read from the Markdown files in `src/changelog/`.
@@ -22,7 +21,8 @@ export interface ChangelogEntry {
   date?: string
   /** `darkUrl` is the `<name>.dark.<ext>` file beside the named one, when there is one. */
   media?: { url: string; darkUrl?: string; kind: 'image' | 'video' }
-  html: string
+  /** Markdown. The dialog renders it, so the parser loads only when someone opens it. */
+  body: string
 }
 
 export interface ChangelogRelease {
@@ -92,7 +92,7 @@ function parseEntry(path: string, source: string): ChangelogEntry {
     version,
     date: version ? fields.date || undefined : undefined,
     media: fields.media ? resolveMedia(id, fields.media) : undefined,
-    html: marked.parse(body, { async: false }),
+    body,
   }
 }
 

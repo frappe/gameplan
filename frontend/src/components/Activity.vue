@@ -111,7 +111,7 @@
         </template> </span
       >&nbsp;<Tooltip :text="fullTimestamp(activity.creation)">
         <time class="text-ink-gray-5" :datetime="activity.creation">
-          {{ dayjsLocal(activity.creation).fromNow() }}
+          {{ timeAgo(activity.creation) }}
         </time>
       </Tooltip>
     </p>
@@ -120,6 +120,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { dayjsLocal, Tooltip } from 'frappe-ui'
+import { timeAgo } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import { getSpace } from '@/data/spaces'
 import { fullTimestamp } from '@/utils'

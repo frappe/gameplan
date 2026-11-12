@@ -8,7 +8,7 @@
         <router-view :route="displayedRoute" />
       </Layout>
     </div>
-    <NewTaskDialog />
+    <NewTaskDialog v-if="taskDialogOpened" />
     <!-- usersReady, not users.isFinished: a mid-session reload of the user list would
          flip isFinished back to false and unmount the open settings dialog.
          Phones have no dialog: a /settings/* URL is an ordinary page there
@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { computed, defineAsyncComponent, nextTick, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, ref, shallowRef, watch } from 'vue'
 import { loadRouteLocation, useRoute, useRouter } from 'vue-router'
 import { FrappeUIProvider } from 'frappe-ui'
 import { users, usersReady } from '@/data/users'
@@ -27,7 +27,7 @@ import { session } from '@/data/session'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme } from '@/utils/useTheme'
 import { useCursorStyle } from '@/utils/useCursorStyle'
-import NewTaskDialog from './components/NewTaskDialog/NewTaskDialog.vue'
+import { showDialog as showNewTaskDialog } from './components/NewTaskDialog/state'
 import SettingsDialog from './components/Settings/SettingsDialog.vue'
 import ChangelogDialog from './components/Changelog/ChangelogDialog.vue'
 import { settingsBackgroundPath } from './components/Settings'
@@ -39,6 +39,16 @@ const route = useRoute()
 const router = useRouter()
 useTheme()
 useCursorStyle()
+// The task dialog loads the first time it opens. Its date picker and combobox are
+// large, and most sessions never open it. It stays mounted after that, so it can
+// animate closed.
+const NewTaskDialog = defineAsyncComponent(
+  () => import('./components/NewTaskDialog/NewTaskDialog.vue'),
+)
+const taskDialogOpened = ref(false)
+watch(showNewTaskDialog, (open) => {
+  if (open) taskDialogOpened.value = true
+})
 const MobileLayout = defineAsyncComponent(() => import('./components/MobileLayout.vue'))
 const DesktopLayout = defineAsyncComponent(() => import('./components/DesktopLayout.vue'))
 const Layout = computed(() => {

@@ -323,17 +323,6 @@ def redirect_to_invalid_invitation(reason: str):
 	frappe.local.response["location"] = f"/g/invitation-invalid?reason={reason}"
 
 
-@frappe.whitelist()
-def get_unsplash_photos(keyword=None):
-	"""Return Unsplash photos for `keyword`, or a default set."""
-	from gameplan.unsplash import get_by_keyword, get_list
-
-	if keyword:
-		return get_by_keyword(keyword)
-
-	return frappe.cache().get_value("unsplash_photos", generator=get_list)
-
-
 @frappe.whitelist(methods=["POST"])
 def mark_all_notifications_as_read():
 	"""Mark all of the current user's notifications as read."""

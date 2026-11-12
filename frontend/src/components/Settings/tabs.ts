@@ -1,12 +1,19 @@
-import { computed, markRaw } from 'vue'
+import { computed, defineAsyncComponent, markRaw, type Component } from 'vue'
 import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import type { Tab } from './index'
-import MembersSettings from './MembersSettings.vue'
-import CommunitiesSettings from './CommunitiesSettings.vue'
-import NotificationsSettings from './NotificationsSettings.vue'
-import ProfileSettings from './ProfileSettings.vue'
-import CustomEmojiSettings from './CustomEmojiSettings.vue'
-import PreferencesSettings from './PreferencesSettings.vue'
+
+// Each tab's screen downloads when the tab first opens. They are large (the emoji
+// picker alone carries the whole emoji list), and every page load used to pay for them.
+function lazyTab(load: () => Promise<Component>) {
+  return markRaw(defineAsyncComponent(load))
+}
+
+const ProfileSettings = lazyTab(() => import('./ProfileSettings.vue'))
+const PreferencesSettings = lazyTab(() => import('./PreferencesSettings.vue'))
+const NotificationsSettings = lazyTab(() => import('./NotificationsSettings.vue'))
+const CommunitiesSettings = lazyTab(() => import('./CommunitiesSettings.vue'))
+const CustomEmojiSettings = lazyTab(() => import('./CustomEmojiSettings.vue'))
+const MembersSettings = lazyTab(() => import('./MembersSettings.vue'))
 
 export interface SettingsTab extends Tab {
   // Tabs that drive global role management / invites; these only make sense for
@@ -26,28 +33,28 @@ const allTabs: SettingsTab[] = [
     group: 'User settings',
     icon: 'lucide-user',
     prefix: 'session-avatar',
-    component: markRaw(ProfileSettings),
+    component: ProfileSettings,
   },
   {
     label: 'Preferences',
     slug: 'preferences',
     group: 'User settings',
     icon: 'lucide-sliders-horizontal',
-    component: markRaw(PreferencesSettings),
+    component: PreferencesSettings,
   },
   {
     label: 'Notifications',
     slug: 'notifications',
     group: 'User settings',
     icon: 'lucide-bell',
-    component: markRaw(NotificationsSettings),
+    component: NotificationsSettings,
   },
   {
     label: 'Communities',
     slug: 'communities',
     group: 'App settings',
     icon: 'lucide-building-2',
-    component: markRaw(CommunitiesSettings),
+    component: CommunitiesSettings,
     // Every member browses communities here to join or leave one; the management
     // actions inside the tab stay gated per community.
     condition: () => !useSessionUser().isGuest,
@@ -57,7 +64,7 @@ const allTabs: SettingsTab[] = [
     slug: 'emojis',
     group: 'App settings',
     icon: 'lucide-smile-plus',
-    component: markRaw(CustomEmojiSettings),
+    component: CustomEmojiSettings,
     adminOnly: true,
   },
   {
@@ -65,7 +72,7 @@ const allTabs: SettingsTab[] = [
     slug: 'users',
     group: 'Administration',
     icon: 'lucide-users',
-    component: markRaw(MembersSettings),
+    component: MembersSettings,
     adminOnly: true,
   },
 ]

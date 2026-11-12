@@ -156,6 +156,7 @@ import {
   TabButtons,
   Tooltip,
   Breadcrumbs,
+  dayjs,
   dayjsLocal,
   dialog,
   useCall,
@@ -174,7 +175,7 @@ import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifica
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
-import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
+import { errorText, fullTimestamp, plainInstant, relativeTimestamp } from '@/utils'
 
 type ActiveTab = 'Unread' | 'Read'
 
@@ -387,15 +388,17 @@ function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: 
 }
 
 function shortTimestamp(timestamp: string) {
-  let time = dayjsLocal(timestamp)
-  let minutes = dayjsLocal().diff(time, 'minute')
+  const time = dayjsLocal(timestamp)
+  const instant = plainInstant(time)
+  const now = dayjs()
+  const minutes = now.diff(instant, 'minute')
   if (minutes < 1) return 'now'
   if (minutes < 60) return `${minutes}m`
 
-  let hours = dayjsLocal().diff(time, 'hour')
+  const hours = now.diff(instant, 'hour')
   if (hours < 24) return `${hours}h`
 
-  let days = dayjsLocal().diff(time, 'day')
+  const days = now.diff(instant, 'day')
   if (days < 7) return `${days}d`
   if (days < 365) return time.format('D MMM')
   return time.format('D MMM YY')
