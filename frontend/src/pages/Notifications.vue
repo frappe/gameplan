@@ -159,7 +159,7 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
-import { timeAgo } from '@/utils'
+import { plainInstant, timeAgo } from '@/utils'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
@@ -381,8 +381,7 @@ function useLinkedTitles(doctype: 'GP Discussion' | 'GP Poll' | 'GP Task', ids: 
 
 function shortTimestamp(timestamp: string) {
   const time = dayjsLocal(timestamp)
-  // Diff plain dayjs objects: timezone-aware ones are slow, and every row does this.
-  const instant = dayjs(time.valueOf())
+  const instant = plainInstant(time)
   const now = dayjs()
   const minutes = now.diff(instant, 'minute')
   if (minutes < 1) return 'now'

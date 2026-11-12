@@ -67,19 +67,23 @@ export function getPlatform(): 'win' | 'mac' | 'linux' | undefined {
 }
 
 /**
- * "3 hours ago" for a server timestamp. Same text as `dayjsLocal(timestamp).fromNow()`,
- * measured on a plain dayjs object because diffing timezone-aware ones is slow.
+ * The same moment as `time`, as a plain dayjs object, for measuring time elapsed.
+ * Elapsed time does not depend on the timezone, and diffing timezone-aware objects is
+ * slow, which adds up in a list that does it for every row.
  */
+export function plainInstant(time: Dayjs): Dayjs {
+  return dayjs(time.valueOf())
+}
+
+/** "3 hours ago" for a server timestamp. Same text as `dayjsLocal(timestamp).fromNow()`. */
 export function timeAgo(timestamp: string, withoutSuffix = false): string {
-  return dayjs(dayjsLocal(timestamp).valueOf()).fromNow(withoutSuffix)
+  return plainInstant(dayjsLocal(timestamp)).fromNow(withoutSuffix)
 }
 
 /** Takes a server timestamp, or one already converted with `dayjsLocal`. */
 export function relativeTimestamp(timestamp: string | Dayjs): string {
   const time = typeof timestamp === 'string' ? dayjsLocal(timestamp) : timestamp
-  // How long ago something happened does not depend on the timezone. Measure it on
-  // plain dayjs objects: diffing timezone-aware ones is slow, and a list does it per row.
-  const instant = dayjs(time.valueOf())
+  const instant = plainInstant(time)
   const now = dayjs()
   if (now.diff(instant, 'day') < 3) {
     return instant.fromNow()
