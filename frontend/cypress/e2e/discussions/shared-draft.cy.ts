@@ -98,6 +98,17 @@ describe('Shared draft links', () => {
     cy.get('button[aria-label="Delete draft"]').should('not.exist')
   }
 
+  /** The lookup failed: the composer is replaced by an error with Retry, and offers nothing
+   *  to edit, publish or delete. */
+  function assertDraftLoadError() {
+    cy.contains('[role="alert"]', 'Could not load this draft.').should('be.visible')
+    cy.button('Retry').should('be.visible')
+    cy.get('textarea[placeholder="Title"]').should('not.exist')
+    cy.get('.ProseMirror').should('not.exist')
+    cy.get('button:contains("Publish")').should('not.exist')
+    cy.get('button[aria-label="Delete draft"]').should('not.exist')
+  }
+
   /** The draft's lookup by name. Other `frappe.client.get*` methods do not match. */
   const draftLookup = /\/api\/method\/frappe\.client\.get(\?|$)/
 
@@ -137,11 +148,12 @@ describe('Shared draft links', () => {
       }).as('draftLookup')
     })
 
-    // While loading, and again after the deadline passes with no answer.
+    // Read-only while loading. Once the deadline passes with no answer, the composer gives
+    // way to the load error.
     cy.get('textarea[placeholder="Title"]').should('exist')
     assertReadOnlyComposer()
     cy.wait(9000)
-    assertReadOnlyComposer()
+    assertDraftLoadError()
 
     // The late answer names the owner, and the draft stays theirs.
     cy.wait('@draftLookup')
@@ -158,8 +170,7 @@ describe('Shared draft links', () => {
     })
 
     cy.wait('@draftLookup')
-    assertReadOnlyComposer()
-    cy.contains('Could not load this draft').should('be.visible')
+    assertDraftLoadError()
     cy.wait(1000)
     cy.wrap(writes).should('deep.equal', [])
     myDraftRows().should('have.length', 0)

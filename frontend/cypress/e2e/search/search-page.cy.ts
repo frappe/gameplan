@@ -47,5 +47,8 @@ describe('Search page', () => {
       .contains(new RegExp(`^${option}$`, 'i'))
       .click()
     cy.wait('@search').its('response.statusCode').should('eq', 200)
+    // A multi-select stays open after a pick; close it so it does not cover the results.
+    cy.get('body').type('{esc}')
+    cy.get('[role="listbox"]').should('not.exist')
   }
 })

@@ -42,7 +42,7 @@ describe('Bookmarks', () => {
     // The same menu now offers to take the bookmark back — without a reload.
     openDiscussionOptions()
     cy.get('[role="menuitem"]:contains("Remove bookmark"):visible').should('exist')
-    cy.get('[role="menuitem"]:contains("Bookmark"):visible').should('have.length', 1)
+    cy.contains('[role="menuitem"]:visible', /^\s*Bookmark\s*$/).should('not.exist')
     cy.get('body').type('{esc}')
 
     cy.visit('/g/bookmarks')
@@ -53,7 +53,7 @@ describe('Bookmarks', () => {
     cy.wait('@removeBookmark')
 
     cy.visit('/g/bookmarks')
-    cy.contains('div', 'No discussions').should('be.visible')
+    cy.contains('div', 'No bookmarks').should('be.visible')
     cy.contains('a', 'Welcome thread').should('not.exist')
   })
 
@@ -102,7 +102,7 @@ describe('Bookmarks', () => {
       cy.wait('@removeBookmark')
 
       cy.visit('/g/bookmarks')
-      cy.contains('div', 'No discussions').should('be.visible')
+      cy.contains('div', 'No bookmarks').should('be.visible')
     })
   })
 })

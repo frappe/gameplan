@@ -21,7 +21,8 @@ describe('Mobile discussion creation', () => {
 
     cy.visit(`/g/community/${community}/space/${space}/discussions`)
     cy.get('[data-slot="mobile-nav"]').should('be.visible')
-    cy.get('[aria-label="New discussion"]').should('be.visible').click()
+    // The desktop header's "New discussion" button stays in the DOM, hidden at this width.
+    cy.get('[aria-label="New discussion"]:visible').should('have.length', 1).click()
 
     cy.get('textarea[placeholder="Title"]')
       .should('be.visible')

@@ -99,7 +99,9 @@ describe('Comment actions', () => {
           .type('{enter}@Second{enter}', { delay: 100 }) // mention Second Member
 
         // Wait for draft auto-save to persist to server so a server-side GP Draft exists
-        cy.wait('@createDraft')
+        cy.wait('@createDraft').then(({ response }) => {
+          expect(response?.statusCode, JSON.stringify(response?.body).slice(0, 300)).to.equal(200)
+        })
 
         cy.button('Submit').click()
 

@@ -63,7 +63,7 @@ describe('Community discussion feeds', () => {
     cy.scope('dialog').button('Mark all as read').first().click()
 
     cy.contains('Unread thread').should('not.exist')
-    cy.contains('No discussions').should('be.visible')
+    cy.contains("You're caught up").should('be.visible')
 
     // Only System Manager can read GP Unread Record, so verify the row as admin.
     cy.loginAs('admin')
