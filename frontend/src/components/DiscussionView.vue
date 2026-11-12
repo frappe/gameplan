@@ -3,10 +3,7 @@
     v-if="notFound"
     title="Discussion not found"
     description="It may have been deleted, or you no longer have access to it."
-    :up-to="{
-      name: 'SpaceDiscussions',
-      params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
-    }"
+    :up-to="spaceRoute"
   >
     <template #breadcrumbs>
       <SpaceBreadcrumbs :spaceId="currentSpaceId" :items="[{ label: 'Not found' }]" />
@@ -15,12 +12,7 @@
   <div class="relative flex h-full flex-col" v-else>
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
-        <PageHeaderUpButton
-          :to="{
-            name: 'SpaceDiscussions',
-            params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
-          }"
-        />
+        <PageHeaderUpButton :to="spaceRoute" />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -425,6 +417,10 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const spaceRoute = computed(() => ({
+  name: 'SpaceDiscussions',
+  params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
+}))
 // This view also renders behind the settings overlay, where the URL belongs to /settings/*.
 // Rewriting it from there would both throw (no postId param to spread) and navigate the app
 // off the settings route, closing the dialog. A page may only rewrite a URL it owns.
