@@ -51,4 +51,4 @@ gameplan.patches.backfill_review_report_stats
 gameplan.gameplan.doctype.gp_user_profile.patches.backfill_first_day_post_counts
 gameplan.gameplan.doctype.gp_reaction.patches.point_reactions_at_their_posts
 gameplan.gameplan.doctype.gp_invitation.patches.hash_invitation_keys
-gameplan.patches.add_scale_indexes
+gameplan.patches.add_scale_indexes #2026-11-12 community staff index
