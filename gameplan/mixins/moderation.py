@@ -98,7 +98,7 @@ class Moderatable:
 		doc.db_set(values, notify=True)
 		search = GameplanSearch()
 		if search.is_search_enabled() and search.index_exists():
-			frappe.db.after_commit.add(lambda: search.remove_doc(doc.doctype, doc.name))
+			frappe.db.after_commit.add(lambda: remove_from_search(doc.doctype, doc.name))
 		doc._notify_moderation_change()
 
 	@frappe.whitelist(methods=["POST"])
@@ -233,3 +233,24 @@ class Moderatable:
 		if not parent_discussion(doc) or not project or not can_moderate_space(frappe.session.user, project):
 			frappe.throw("Only community moderators can perform this action", frappe.PermissionError)
 		return doc
+
+
+def remove_from_search(doctype, name):
+	"""Drop removed content from the search index, retrying in a job when the index file is busy.
+
+	Search rechecks removal before it answers, so a late removal never shows removed content.
+	"""
+	import sqlite3
+
+	from gameplan.search_sqlite import GameplanSearch
+
+	try:
+		GameplanSearch().remove_doc(doctype, name)
+	except sqlite3.OperationalError:
+		frappe.enqueue(
+			"gameplan.mixins.moderation.remove_from_search",
+			doctype=doctype,
+			name=name,
+			job_id=f"search-remove:{doctype}:{name}",
+			deduplicate=True,
+		)
