@@ -12,7 +12,7 @@ interface DocType {
     parenttype?: string;
     idx?: number;
   }
-  
+
 // Last updated: 2023-06-15 21:01:42.058336
 export interface GPTask extends DocType {
   /** Title: Data */

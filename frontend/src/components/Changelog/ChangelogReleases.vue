@@ -28,7 +28,10 @@
           loading="lazy"
         />
         <!-- The HTML comes from Markdown files in this repository, not from users. -->
-        <div class="prose prose-v3 max-w-none text-ink-gray-7 prose-p:my-3" v-html="marked.parse(entry.body, { async: false })" />
+        <div
+          class="prose prose-v3 max-w-none text-ink-gray-7 prose-p:my-3"
+          v-html="marked.parse(entry.body, { async: false })"
+        />
       </article>
     </section>
   </div>
