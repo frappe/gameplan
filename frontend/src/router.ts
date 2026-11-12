@@ -122,6 +122,7 @@ const routes: RouteRecordRaw[] = [
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/MobileHome.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
       await ensureCommunityDataLoaded()
 
@@ -160,7 +161,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/discussions',
     component: () => import('@/pages/Discussions.vue'),
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
   },
   {
     name: 'DiscussionsTab',
@@ -190,6 +191,7 @@ const routes: RouteRecordRaw[] = [
     name: 'AllDiscussions',
     path: '/discussions',
     component: () => import('@/pages/AllDiscussions.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
       if (currentShowAllDiscussions.value) return
       return redirectToCommunityFeed('recent')
@@ -220,11 +222,13 @@ const routes: RouteRecordRaw[] = [
     name: 'Bookmarks',
     path: '/bookmarks',
     component: () => import('@/pages/Bookmarks.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'Drafts',
     path: '/drafts',
     component: () => import('@/pages/Drafts.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'MyTasks',
@@ -253,11 +257,13 @@ const routes: RouteRecordRaw[] = [
     path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/onboarding',
@@ -296,14 +302,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Space.vue'),
     redirect: { name: 'SpaceDiscussions' },
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
     children: [
       {
         name: 'SpaceDiscussions',
         path: 'discussions',
         component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
-        meta: { communityScope: true },
+        meta: { communityScope: true, prefetch: true },
       },
       {
         name: 'SpacePages',
@@ -340,7 +346,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true, hideMobileNav: true },
+    meta: { communityScope: true, hideMobileNav: true, prefetch: 'last' },
   },
   {
     name: 'NewDiscussion',
@@ -365,6 +371,7 @@ const routes: RouteRecordRaw[] = [
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
+    meta: { prefetch: true },
     props: true,
     beforeEnter(to) {
       if (to.name === 'PersonProfile') {
@@ -376,6 +383,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PersonProfileProfile',
         path: '',
         component: () => import('@/pages/PersonProfileProfile.vue'),
+        meta: { prefetch: true },
       },
       {
         // The About tab is now a card in the profile grid.
@@ -408,6 +416,7 @@ const routes: RouteRecordRaw[] = [
     path: '/notifications',
     name: 'Notifications',
     component: () => import('@/pages/Notifications.vue'),
+    meta: { prefetch: true },
   },
   {
     // On desktop settings is an overlay: the URL changes to /settings/:tab but the
@@ -441,6 +450,7 @@ const routes: RouteRecordRaw[] = [
     path: '/more',
     name: 'More',
     component: () => import('@/pages/MoreMenu.vue'),
+    meta: { prefetch: true },
   },
   // Keep old shared space links working while moving canonical URLs under `/community/:communityId/...`.
   {
@@ -868,25 +878,6 @@ router.beforeEach(async (to, from) => {
 
 export default router
 
-// The pages people move between from the rail, the sidebar and the tab bar. The
-// discussion page comes last: it carries the editor, about 1 MB before compression.
-const PREFETCHED_ROUTES = [
-  'Discussions',
-  'AllDiscussions',
-  'Space',
-  'SpaceDiscussions',
-  'Notifications',
-  'Search',
-  'People',
-  'Drafts',
-  'Bookmarks',
-  'Home',
-  'More',
-  'PersonProfile',
-  'PersonProfileProfile',
-  'Discussion',
-]
-
 /**
  * Each page's code is a separate download, so the first visit to a page used to wait
  * for it with nothing changing on screen: about 700 ms on a 3G connection. Fetch the
@@ -894,13 +885,18 @@ const PREFETCHED_ROUTES = [
  * Skipped when the person has asked their browser to save data.
  */
 export function prefetchPages() {
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } })
-    .connection
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
   if (connection?.saveData) return
 
-  const loaders = PREFETCHED_ROUTES.flatMap((name) => {
-    const record = router.getRoutes().find((route) => route.name === name)
-    return Object.values(record?.components ?? {}).filter(
+  // Routes marked `prefetch: 'last'` go after the rest: the discussion page carries the
+  // editor, about 1 MB before compression.
+  const prefetched = router.getRoutes().filter((route) => route.meta.prefetch)
+  const ordered = [
+    ...prefetched.filter((route) => route.meta.prefetch !== 'last'),
+    ...prefetched.filter((route) => route.meta.prefetch === 'last'),
+  ]
+  const loaders = ordered.flatMap((record) => {
+    return Object.values(record.components ?? {}).filter(
       (component): component is () => Promise<unknown> => typeof component === 'function',
     )
   })
