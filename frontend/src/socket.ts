@@ -125,6 +125,8 @@ export async function initSocket() {
   const appSocket = io(url, { withCredentials: true })
   socket = appSocket
   for (const [event, handlers] of listeners) attachDispatcher(appSocket, event, handlers)
+  // Cypress feeds fake server events through the real socket (see poll-lifecycle.cy.ts).
+  if (window.Cypress) window.gameplanSocket = appSocket
 
   // `connect`, not the Manager's `reconnect`: the server joins this user's room during the
   // handshake, so refetching any earlier could miss a push sent before the room was joined.

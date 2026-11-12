@@ -36,6 +36,10 @@ declare global {
     max_file_size?: number | string
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
+    /** Present only while Cypress drives the app. */
+    Cypress?: unknown
+    /** The realtime socket, exposed only under Cypress so specs can fake server events. */
+    gameplanSocket?: import('socket.io-client').Socket
   }
 }
 
