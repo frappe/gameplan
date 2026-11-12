@@ -32,6 +32,12 @@ html {
     @apply w-full px-3 sm:px-5 mx-auto;
     @apply [--discussion-padding:1.5rem] sm:[--discussion-padding:2.5rem];
   }
+
+  /* The feed tabs beside the sort button. They scroll sideways when a phone is too
+     narrow, so the sort button stays in view. The padding keeps focus rings unclipped. */
+  .feed-tabs {
+    @apply -m-0.5 min-w-0 overflow-x-auto p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+  }
 }
 
 /* Flash on the source passage when navigating from a rich quote back to it.
@@ -204,6 +210,6 @@ body {
   }
 }
 
-.ProseMirror table col[style*="min-width"] {
+.ProseMirror table col[style*='min-width'] {
   width: 120px;
 }

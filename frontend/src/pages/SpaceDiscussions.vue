@@ -42,11 +42,7 @@
       </template>
     </SpaceHeaderActions>
     <div class="mb-4 flex items-center justify-between gap-2">
-      <!-- The tabs scroll sideways when a phone is too narrow, so the sort button stays in view. The padding keeps focus rings unclipped. -->
-      <SpaceTabs
-        class="-m-0.5 min-w-0 overflow-x-auto p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        :spaceId="spaceId"
-      />
+      <SpaceTabs class="feed-tabs" :spaceId="spaceId" />
       <DiscussionSortDropdown />
     </div>
     <DiscussionList

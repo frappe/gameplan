@@ -14,13 +14,7 @@
     <LastPostReminder class="mb-3" />
 
     <div class="mb-3 flex items-center justify-between gap-2">
-      <!-- The tabs scroll sideways when a phone is too narrow, so the sort button stays in view. The padding keeps focus rings unclipped. -->
-      <TabButtons
-        class="-m-0.5 min-w-0 overflow-x-auto p-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        :options="feedTabs"
-        v-model="currentFeed"
-        size="sm"
-      >
+      <TabButtons class="feed-tabs" :options="feedTabs" v-model="currentFeed" size="sm">
         <template #suffix="{ button }">
           <span
             v-if="button.value === 'unread' && unreadCount > 0"
