@@ -319,7 +319,8 @@ const routes: RouteRecordRaw[] = [
         meta: { communityScope: true },
         beforeEnter(to) {
           if (isFeedType(routeParam(to.params.feedType))) return
-          return { name: 'SpaceDiscussions', params: to.params, replace: true }
+          const { communityId, spaceId } = to.params
+          return { name: 'SpaceDiscussions', params: { communityId, spaceId }, replace: true }
         },
       },
       // Pages and Tasks no longer have tabs in a space. The names stay so old links and

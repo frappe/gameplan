@@ -66,9 +66,8 @@
       <ErrorMessage
         class="mt-2"
         :message="
-          bulkMoveDiscussions.error
-            ? errorText(bulkMoveDiscussions.error, 'Could not move the discussions.')
-            : undefined
+          bulkMoveDiscussions.error &&
+          errorText(bulkMoveDiscussions.error, 'Could not move the discussions.')
         "
       />
       <template #actions>
