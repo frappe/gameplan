@@ -3,6 +3,10 @@
     v-if="notFound"
     title="Discussion not found"
     description="It may have been deleted, or you no longer have access to it."
+    :up-to="{
+      name: 'SpaceDiscussions',
+      params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
+    }"
   >
     <template #breadcrumbs>
       <SpaceBreadcrumbs :spaceId="currentSpaceId" :items="[{ label: 'Not found' }]" />

@@ -1,6 +1,12 @@
 <template>
   <div>
-    <PageHeader>
+    <!-- A page with a parent keeps its phone header, so the up button still leads out. -->
+    <PageHeaderMobile v-if="upTo" class="sm:hidden" :title="title">
+      <template #prefix>
+        <PageHeaderUpButton :to="upTo" />
+      </template>
+    </PageHeaderMobile>
+    <PageHeader :class="{ 'hidden sm:flex': upTo }">
       <slot name="breadcrumbs">
         <Breadcrumbs :items="[{ label: 'Not found' }]" />
       </slot>
@@ -17,14 +23,18 @@
 // The /404 route, and the in-place state for a space, discussion or profile that is
 // missing or out of reach. Rendered inside the app shell, so the sidebar stays.
 import { computed } from 'vue'
-import { Breadcrumbs, Button, PageHeader, usePageMeta } from 'frappe-ui'
+import type { RouteLocationRaw } from 'vue-router'
+import { Breadcrumbs, Button, PageHeader, PageHeaderMobile, usePageMeta } from 'frappe-ui'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import PageHeaderUpButton from '@/components/PageHeaderUpButton.vue'
 import { getHomeRoute } from '@/router'
 
 const props = withDefaults(
   defineProps<{
     title?: string
     description?: string
+    /** The parent page, for the up button in the phone header. */
+    upTo?: RouteLocationRaw
   }>(),
   {
     title: 'Page not found',
