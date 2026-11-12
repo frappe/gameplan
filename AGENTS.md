@@ -28,6 +28,14 @@ still carries the old names. Do not rename the doctypes.
 - Patches sit next to their doctype in `gameplan/gameplan/doctype/<dt>/patches/`,
   registered in `gameplan/patches.txt`. App-level `gameplan/patches/` is for
   cross-doctype work only.
+- Shared UI states: `errorText()` and `fullTimestamp()` in `frontend/src/utils`,
+  `LoadError`, `EmptyStateBox` (icon, title, description props) and `NotFound`
+  (`pages/NotFound.vue`). A failed load shows `LoadError` with Retry, never raw
+  server text.
+- UI state screenshots: `frontend/ui-states/` walks one XState machine per flow
+  in `flows/` with Playwright and writes a PNG per state to `out/`. Run one flow
+  at a time against a throwaway dev site; each path wipes its Gameplan data.
+  `playwright.config.ts` lists the environment it needs.
 
 ## Traps
 
