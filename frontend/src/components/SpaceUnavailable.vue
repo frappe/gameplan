@@ -14,6 +14,7 @@
     v-else-if="spacesStatus === 'ready'"
     title="Space not found"
     description="It may have been deleted, or you no longer have access to it."
+    :up-to="communityCrumb.route"
   >
     <template #breadcrumbs>
       <Breadcrumbs :items="[communityCrumb, { label: 'Not found' }]" />
