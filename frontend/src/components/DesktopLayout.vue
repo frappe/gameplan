@@ -4,7 +4,10 @@
   <div class="relative flex h-full flex-col" v-if="usersReady">
     <DesktopShell class="gameplan-desktop-shell h-full flex-1 standalone:border-t">
       <template #rail>
-        <AppRail :show-border="onCommunityRoute" :show-community-active-state="onCommunityRoute" />
+        <AppRail
+          :show-border="onCommunityRoute"
+          :show-community-active-state="railShowsCommunity"
+        />
       </template>
       <template #sidebar>
         <AppSidebar v-if="onCommunityRoute" />
@@ -29,6 +32,7 @@ import { usersReady } from '@/data/users'
 import { settingsBackgroundPath } from '@/components/Settings'
 import { isSettingsRoute } from '@/components/Settings/overlayHistory'
 import { getHomeRoute } from '@/router'
+import { navigationTarget } from '@/utils/navigationTarget'
 
 const route = useRoute()
 const router = useRouter()
@@ -44,6 +48,13 @@ const effectiveRoute = computed(() => {
 
 const onCommunityRoute = computed(() => {
   return effectiveRoute.value.matched.some((record) => record.meta?.communityScope)
+})
+
+// The rail follows a navigation that is still on its way, so a community lights up on click.
+const railShowsCommunity = computed(() => {
+  const target = navigationTarget.value
+  if (!target) return onCommunityRoute.value
+  return target.matched.some((record) => record.meta?.communityScope)
 })
 </script>
 

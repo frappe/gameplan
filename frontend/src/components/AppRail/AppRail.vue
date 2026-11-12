@@ -98,7 +98,7 @@ import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { SidebarRail, SidebarRailItem } from 'frappe-ui'
 import type { RouteLocationRaw } from 'vue-router'
 import { communityState } from '@/data/communityState'
-import { navigationTarget, useActiveNavRoute } from '@/utils/navigationTarget'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 import { hasUnseenEntries } from '@/data/changelog'
 import UnseenDot from '../Changelog/UnseenDot.vue'
 import { activeCommunities } from '@/data/communities'
@@ -203,15 +203,8 @@ function goToCommunity(community: Community) {
   router.push({ name: 'Discussions', params: { communityId: community.name } })
 }
 
-// Follow a navigation that is still on its way, so a community lights up on click.
-const showCommunityActiveState = computed(() => {
-  const target = navigationTarget.value
-  if (!target) return props.showCommunityActiveState
-  return target.matched.some((record) => record.meta?.communityScope)
-})
-
 function isActiveCommunity(communityName: string) {
-  return showCommunityActiveState.value && communityName === communityState.id
+  return props.showCommunityActiveState && communityName === communityState.id
 }
 
 // Sum unread counts per community once per spaces/unread change, instead of
