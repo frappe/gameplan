@@ -69,7 +69,23 @@ function setupApp() {
   setConfig('maxFileSize', window.max_file_size ? Number(window.max_file_size) : null)
   app.mount('#app')
   // The first page draws without the realtime connection, so its code downloads after.
-  router.isReady().then(initSocket)
+  router.isReady().then(connectSocket)
+}
+
+// If socket.io's code fails to download (the signal drops right after the first page),
+// try again on the next page change or when the browser is back online. Without this,
+// live updates would stay off until a reload.
+function connectSocket() {
+  initSocket().catch((error) => {
+    console.warn('Realtime connection failed to load, will retry', error)
+    const retry = () => {
+      stopOnNavigate()
+      window.removeEventListener('online', retry)
+      connectSocket()
+    }
+    const stopOnNavigate = router.afterEach(retry)
+    window.addEventListener('online', retry)
+  })
 }
 
 if (import.meta.env.DEV) {
