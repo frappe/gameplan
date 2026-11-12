@@ -19,9 +19,7 @@
             <GameplanLogo class="size-7 rounded-[7px]" />
           </span>
         </div>
-        <div
-          class="flex w-full flex-col items-center gap-0.5 border-t py-3 pointer-events-none"
-        >
+        <div class="flex w-full flex-col items-center gap-0.5 border-t py-3 pointer-events-none">
           <span v-for="icon in railShortcuts" :key="icon" class="grid size-7 place-items-center">
             <span :class="[icon, 'size-4 text-ink-gray-6']" />
           </span>
@@ -77,7 +75,11 @@
                   : 'text-ink-gray-7'
               "
             >
-              <SpaceIcon v-if="previewSpace.icon" :icon="previewSpace.icon" class="size-4 shrink-0" />
+              <SpaceIcon
+                v-if="previewSpace.icon"
+                :icon="previewSpace.icon"
+                class="size-4 shrink-0"
+              />
               <span v-else class="lucide-hash size-4 shrink-0 text-ink-gray-5" />
               <span class="ml-2 flex-1 truncate text-sm">{{ previewSpace.title }}</span>
             </div>
@@ -105,9 +107,7 @@
                     placeholder="Acme Inc, My Company, ..."
                     id="new-community-name"
                     :modelValue="community"
-                    @update:modelValue="
-                      (value: string) => (community = value.slice(0, NAME_LIMIT))
-                    "
+                    @update:modelValue="(value: string) => (community = value.slice(0, NAME_LIMIT))"
                     :maxlength="NAME_LIMIT"
                   >
                     <template v-if="charactersLeft(community) <= 10" #suffix>

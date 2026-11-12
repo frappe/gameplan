@@ -447,7 +447,9 @@ class TestReactionNotifications(NotificationTestCase):
 		)
 		self.assertEqual(frappe.parse_json(poll_row.reacted_by), [self.admin.name, self.second_member.name])
 		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
-		self.assertEqual(discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post")
+		self.assertEqual(
+			discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post"
+		)
 
 	def test_comment_and_discussion_reactions_create_distinct_notifications(self):
 		comment = create_comment(self.discussion, owner=self.member)
@@ -461,10 +463,13 @@ class TestReactionNotifications(NotificationTestCase):
 		discussion_row = next(row for row in rows if not row.comment)
 		self.assertEqual(str(comment_row.comment), str(comment.name))
 		self.assertEqual(str(comment_row.discussion), str(self.discussion.name))
-		self.assertEqual(comment_row.message, f"{get_fullname(self.second_member.name)} reacted to your reply")
+		self.assertEqual(
+			comment_row.message, f"{get_fullname(self.second_member.name)} reacted to your reply"
+		)
 		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
-		self.assertEqual(discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post")
-
+		self.assertEqual(
+			discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post"
+		)
 
 	def test_modified_is_the_newest_reaction_and_marking_read_keeps_it(self):
 		"""The bell sorts and dates rows by `modified`, so it must track news, not reads."""

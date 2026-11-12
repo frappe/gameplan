@@ -418,7 +418,9 @@ function confirmMarkAllAsRead() {
   const count = Math.max(unreadNotifications.data ?? 0, unreadNotificationList.data?.length ?? 0)
   dialog.confirm({
     title: 'Mark all as read?',
-    message: `${count === 1 ? 'The unread notification' : `All ${count} unread notifications`} will move to Read.`,
+    message: `${
+      count === 1 ? 'The unread notification' : `All ${count} unread notifications`
+    } will move to Read.`,
     confirmLabel: 'Mark all as read',
     onConfirm: async () => {
       await markAllAsRead.submit()
