@@ -328,6 +328,9 @@ function frappe(baseURL: string, ...args: string[]): void {
       execFileSync(PILOT, ['-b', BENCH, 'frappe', '--site', site, ...args], {
         stdio: 'pipe',
         timeout: 120_000,
+        // SQLite's translator prints a warning per ALTER SEQUENCE; the default 1 MB buffer
+        // overflows on a demo replay and fails the call with status 0.
+        maxBuffer: 64 * 1024 * 1024,
       })
       return
     } catch (error) {
