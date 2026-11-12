@@ -35,47 +35,20 @@ export type GameplanSocketEvents = {
 
 type SocketEventName = keyof GameplanSocketEvents
 
-// The runtime twin of GameplanSocketEvents: `satisfies` makes TypeScript reject a name that
-// isn't in the type, and every key in the type must appear here or nothing dispatches it.
-const GAMEPLAN_SOCKET_EVENTS = [
-  'gameplan:unread_counts_changed',
-  'gameplan:notification_count_changed',
-  'gameplan:users_changed',
-] as const satisfies readonly SocketEventName[]
-
 let socket: Socket | null = null
 
-// Handlers to attach to the socket, kept here because the socket is created after the
-// first page draws, and a component on that page may register one before it exists.
-const socketHandlers = new Set<{ event: string; handler: (...args: any[]) => void }>()
-
-const listeners = new Map<SocketEventName, Set<(payload: any) => void>>()
+// Every socket event handler, by event name. See `onSocket` for why they live here.
+const listeners = new Map<string, Set<(payload: never) => void>>()
 const reconnectListeners = new Set<() => void>()
 
 const HANDSHAKE_RETRY_DELAY = 5000
 
-/**
- * Listen for a backend event. Returns an unsubscribe function.
- *
- * Handlers live in this module's own registry rather than on the socket, which buys two
- * things. Registration order does not matter: `initSocket()` runs after the first page draws,
- * long after module-level code in `data/*.ts` has run, so a bare `socket.on()` there would attach
- * to nothing. And unsubscribing removes exactly one handler — `socket.off(event)` drops every
- * listener for that event, so two components listening to the same one clobber each other.
- */
+/** Listen for a Gameplan backend event. Returns an unsubscribe function. */
 export function onSocketEvent<K extends SocketEventName>(
   event: K,
   handler: (payload: GameplanSocketEvents[K]) => void,
 ) {
-  let handlers = listeners.get(event)
-  if (!handlers) {
-    handlers = new Set()
-    listeners.set(event, handlers)
-  }
-  handlers.add(handler)
-  return () => {
-    handlers.delete(handler)
-  }
+  return onSocket(event, handler)
 }
 
 /**
@@ -91,15 +64,39 @@ export function onSocketReconnect(handler: () => void) {
   }
 }
 
-/** Attach `handler` to the socket now, or when it is created. Returns the detach function. */
-function onSocket(event: string, handler: (...args: any[]) => void) {
-  const entry = { event, handler }
-  socketHandlers.add(entry)
-  socket?.on(event, handler)
-  return () => {
-    socketHandlers.delete(entry)
-    socket?.off(event, handler)
+/**
+ * Run `handler` for every `event` the socket receives. Returns an unsubscribe function.
+ *
+ * Handlers live in this module's own registry rather than on the socket, which buys three
+ * things. Registration order does not matter: `initSocket()` runs after the first page draws,
+ * long after module-level code in `data/*.ts` has run, so a bare `socket.on()` there would attach
+ * to nothing. Unsubscribing removes exactly one handler — `socket.off(event)` drops every
+ * listener for that event, so two components listening to the same one clobber each other.
+ * And one dispatcher per event runs its handlers through `runEach`, so a handler that throws
+ * cannot stop the others.
+ */
+function onSocket(event: string, handler: (payload: never) => void) {
+  let handlers = listeners.get(event)
+  if (!handlers) {
+    handlers = new Set()
+    listeners.set(event, handlers)
+    if (socket) attachDispatcher(socket, event, handlers)
   }
+  handlers.add(handler)
+  return () => {
+    handlers.delete(handler)
+  }
+}
+
+// socket.io keeps listeners across reconnects, so a dispatcher is attached once per event.
+function attachDispatcher(
+  appSocket: Socket,
+  event: string,
+  handlers: Set<(payload: never) => void>,
+) {
+  appSocket.on(event, (payload: never) => {
+    runEach(handlers, `Listener for "${event}"`, payload)
+  })
 }
 
 /**
@@ -127,7 +124,7 @@ export async function initSocket() {
   // and a socket that stops retrying leaves every live count frozen until a page reload.
   const appSocket = io(url, { withCredentials: true })
   socket = appSocket
-  for (const { event, handler } of socketHandlers) appSocket.on(event, handler)
+  for (const [event, handlers] of listeners) attachDispatcher(appSocket, event, handlers)
 
   // `connect`, not the Manager's `reconnect`: the server joins this user's room during the
   // handshake, so refetching any earlier could miss a push sent before the room was joined.
@@ -143,14 +140,6 @@ export async function initSocket() {
   appSocket.on('connect_error', () => {
     if (!appSocket.active) setTimeout(() => appSocket.connect(), HANDSHAKE_RETRY_DELAY)
   })
-
-  // Attach one dispatcher per known event. socket.io keeps these across reconnects, so unlike
-  // document rooms (see subscribeToDoc) they never need re-attaching.
-  for (const event of GAMEPLAN_SOCKET_EVENTS) {
-    appSocket.on(event, (payload: never) => {
-      runEach(listeners.get(event) ?? [], `Listener for "${event}"`, payload)
-    })
-  }
 }
 
 /**
