@@ -101,13 +101,15 @@ def ban_candidates(community: str, query: str = "", after: str = ""):
 
 	# Both lists are small. Resolved here, MariaDB cannot choose to scan the member table once for
 	# every candidate: that took 1.4 s with 250,000 members.
-	community_staff = (
-		frappe.qb.from_(Member)
+	# Two exact lookups on the community_staff index. An OR of the two flags read every member.
+	community_staff = [
+		user
+		for flags in ((Member.is_admin == 1), (Member.is_admin == 0) & (Member.is_moderator == 1))
+		for user in frappe.qb.from_(Member)
 		.select(Member.user)
-		.where((Member.parenttype == "GP Team") & (Member.parent == community))
-		.where((Member.is_admin == 1) | (Member.is_moderator == 1))
+		.where((Member.parenttype == "GP Team") & (Member.parent == community) & flags)
 		.run(pluck=True)
-	)
+	]
 	active_bans = (
 		frappe.qb.from_(Restriction)
 		.select(Restriction.user)
