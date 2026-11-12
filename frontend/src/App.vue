@@ -1,7 +1,7 @@
 <template>
   <FrappeUIProvider>
     <div class="relative isolate h-full overflow-hidden">
-      <router-view v-if="['Onboarding', 'Login'].includes($route.name)" />
+      <router-view v-if="['Onboarding', 'Login'].includes($route.name) || $route.meta.public" />
       <Layout v-else-if="$session.isLoggedIn">
         <!-- While on a /settings/* URL, keep rendering the page the dialog was
              opened over (displayedRoute) so it stays visible behind the overlay. -->
@@ -49,7 +49,9 @@ const Layout = computed(() => {
   }
 })
 
-users.fetch()
+// A signed-out visitor has no user list to load, and its AuthenticationError would send
+// them to /login even on a public route. The router sends them there for every other route.
+if (session.isLoggedIn) users.fetch()
 
 // Only desktop layers settings over a background page. On a phone the settings
 // route renders its own page, so it is treated like any other route here.

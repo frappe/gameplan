@@ -66,16 +66,19 @@
           </div>
         </div>
 
-        <EmptyStateBox v-else-if="!addableUsers.length" class="mt-6">
-          <span class="lucide-users size-5 text-ink-gray-4" aria-hidden="true" />
-          <div class="mt-2 text-p-sm text-ink-gray-5">
-            Everyone already belongs to this community.
-          </div>
-        </EmptyStateBox>
+        <EmptyStateBox
+          v-else-if="!addableUsers.length"
+          class="mt-6"
+          icon="lucide-users"
+          title="Everyone already belongs to this community"
+        />
 
-        <EmptyStateBox v-else-if="!matches.length" class="mt-6">
-          <span class="lucide-search-x size-5 text-ink-gray-4" aria-hidden="true" />
-          <div class="mt-2 text-p-sm text-ink-gray-5">No people match your search.</div>
+        <EmptyStateBox
+          v-else-if="!matches.length"
+          class="mt-6"
+          icon="lucide-search-x"
+          title="No people match your search"
+        >
           <Button class="mt-3" @click="search = ''">Clear search</Button>
         </EmptyStateBox>
 

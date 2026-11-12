@@ -35,10 +35,12 @@
   },
   "devDependencies": {
     "@cypress/code-coverage": "^3.14.7",
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/container-queries": "^0.1.1",
     "@types/node": "^20.19.4",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@xstate/graph": "^3.0.4",
     "autoprefixer": "^10.4.2",
     "cypress": "14.5.1",
     "mocha-junit-reporter": "^2.2.1",
@@ -50,7 +52,8 @@
     "tailwindcss": "^3.4.15",
     "typescript": "^5.8.3",
     "vite": "^8.0.1",
-    "vite-plugin-istanbul": "^9.0.1"
+    "vite-plugin-istanbul": "^9.0.1",
+    "xstate": "^5.33.4"
   },
   "resolutions": {
     "@tiptap/core": "3.26.0",

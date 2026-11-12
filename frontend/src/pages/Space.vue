@@ -1,7 +1,7 @@
 <template>
   <router-view v-slot="{ Component, route }">
     <PageHeaderMobile
-      v-if="!route.meta.hideHeader"
+      v-if="space && !route.meta.hideHeader"
       class="sm:hidden"
       :title="space?.title || 'Space'"
     >
@@ -27,7 +27,7 @@
       </template>
       <template #suffix>
         <Button
-          v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
+          v-if="isSpaceFeedRoute(route.name) && canStartDiscussion"
           variant="ghost"
           size="md"
           icon="lucide-plus"
@@ -48,34 +48,30 @@
         @navigate="menuOpen = false"
       />
     </BottomSheet>
-    <PageHeader v-if="!route.meta.hideHeader" class="hidden sm:flex">
+    <PageHeader v-if="space && !route.meta.hideHeader" class="hidden sm:flex">
       <div class="flex w-full items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <SpaceBreadcrumbs :spaceId="spaceId" />
-          <SpaceHeaderActionsTarget placement="title" class="shrink-0" />
           <Badge v-if="space?.archived_at">Archived</Badge>
+          <SpaceHeaderActionsTarget placement="title" class="shrink-0" />
         </div>
         <SpaceHeaderActionsTarget />
       </div>
     </PageHeader>
     <component class="flex-1" v-if="space" :is="Component" :space="space" />
-    <div class="body-container pt-5" v-if="spaceList.isFinished && !space">
-      <EmptyStateBox>
-        <div class="text-ink-gray-6">Page not found</div>
-      </EmptyStateBox>
-    </div>
+    <SpaceUnavailable v-else :communityId="communityId" />
   </router-view>
 </template>
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter, type RouteRecordNameGeneric } from 'vue-router'
 import { BottomSheet, PageHeaderMobile, PageHeaderMobileTitle, PageHeader, Button } from 'frappe-ui'
 import PageHeaderUpButton from '@/components/PageHeaderUpButton.vue'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
 import PushPin from '@/components/icons/PushPin.vue'
-import { useSpace, canPostInSpace, spaces as spaceList, trackSpaceVisit } from '@/data/spaces'
+import { useSpace, canPostInSpace, forgetArchivedSpace, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
-import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import SpaceUnavailable from '@/components/SpaceUnavailable.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
@@ -94,9 +90,13 @@ const currentRoute = useRoute()
 const community = useCommunity(() => props.communityId)
 const menuOpen = ref(false)
 const space = useSpace(() => props.spaceId)
-// The mobile twin of the "Add new" button in SpaceDiscussions, so it asks the same
+// The mobile twin of the "New discussion" button in SpaceDiscussions, so it asks the same
 // question: who may start a discussion here, not who may edit the space.
 const canStartDiscussion = computed(() => canPostInSpace(space.value))
+
+function isSpaceFeedRoute(name: RouteRecordNameGeneric) {
+  return name === 'SpaceDiscussions' || name === 'SpaceDiscussionsTab'
+}
 
 // This page also renders behind the settings overlay, where the URL belongs to /settings/*
 // and healing it from here would navigate the app off the settings route, closing the dialog.
@@ -125,6 +125,13 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 onMounted(() => {
-  trackSpaceVisit(props.spaceId)
+  if (space.value) trackSpaceVisit(props.spaceId)
 })
+
+// A space archived here stays in the sidebar only while you are on it.
+watch(
+  () => props.spaceId,
+  (_spaceId, previousSpaceId) => forgetArchivedSpace(previousSpaceId),
+)
+onUnmounted(() => forgetArchivedSpace(props.spaceId))
 </script>

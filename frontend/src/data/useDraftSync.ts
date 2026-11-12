@@ -77,6 +77,9 @@ export interface UseDraftSyncOptions {
   initialPayload?: () => DraftPayload
   /** Called once when the server row is created — lets standalone callers sync the URL. */
   onCreate?: (serverName: string) => void
+  /** How a failed server push is reported. 'toast' (the default) shows one toast per failure
+   *  streak; 'inline' leaves it to the caller, which reads `lastError`. */
+  saveErrors?: 'toast' | 'inline'
 }
 
 function hasContent(payload: DraftPayload): boolean {
@@ -237,9 +240,8 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   const data = ref<DraftPayload | null>(null)
   const saving = ref(false)
   const restored = ref(false)
-  // The error from the most recent failed push, cleared by the next success. Doubles as the
-  // "are we in a failure streak" flag (so we toast once, not per keystroke) and as the reason
-  // a caller like publish() can report when the draft is still unsynced.
+  // The error from the most recent failed push, cleared by the next success. Callers show
+  // it while it is set, and publish() reports it when the draft is still unsynced.
   const lastError = ref<unknown>(null)
   const serverName = ref<string | null>(toValue(options.draftName ?? null))
 
@@ -262,6 +264,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   // Until then, and for anyone else's shared draft, it is read-only: nothing may save it.
   const owner = ref<string | null>(serverName.value ? null : draftOwner)
   const readOnly = computed(() => owner.value === null || owner.value !== draftOwner)
+  // A named draft resolves to no owner only when neither its server row nor a local copy
+  // could be read, so this is the failed load.
+  const loadFailed = computed(() => data.value !== null && owner.value === null)
   const isSingleton = computed(() => {
     const id = toValue(identity)
     return id.mode === 'Edit' || Boolean(id.referenceName)
@@ -359,10 +364,10 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       // new-discussion drafts that never land here are adopted later by
       // recoverOrphanedDrafts(), so a missed push no longer strands a draft locally.
       captureError(error, { action: 'draft-push', draft: serverName.value })
-      // Tell the user once per failure streak so a silently-failing save can't quietly
-      // lose server-side persistence. Reset on the next success above.
-      if (!lastError.value) {
-        toast.error('Could not save your draft to the server — keeping a local copy and retrying.')
+      // Toast once per failure streak, so a silently failing save can't quietly lose
+      // server-side persistence. Reset on the next success above.
+      if (options.saveErrors !== 'inline' && !lastError.value) {
+        toast.error("Couldn't save your draft. Your changes are kept here and saving will retry.")
       }
       lastError.value = error
     } finally {
@@ -411,13 +416,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
   async function fetchServerDraft(): Promise<ServerDraftDoc | null> {
     try {
       if (serverName.value) {
-        try {
-          return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
-        } catch (error) {
-          // Without the row its owner is unknown, so the draft stays read-only. Say why.
-          toast.error('Could not load this draft. Reload the page to try again.')
-          throw error
-        }
+        // Without the row its owner is unknown, so the draft opens read-only and
+        // `loadFailed` turns true. The composer shows that inline, with Retry.
+        return await call('frappe.client.get', { doctype: 'GP Draft', name: serverName.value })
       }
       if (isSingleton.value) {
         const id = toValue(identity)
@@ -516,6 +517,14 @@ export function useDraftSync(options: UseDraftSyncOptions) {
       })
     })()
     return opening
+  }
+
+  /** Look the draft up again after a failed load. */
+  function reload(): Promise<void> {
+    if (!loadFailed.value) return Promise.resolve()
+    opening = null
+    data.value = null
+    return open()
   }
 
   watch(
@@ -634,6 +643,9 @@ export function useDraftSync(options: UseDraftSyncOptions) {
     /** The composer's buffer, or null until the draft has been resolved. */
     data,
     isLoading,
+    /** The draft could not be read, so it is open read-only. `reload` tries again. */
+    loadFailed,
+    reload,
     /** There are local edits not yet pushed to the server. */
     dirty,
     /** Why the last push failed, or null if the last one succeeded. */

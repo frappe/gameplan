@@ -59,8 +59,8 @@ describe('Pinned author row', () => {
       cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
       cy.get(comment).should('exist')
-      assertRowOverhangs('Discussion Options', '.discussion-container')
-      assertRowOverhangs('Comment Options', comment)
+      assertRowOverhangs('Discussion options', '.discussion-container')
+      assertRowOverhangs('Comment options', comment)
     })
   })
 })

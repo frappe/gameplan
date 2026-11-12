@@ -76,6 +76,11 @@ export function relativeTimestamp(timestamp: string): string {
   return dayjsLocal(timestamp).format('D MMM YYYY')
 }
 
+/** The full date and time for the Tooltip next to a `relativeTimestamp()`. */
+export function fullTimestamp(timestamp: string): string {
+  return dayjsLocal(timestamp).format('D MMM YYYY [at] h:mm A')
+}
+
 /**
  * Whether an editor body carries nothing a reader would see.
  *
@@ -97,23 +102,47 @@ export function isEditorContentEmpty(content: string | null | undefined): boolea
 }
 
 /**
- * Pull the human-readable text out of a frappe-ui request error.
+ * One readable sentence about a failed request, to put in front of a person.
  *
- * `frappeRequest`/`call` put the clean `frappe.throw()` text on the error's
- * `messages` array (parsed out of `_server_messages`) and leave the noisy
- * "<method> <ExcType>" string on `message`, so prefer `messages`.
+ * Frappe's own message is used when it reads as a sentence, without the exception name
+ * in front ("PermissionError: You cannot…" becomes "You cannot…"). Everything else becomes
+ * `fallback`: "Internal Server Error", tracebacks, empty responses, and JavaScript errors
+ * such as "Failed to fetch". Write `fallback` as the failure in plain words
+ * ("Could not load discussions.").
  */
-export function extractServerMessage(error: unknown): string {
-  if (!(error instanceof Error)) return typeof error === 'string' ? error : ''
+export function errorText(error: unknown, fallback: string): string {
+  const sentence = serverLines(error).map(withoutExceptionName).find(isReadable)
+  return sentence ? asSentence(sentence) : fallback
+}
 
-  let serverMessages = (error as Error & { messages?: unknown }).messages
-  if (Array.isArray(serverMessages)) {
-    let messages = serverMessages.filter(
-      (message): message is string => typeof message === 'string',
-    )
-    if (messages.length) return stripHtml(messages.join('\n'))
+// The lines the server wrote for a person. frappe-ui's v1 requests (`useCall`,
+// `createResource`) put them on `messages`; the v2 composables (`useDoc`, `useList`)
+// throw an error with the exception name on `type` and "<type>: <text>" on `message`.
+function serverLines(error: unknown): string[] {
+  if (typeof error === 'string') return error.split('\n')
+  if (!(error instanceof Error)) return []
+  const { messages, type } = error as Error & { messages?: unknown; type?: unknown }
+  if (Array.isArray(messages)) {
+    return messages
+      .filter((message): message is string => typeof message === 'string')
+      .flatMap((message) => stripHtml(message).split('\n'))
   }
-  return error.message ? stripHtml(error.message) : ''
+  if (typeof type === 'string') return stripHtml(error.message).split('\n')
+  return []
+}
+
+function withoutExceptionName(line: string): string {
+  return line.replace(/^(?:[\w.]+\.)?[A-Z]\w*(?:Error|Exception)\b:?\s*/, '').trim()
+}
+
+function isReadable(line: string): boolean {
+  if (!line.includes(' ') || line.length > 300) return false
+  return !/internal server error|traceback/i.test(line)
+}
+
+function asSentence(line: string): string {
+  const capitalized = line.charAt(0).toUpperCase() + line.slice(1)
+  return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`
 }
 
 function stripHtml(value: string) {

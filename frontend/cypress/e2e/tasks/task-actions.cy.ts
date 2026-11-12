@@ -14,21 +14,17 @@ describe('Task actions', () => {
     cy.loginAs('member')
   })
 
-  it('creates a task and sets its title, assignee, due date, and status', () => {
-    cy.visit(`/g/community/${community}/space/${space}/tasks`)
-    cy.get('[role=radio][aria-checked="true"]').contains('Tasks').should('exist')
-
-    // create the task
-    cy.intercept('POST', '/api/v2/document/GP%20Task').as('createTask')
-    cy.button('Add new').click()
-    cy.contains('[role=dialog] label', 'Title').parent().find('input').type('First Task')
-    cy.dialog('textarea').type('This is the description of the first task')
-    cy.button('Create').click()
-    cy.wait('@createTask').its('response.body.data.title').should('eq', 'First Task')
-
-    // open it from the space's task list
-    cy.intercept('POST', '/api/v2/document/GP%20Task/*/method/track_visit').as('trackVisit')
-    cy.contains('a', 'First Task').click()
+  it("sets a task's title, assignee, due date, and status", () => {
+    // A space has no task list to create tasks from any more, so the task is created
+    // through the API and opened at its own URL.
+    cy.request('POST', '/api/v2/document/GP%20Task', {
+      title: 'First Task',
+      description: '<p>This is the description of the first task</p>',
+      project: space,
+    }).then(({ body }) => {
+      cy.intercept('POST', '/api/v2/document/GP%20Task/*/method/track_visit').as('trackVisit')
+      cy.visit(`/g/community/${community}/space/${space}/tasks/${body.data.name}`)
+    })
     cy.wait('@trackVisit')
 
     // Every edit below saves through the same endpoint, so one alias covers them all.

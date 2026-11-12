@@ -5,31 +5,18 @@
     </template>
   </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
-    <span class="min-w-0 truncate px-0.5 py-1 text-lg-medium text-ink-gray-9">All Discussions</span>
-    <Button variant="solid" icon-left="lucide-plus" :route="{ name: 'LegacyNewDiscussion' }">
-      Add new
-    </Button>
+    <span class="min-w-0 truncate px-0.5 py-1 text-lg-medium text-ink-gray-9">All discussions</span>
+    <Button
+      variant="solid"
+      icon-left="lucide-plus"
+      label="New discussion"
+      :route="{ name: 'LegacyNewDiscussion' }"
+    />
   </PageHeader>
   <div class="body-container pt-5 pb-40">
     <LastPostReminder class="mb-3" />
 
-    <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <TabButtons :options="feedTabs" v-model="currentFeed" size="sm">
-        <template #suffix="{ button }">
-          <span
-            v-if="button.value === 'unread' && unreadCount > 0"
-            class="ml-1 text-xs text-ink-gray-5"
-          >
-            {{ unreadCount }}
-          </span>
-        </template>
-      </TabButtons>
-      <Select
-        class="shrink-0 !w-fit"
-        :options="discussionSortOptions"
-        v-model="discussionOrderBy"
-      />
-    </div>
+    <DiscussionFeedBar v-model="currentFeed" :counts="{ unread: unreadCount }" />
 
     <KeepAlive>
       <DiscussionList
@@ -40,6 +27,7 @@
         showCommunity
         :cacheKey="`AllDiscussions-${feedType}`"
         :key="JSON.stringify(filters)"
+        :empty-state="feedEmptyStates[feedType]"
       />
     </KeepAlive>
   </div>
@@ -47,21 +35,14 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-  Button,
-  PageHeader,
-  PageHeaderBackButton,
-  PageHeaderMobile,
-  Select,
-  TabButtons,
-  usePageMeta,
-} from 'frappe-ui'
+import { Button, PageHeader, PageHeaderBackButton, PageHeaderMobile, usePageMeta } from 'frappe-ui'
 import { useRouter } from 'vue-router'
+import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { activeCommunities } from '@/data/communities'
-import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
-import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
+import { feedEmptyStates, feedTitles, type FeedType } from '@/data/discussionFeeds'
+import { discussionOrderBy } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 
 const props = withDefaults(defineProps<{ feedType?: FeedType }>(), {
@@ -91,8 +72,8 @@ const unreadCount = computed(() => {
 
 const currentFeed = computed({
   get: () => props.feedType,
-  set(feedType) {
-    if (!feedType || feedType === props.feedType) return
+  set(feedType: FeedType) {
+    if (feedType === props.feedType) return
     router.push(
       feedType === 'recent'
         ? { name: 'AllDiscussions' }

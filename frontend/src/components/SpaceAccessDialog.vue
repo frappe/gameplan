@@ -59,12 +59,13 @@
                 </div>
               </div>
             </div>
-            <EmptyStateBox v-if="!space.members.length" class="py-6">
-              <span class="lucide-users size-5 text-ink-gray-4" />
-              <div class="mt-2 text-p-sm text-ink-gray-5">
-                No users have been added to this private space.
-              </div>
-            </EmptyStateBox>
+            <EmptyStateBox
+              v-if="!space.members.length"
+              class="py-6"
+              icon="lucide-users"
+              title="No members yet"
+              description="No one has been added to this private space."
+            />
           </div>
         </section>
 
@@ -118,7 +119,14 @@
             </div>
           </div>
         </section>
-        <ErrorMessage class="mt-2" :message="spaces.runDocMethod.error" />
+        <ErrorMessage
+          class="mt-2"
+          :message="
+            spaces.runDocMethod.error
+              ? errorText(spaces.runDocMethod.error, 'Could not update access to this space.')
+              : undefined
+          "
+        />
         <Dialog v-bind="removeDialog.options || {}" v-model:open="removeDialog.open" />
       </div>
     </template>
@@ -132,6 +140,7 @@ import UserAvatar from '@/components/UserAvatar.vue'
 import { getCommunity } from '@/data/communities'
 import { useSpace } from '@/data/spaces'
 import { useSessionUser, useUser, users } from '@/data/users'
+import { errorText } from '@/utils'
 import { canInviteGuests, canManageSpace } from '@/utils/permissions'
 import { GPGuestAccess, GPInvitation, GPProject } from '@/types/doctypes'
 

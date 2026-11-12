@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "from_user",
+  "reacted_by",
   "to_user",
   "type",
   "message",
@@ -24,6 +25,13 @@
    "fieldtype": "Link",
    "label": "From User",
    "options": "User"
+  },
+  {
+   "description": "The people who reacted, most recent first. Only set on Reaction notifications.",
+   "fieldname": "reacted_by",
+   "fieldtype": "JSON",
+   "label": "Reacted By",
+   "read_only": 1
   },
   {
    "fieldname": "to_user",
@@ -93,7 +101,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-31 10:15:00.000000",
+ "modified": "2026-11-12 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Notification",

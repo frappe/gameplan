@@ -74,7 +74,7 @@
     <!-- In an installed PWA the collapsed button clears the home indicator: the 1rem
          the bottom nav uses on other pages, or the safe-area inset where that is larger. -->
     <div
-      v-if="!readOnlyMode && !disableNewComment && !hideNewComment"
+      v-if="!readOnlyMode && !hideNewComment"
       class="pointer-events-none fixed bottom-0 left-0 right-0 z-[2] w-full print:hidden sm:left-[274px] sm:right-1 sm:w-auto"
       :class="[
         isComposerFullscreen ? 'top-[var(--mobile-header-height)] z-20' : 'mt-2',
@@ -94,7 +94,23 @@
             isComposerCollapsed ? '' : 'bg-surface-base sm:bg-transparent',
           ]"
         >
-          <div v-if="!showCommentBox" class="sm:-mx-3">
+          <div
+            v-if="closed"
+            class="flex items-center gap-2 rounded-6 bg-surface-gray-2 py-1 pl-3 pr-1 text-base text-ink-gray-6 sm:-mx-3"
+            :class="{ 'py-2': !canReopen }"
+          >
+            <span class="lucide-lock size-4 shrink-0 text-ink-gray-5" aria-hidden="true" />
+            <span class="min-w-0 flex-1 truncate">This discussion is closed</span>
+            <Button
+              v-if="canReopen"
+              class="shrink-0"
+              variant="ghost"
+              label="Re-open"
+              :loading="reopening"
+              @click="emit('reopen')"
+            />
+          </div>
+          <div v-else-if="!showCommentBox" class="sm:-mx-3">
             <button
               type="button"
               class="flex w-full items-center rounded-6 bg-surface-elevation-2 px-2 py-2 text-left text-base text-ink-gray-5 shadow-md hover:bg-surface-elevation-3"
@@ -191,7 +207,9 @@
               }"
               :discardButtonProps="{
                 onClick: discardComment,
+                disabled: comments.insert.loading,
               }"
+              :error="postErrorText"
               :editable="!isDraftLoading"
               :max-height="activeComposerEditorMaxHeightStyle"
               :min-height="activeComposerEditorMinHeightStyle"
@@ -199,7 +217,6 @@
               can-attach-poll
               placeholder="Add a comment..."
             />
-            <ErrorMessage class="mt-2" :message="comments.insert.error" />
           </div>
         </div>
       </div>
@@ -221,7 +238,7 @@ import {
 } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useEventListener } from '@vueuse/core'
-import { useList, ErrorMessage, Button, Tooltip } from 'frappe-ui'
+import { useList, Button, Tooltip } from 'frappe-ui'
 import CommentEditor from '@/components/editor/CommentEditor.vue'
 import Comment from './Comment.vue'
 import Activity from './Activity.vue'
@@ -237,6 +254,7 @@ import { useDraftSync } from '@/data/useDraftSync'
 import { useSessionUser } from '@/data/users'
 import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
+import { errorText } from '@/utils'
 import {
   isPollDraftReady,
   pollDraftInContent,
@@ -251,7 +269,11 @@ interface Props {
   space?: Space | null
   newCommentsFrom?: string
   readOnlyMode?: boolean
-  disableNewComment?: boolean
+  // A closed discussion takes no new comments; the composer becomes a notice bar.
+  closed?: boolean
+  // Whether the viewer may re-open it from that bar.
+  canReopen?: boolean
+  reopening?: boolean
   // transient: hide the fixed comment bar while the post itself is being edited
   hideNewComment?: boolean
   // Bumped by the parent whenever this client's own action changes the reference
@@ -280,12 +302,15 @@ const MAX_COMPOSER_EDITOR_VIEWPORT_RATIO = 0.72
 
 const props = withDefaults(defineProps<Props>(), {
   readOnlyMode: false,
-  disableNewComment: false,
+  closed: false,
+  canReopen: false,
+  reopening: false,
   hideNewComment: false,
 })
 
 const emit = defineEmits<{
   'composer-resize': []
+  reopen: []
 }>()
 
 const router = useRouter()
@@ -459,6 +484,16 @@ const commentEmpty = computed(() => {
 })
 
 const pollDraft = computed(() => pollDraftInContent(draftData.value?.content))
+
+// The server text is often "Internal Server Error", which tells the reader nothing.
+const postErrorText = computed(() =>
+  comments.insert.error
+    ? errorText(
+        comments.insert.error,
+        "Couldn't post your comment. Your text is kept, so try again.",
+      )
+    : null,
+)
 
 const canSubmit = computed(
   () => !commentEmpty.value && (!pollDraft.value || isPollDraftReady(pollDraft.value)),

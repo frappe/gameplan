@@ -41,7 +41,7 @@ const props = defineProps<{ initial?: string | null }>()
 const open = defineModel<boolean>({ default: false })
 const emit = defineEmits<{ (e: 'schedule', localDateTime: string): void }>()
 
-const { scheduling, publishError } = useNewDiscussionContext()
+const { scheduling, submitError } = useNewDiscussionContext()
 
 const LOCAL = 'YYYY-MM-DD HH:mm:ss'
 const date = ref('')
@@ -74,7 +74,7 @@ function confirm() {
   emit('schedule', value.value)
 }
 
-watch(publishError, (message) => {
-  if (open.value && message) error.value = message
+watch(submitError, (failure) => {
+  if (open.value && failure) error.value = failure.message
 })
 </script>

@@ -1,9 +1,5 @@
 <template>
-  <EmptyStateBox>
-    <span class="lucide-layers h-7 w-7 text-ink-gray-4" />
-    <span class="mt-2">No space to post in</span>
-    <span class="mt-1 text-p-sm text-ink-gray-5">{{ hint }}</span>
-  </EmptyStateBox>
+  <EmptyStateBox icon="lucide-layers" title="No space to post in" :description="hint" />
 </template>
 
 <script setup lang="ts">

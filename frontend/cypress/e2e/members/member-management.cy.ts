@@ -61,7 +61,7 @@ describe('Member management', () => {
     // account on the site, so it takes the email path rather than a direct grant.
     cy.scope('dialog').contains('1 invitation sent').should('be.visible')
 
-    // On success the new invite shows in "Pending Invites". The Member role is
+    // On success the new invite shows in "Pending invites". The Member role is
     // labelled "User" in the UI.
     cy.scope('dialog').contains('newteammate@example.com').should('be.visible')
     cy.scope('dialog').contains('(User)').should('be.visible')
@@ -89,11 +89,9 @@ describe('Member management', () => {
     cy.scope('dialog').contains('button', 'Users').focus().type('{enter}')
     cy.contains('[data-slot="list-row"]', 'Administrator').should('be.visible')
 
-    cy.contains('[data-slot="list-row"]', 'Administrator')
-      .contains('button', 'Admin')
-      .click()
+    cy.contains('[data-slot="list-row"]', 'Administrator').contains('button', 'Admin').click()
     cy.get('[role="option"]:visible').contains('Guest').click()
-    cy.dialog('button').contains('Change Role').click()
+    cy.dialog('button').contains('Change role').click()
     cy.wait('@changeOwnRole').then(({ response }) => {
       expect(response?.statusCode).to.equal(200)
       expect(response?.body.data.role).to.equal('Gameplan Guest')

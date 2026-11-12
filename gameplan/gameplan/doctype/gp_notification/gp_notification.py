@@ -8,6 +8,24 @@ from gameplan.realtime import notify_notification_count_changed
 
 
 class GPNotification(Document):
+	def before_save(self):
+		# `modified` is when the row last had news: its insert, or a reaction re-lighting it.
+		# The bell sorts and dates rows by it, so marking a row read must not move it.
+		if self.is_marked_read_only():
+			self.modified = self.get_doc_before_save().modified
+
+	def is_marked_read_only(self):
+		before = self.get_doc_before_save()
+		if not before or not (self.read and not before.read):
+			return False
+		# Compared as text: links to autoincrement doctypes load as int but arrive as str.
+		changed = [
+			f.fieldname
+			for f in self.meta.fields
+			if str(before.get(f.fieldname) or "") != str(self.get(f.fieldname) or "")
+		]
+		return changed == ["read"]
+
 	def on_update(self):
 		# Not `after_insert`: a reaction REUSES the existing row and resets `read` to 0
 		# (see HasReactions.notify_reactions), and the bell's mark-as-read is a PUT that

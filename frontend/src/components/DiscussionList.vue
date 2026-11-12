@@ -1,21 +1,5 @@
 <template>
   <div class="h-full touch-pan-y">
-    <div class="mb-5" v-if="pinnedDiscussions.data?.length">
-      <div class="px-3 flex items-center space-x-1 mb-2">
-        <Pin class="h-4 w-4 text-ink-gray-4" />
-        <span class="text-ink-gray-8 text-base"> Pinned </span>
-      </div>
-      <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
-        <DiscussionRow
-          v-for="discussion of pinnedDiscussions.data"
-          :key="discussion.name"
-          :discussion="discussion"
-          :showSpaceName="!filters || !filters.project"
-          :showCommunityName="showCommunity"
-        />
-      </List>
-    </div>
-
     <template v-if="isInitialLoading">
       <ListRowSkeleton
         v-for="index in skeletonRowCount"
@@ -25,42 +9,58 @@
       />
     </template>
 
+    <!-- Pinned rows lead the list, marked by a pin icon rather than a heading. -->
     <List :selectable="selectable" v-model:selection="selectedDiscussions" :class="listClass">
       <DiscussionRow
-        v-for="discussion of discussions.data"
-        :key="discussion.bookmark || discussion.name"
+        v-for="discussion of visiblePinnedDiscussions"
+        :key="'pinned-' + discussion.name"
         :discussion="discussion"
         :showSpaceName="!filters || !filters.project"
         :showCommunityName="showCommunity"
+        pinned
+      />
+      <DiscussionRow
+        v-for="discussion of visibleDiscussions"
+        :key="rowKey(discussion)"
+        :discussion="discussion"
+        :showSpaceName="!filters || !filters.project"
+        :showCommunityName="showCommunity"
+        :showCreatedAt="isSortedByCreation"
+        :removable="removableBookmarks"
+        @remove="removeBookmarkRow(discussion)"
       />
     </List>
     <div class="px-2 sm:px-0">
-      <EmptyStateBox class="mx-3" v-if="!discussions.loading && discussions.data?.length === 0">
-        <span class="lucide-coffee h-7 w-7 text-ink-gray-4" />
-        No discussions
-      </EmptyStateBox>
+      <LoadError
+        v-if="discussions.error && !discussions.data?.length"
+        class="mx-3"
+        :message="errorText(discussions.error, 'Could not load discussions.')"
+        @retry="retryLoad"
+      />
+      <EmptyStateBox
+        class="mx-3"
+        v-else-if="!discussions.loading && discussions.data && isEmpty"
+        v-bind="emptyState"
+      />
       <div class="flex items-center justify-center p-3" v-if="showLoadMoreButton">
-        <Button
-          icon-left="lucide-refresh-cw"
-          @click="discussions.next"
-          :loading="discussions.loading"
-        >
-          {{ discussions.loading ? 'Loading...' : 'Load more' }}
-        </Button>
+        <Button label="Load more" :loading="discussions.loading" @click="discussions.next" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, toValue } from 'vue'
-import type { OrderBy } from 'frappe-ui'
+import { computed, ref, toValue } from 'vue'
+import { toast, type OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
-import { UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import { type Discussion, UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import { removeBookmark, restoreBookmark } from '@/data/bookmarks'
+import { errorText } from '@/utils'
+import LoadError from './LoadError.vue'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
-import EmptyStateBox from './EmptyStateBox.vue'
-import Pin from './icons/Pin.vue'
+import EmptyStateBox, { type EmptyState } from './EmptyStateBox.vue'
+import { feedEmptyStates } from '@/data/discussionFeeds'
 
 interface Props {
   filters: UseDiscussionOptions['filters']
@@ -71,12 +71,17 @@ interface Props {
   // Name each row's community too, for lists that mix communities. A space name
   // alone is ambiguous there.
   showCommunity?: boolean
+  emptyState?: EmptyState
+  // Bookmark rows get a hover button that removes the bookmark, with Undo.
+  removableBookmarks?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   showPinned: true,
   selectable: false,
   showCommunity: false,
+  removableBookmarks: false,
+  emptyState: () => feedEmptyStates.recent,
 })
 
 const selectedDiscussions = defineModel<string[]>('selectedDiscussions', { default: () => [] })
@@ -123,7 +128,69 @@ const pinnedDiscussions = useDiscussions({
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(() => discussions.hasNextPage && !isInitialLoading.value)
+const showLoadMoreButton = computed(() => discussions.hasNextPage && !isEmpty.value)
+const isSortedByCreation = computed(() => toValue(props.orderBy) === 'creation desc')
+
+// Held back until the first page arrives, so they do not sit above the skeleton rows.
+const visiblePinnedDiscussions = computed(() =>
+  isInitialLoading.value ? [] : pinnedDiscussions.data || [],
+)
+const pinnedNames = computed(() => new Set(visiblePinnedDiscussions.value.map((d) => d.name)))
+const isEmpty = computed(
+  () => visiblePinnedDiscussions.value.length === 0 && visibleDiscussions.value.length === 0,
+)
+
+// Rows removed here hide at once; the list reloads once the server agrees. A pinned
+// discussion already leads the list, so it is not shown again in its date position.
+const removedRowKeys = ref(new Set<string>())
+const visibleDiscussions = computed(() =>
+  (discussions.data || []).filter(
+    (discussion) =>
+      !removedRowKeys.value.has(rowKey(discussion)) && !pinnedNames.value.has(discussion.name),
+  ),
+)
+
+// The pinned list fails with the main one on a failed first load, so retry both.
+function retryLoad() {
+  discussions.reload()
+  if (props.showPinned) pinnedDiscussions.reload()
+}
+
+function rowKey(discussion: Discussion) {
+  return discussion.bookmark || discussion.name
+}
+
+function removeBookmarkRow(discussion: Discussion) {
+  const key = rowKey(discussion)
+  setRowRemoved(key, true)
+  removeBookmark(discussion)
+    .then(() => {
+      discussions.reload()
+      toast.success('Bookmark removed', {
+        action: { label: 'Undo', onClick: () => undoRemoveBookmark(discussion, key) },
+      })
+    })
+    .catch((error: unknown) => {
+      setRowRemoved(key, false)
+      toast.error(errorText(error, 'Could not remove the bookmark.'))
+    })
+}
+
+function undoRemoveBookmark(discussion: Discussion, key: string) {
+  restoreBookmark(discussion)
+    .then(() => {
+      setRowRemoved(key, false)
+      discussions.reload()
+    })
+    .catch((error: unknown) => toast.error(errorText(error, 'Could not restore the bookmark.')))
+}
+
+function setRowRemoved(key: string, removed: boolean) {
+  const keys = new Set(removedRowKeys.value)
+  if (removed) keys.add(key)
+  else keys.delete(key)
+  removedRowKeys.value = keys
+}
 
 defineExpose({ discussions, pinnedDiscussions })
 </script>

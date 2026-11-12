@@ -43,7 +43,9 @@ const effectiveRoute = computed(() => {
 })
 
 const onCommunityRoute = computed(() => {
-  return effectiveRoute.value.matched.some((record) => record.meta?.communityScope)
+  return effectiveRoute.value.matched.some(
+    (record) => record.meta?.communityScope || record.meta?.communitySidebar,
+  )
 })
 </script>
 

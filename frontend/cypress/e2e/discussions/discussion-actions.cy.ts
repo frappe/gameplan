@@ -66,9 +66,9 @@ describe('Discussion actions', () => {
     cy.visit(`/g/community/${community}/space/${generalSpace}/discussions`)
     cy.contains('div', 'No discussions')
 
-    // "Add new" from a space carries that space in the route, so the composer
+    // "New discussion" from a space carries that space in the route, so the composer
     // needs no space picked.
-    cy.button('Add new').click()
+    cy.button('New discussion').click()
     // Type into the editor first so TipTap finishes initializing; otherwise it
     // steals focus while the title is being typed and drops the title's first
     // keystroke, which corrupts the published slug.
@@ -164,7 +164,7 @@ describe('Discussion actions', () => {
   it('renames a discussion and records the rename in the activity feed', () => {
     visitSeededDiscussion()
 
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('input[placeholder="Title"]')
       .should('be.visible')
       .type(' {selectall}', { delay: 200 })
@@ -178,7 +178,7 @@ describe('Discussion actions', () => {
   it('edits the content of a discussion', () => {
     visitSeededDiscussion()
 
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('[contenteditable=true]')
       .should('be.visible')
       .click()
@@ -196,7 +196,7 @@ describe('Discussion actions', () => {
     visitSeededDiscussion()
     cy.contains('h2', 'Centered heading').should('have.css', 'text-align', 'center')
 
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('[contenteditable=true]')
       .should('be.visible')
       .click()
@@ -216,7 +216,7 @@ describe('Discussion actions', () => {
     }).as('editDraft')
     visitSeededDiscussion()
 
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.contains('[role="status"]', 'Loading draft…').should('be.visible')
     cy.get('input[placeholder="Title"]').should('be.disabled')
     cy.get('[contenteditable]').should('have.attr', 'contenteditable', 'false')
@@ -235,9 +235,9 @@ describe('Discussion actions', () => {
   it('moves a discussion to another space', () => {
     visitSeededDiscussion()
 
-    cy.selectDropdownOption('Discussion Options', 'Move to...')
+    cy.selectDropdownOption('Discussion options', 'Move to…')
     // "General" is the only other space in the seeded community.
-    cy.selectCombobox('Select a project', 'General')
+    cy.selectCombobox('Select a space', 'General')
     cy.button('Move to General').click()
 
     cy.url().should(
@@ -249,10 +249,11 @@ describe('Discussion actions', () => {
   it('closes a discussion so nobody can comment on it', () => {
     visitSeededDiscussion()
 
-    cy.selectDropdownOption('Discussion Options', 'Close discussion')
+    cy.selectDropdownOption('Discussion options', 'Close discussion')
     cy.dialog('button').contains('Close').click()
 
     cy.contains('closed this discussion').should('exist')
     cy.button('Add a comment').should('not.exist')
+    cy.contains('This discussion is closed').should('be.visible')
   })
 })

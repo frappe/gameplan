@@ -25,6 +25,13 @@
       />
     </template>
 
+    <LoadError
+      v-else-if="activeList.error && !notifications?.length"
+      class="mx-4 sm:mx-3"
+      :message="errorText(activeList.error, 'Could not load notifications.')"
+      @retry="activeList.reload()"
+    />
+
     <List
       v-else-if="notifications?.length"
       class="max-sm:list-gap-3 sm:list-gap-4 max-sm:list-row-px-4"
@@ -38,15 +45,17 @@
         @click="openNotification(notification)"
       >
         <ListCell>
+          <ReactorAvatars v-if="reactors(notification).length" :users="reactors(notification)" />
           <UserAvatarWithHover
             size="2xl"
             :user="notification.from_user"
-            v-if="showAvatar(notification)"
+            v-else-if="notification.from_user && showAvatar(notification)"
           />
           <div
             class="grid size-10 place-items-center rounded-[8px] bg-surface-gray-2 group-hover:bg-surface-base"
             v-else
           >
+            <!-- Reaction rows written before `reacted_by` existed carry only a count. -->
             <ReactionFaceIcon
               class="size-5 text-ink-gray-6"
               v-if="notification.type === 'Reaction'"
@@ -92,21 +101,20 @@
         </ListCell>
         <ListCell class="justify-end">
           <div>
-            <!-- `creation`, not `modified`: marking a notification read is a PUT that bumps
-                 `modified`, so a Monday mention opened on Thursday would claim to be "a few
-                 seconds ago" for the rest of its life. The list is still ordered by
-                 `modified` so a re-lit notification resurfaces (see useNotificationList),
-                 which can read slightly out of order here — an honest timestamp out of order
-                 beats a wrong one in order. -->
-            <time
-              class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
-              :datetime="notification.creation"
-            >
-              <span class="sm:hidden">{{ shortTimestamp(notification.creation) }}</span>
-              <span class="hidden sm:inline">
-                {{ dayjsLocal(notification.creation).fromNow() }}
-              </span>
-            </time>
+            <!-- `modified` is when the row last had news: its insert, or the newest reaction
+                 that re-lit it. Marking it read leaves `modified` alone (GPNotification.before_save),
+                 so the time shown and the list order agree. -->
+            <Tooltip :text="fullTimestamp(notification.modified)">
+              <time
+                class="block shrink-0 whitespace-nowrap text-right text-sm text-ink-gray-5"
+                :datetime="notification.modified"
+              >
+                <span class="sm:hidden">{{ shortTimestamp(notification.modified) }}</span>
+                <span class="hidden sm:inline">
+                  {{ relativeTimestamp(notification.modified) }}
+                </span>
+              </time>
+            </Tooltip>
             <div
               class="mt-1.5 hidden whitespace-nowrap text-right text-sm text-ink-gray-5 sm:block"
               v-if="notificationLocation(notification)"
@@ -129,16 +137,13 @@
       </ListRow>
     </List>
 
-    <div
+    <EmptyStateBox
       v-else
-      class="mx-4 rounded-4 border border-dashed border-outline-gray-2 px-6 py-12 text-center sm:mx-3"
-    >
-      <div class="mx-auto grid size-10 place-items-center rounded-4 bg-surface-gray-2">
-        <span class="lucide-bell-check size-5 text-ink-gray-5" aria-hidden="true" />
-      </div>
-      <div class="mt-3 text-base-medium text-ink-gray-8">{{ emptyStateTitle }}</div>
-      <div class="mt-1 text-base text-ink-gray-5">{{ emptyStateDescription }}</div>
-    </div>
+      class="mx-4 sm:mx-3"
+      icon="lucide-bell-check"
+      :title="emptyStateTitle"
+      :description="emptyStateDescription"
+    />
   </div>
 </template>
 <script setup lang="ts">
@@ -158,14 +163,18 @@ import {
   usePageMeta,
 } from 'frappe-ui'
 import { List, ListRow, ListCell } from 'frappe-ui/list'
+import EmptyStateBox from '@/components/EmptyStateBox.vue'
+import LoadError from '@/components/LoadError.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
+import ReactorAvatars from '@/components/ReactorAvatars.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import { getCommunity } from '@/data/communities'
 import { onRemoteNotificationChange, unreadNotifications } from '@/data/notifications'
 import { getSpace } from '@/data/spaces'
 import { useSessionUser } from '@/data/users'
 import type { GPNotification } from '@/types/doctypes'
+import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 
 type ActiveTab = 'Unread' | 'Read'
 
@@ -174,14 +183,14 @@ type NotificationRow = GPNotification
 const activeTab = ref<ActiveTab>('Unread')
 const sessionUser = useSessionUser()
 
-const notificationFields = [
+const notificationFields: (keyof NotificationRow)[] = [
   'name',
   'from_user',
+  'reacted_by',
   'message',
   'read',
   'type',
-  'creation',
-  // Not displayed — it is what the list is ordered by.
+  // When the row last had news. The list is ordered by it and shows it.
   'modified',
   'comment',
   'discussion',
@@ -396,13 +405,26 @@ function showAvatar(notification: NotificationRow) {
   return Boolean(notification.from_user && notification.type !== 'Reaction')
 }
 
+/** The people who reacted, newest first. The list API returns the JSON field as text. */
+function reactors(notification: NotificationRow): string[] {
+  const stored: unknown = notification.reacted_by
+  const value: unknown = typeof stored === 'string' && stored ? JSON.parse(stored) : stored
+  if (!Array.isArray(value)) return []
+  return value.filter((user): user is string => typeof user === 'string')
+}
+
 function confirmMarkAllAsRead() {
-  dialog.danger({
-    title: 'Mark all as read',
-    message:
-      'This clears every unread notification at once, so nothing is left flagged for you to come back to. You cannot undo this.',
+  // The badge count, not the list: the list stops at 100 rows.
+  const count = Math.max(unreadNotifications.data ?? 0, unreadNotificationList.data?.length ?? 0)
+  dialog.confirm({
+    title: 'Mark all as read?',
+    message: `${
+      count === 1 ? 'The unread notification' : `All ${count} unread notifications`
+    } will move to Read.`,
     confirmLabel: 'Mark all as read',
-    onConfirm: () => markAllAsRead.submit(),
+    onConfirm: async () => {
+      await markAllAsRead.submit()
+    },
   })
 }
 
@@ -412,10 +434,7 @@ function useNotificationList(read: 0 | 1, cacheKey: string) {
     filters: () => ({ to_user: sessionUser.name, read }),
     fields: notificationFields,
     // `modified desc`, not `creation desc`: a reaction notification is a single row that
-    // gets re-lit in place, so ordering by `creation` left a freshly raised notification
-    // buried at its original position — unreachable once newer ones pushed it off the page.
-    // The row still *displays* `creation`, because `modified` also moves when the row is
-    // marked read and would date every read notification to the moment it was opened.
+    // gets re-lit in place, and `modified` is the time of its newest reaction.
     orderBy: 'modified desc',
     // The page has no pagination control, so the window has to be wide enough to hold a
     // realistic backlog. `useList.reload()` refetches at the current offset and appends,

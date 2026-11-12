@@ -91,22 +91,24 @@ describe('Comment actions', () => {
         cy.intercept(/commit_draft/, (request) => {
           request.continue((response) => response.setDelay(2000))
         }).as('commitDraft')
-        cy.selectDropdownOption('Comment Options', 'Edit')
-        cy.get('button[aria-label="Comment Options"]').should('not.exist')
+        cy.selectDropdownOption('Comment options', 'Edit')
+        cy.get('button[aria-label="Comment options"]').should('not.exist')
         cy.get('[contenteditable=true]')
           .clear()
           .type('This is an edited comment')
           .type('{enter}@Second{enter}', { delay: 100 }) // mention Second Member
 
         // Wait for draft auto-save to persist to server so a server-side GP Draft exists
-        cy.wait('@createDraft')
+        cy.wait('@createDraft').then(({ response }) => {
+          expect(response?.statusCode, JSON.stringify(response?.body).slice(0, 300)).to.equal(200)
+        })
 
         cy.button('Submit').click()
 
         // Regression check: options must remain unavailable while commit_draft is in flight
-        cy.get('button[aria-label="Comment Options"]').should('not.exist')
+        cy.get('button[aria-label="Comment options"]').should('not.exist')
         cy.wait('@commitDraft')
-        cy.get('button[aria-label="Comment Options"]').should('be.visible')
+        cy.get('button[aria-label="Comment options"]').should('be.visible')
         cy.get(commentSelector).contains('This is an edited comment').should('exist')
         cy.get(commentSelector).contains('Edited').should('exist')
         cy.get(`${commentSelector} [data-type="mention"][data-id="member2@example.com"]`).should(
@@ -118,7 +120,7 @@ describe('Comment actions', () => {
           method: 'DELETE',
           url: `/api/v2/document/GP%20Comment/${comment.name}`,
         }).as('deleteComment')
-        cy.selectDropdownOption('Comment Options', 'Delete')
+        cy.selectDropdownOption('Comment options', 'Delete')
         cy.dialog('button:contains("Delete")').click()
         cy.wait('@deleteComment').then(({ response }) => {
           expect(response?.statusCode, JSON.stringify(response?.body)).to.equal(202)
@@ -140,7 +142,7 @@ describe('Comment actions', () => {
       cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
 
       cy.get(commentSelector).should('be.visible')
-      cy.selectDropdownOption('Comment Options', 'Edit')
+      cy.selectDropdownOption('Comment options', 'Edit')
       cy.get(commentSelector).contains('[role="status"]', 'Loading draft…').should('be.visible')
       cy.get(commentSelector)
         .find('[contenteditable]')

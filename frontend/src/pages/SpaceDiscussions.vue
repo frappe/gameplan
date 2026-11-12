@@ -13,22 +13,19 @@
         <Button
           variant="solid"
           icon-left="lucide-plus"
-          @click="
-            router.push({
-              name: 'NewDiscussion',
-              params: { communityId: route.params.communityId },
-              query: { spaceId: spaceId },
-            })
-          "
-        >
-          Add new
-        </Button>
+          label="New discussion"
+          :route="{
+            name: 'NewDiscussion',
+            params: { communityId: route.params.communityId },
+            query: { spaceId },
+          }"
+        />
       </template>
       <template v-else-if="isBulkMoveMode">
         <Button variant="ghost" @click="cancelBulkMove">Cancel</Button>
         <Button
           variant="solid"
-          icon-left="lucide-log-out"
+          icon-left="lucide-folder-input"
           @click="showMoveDialog = true"
           :disabled="selectedDiscussions.length === 0"
         >
@@ -41,21 +38,16 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <div class="mb-4 flex items-center justify-between">
-      <SpaceTabs :spaceId="spaceId" />
-      <Select
-        class="shrink-0 !w-fit"
-        :options="discussionSortOptions"
-        v-model="discussionOrderBy"
-      />
-    </div>
+    <DiscussionFeedBar v-model="feedType" :counts="{ unread: getSpaceUnreadCount(spaceId) }" />
     <DiscussionList
       class="-mx-3"
       ref="discussionListRef"
-      :filters="() => ({ project: spaceId })"
+      :key="feedType"
+      :filters="() => ({ project: spaceId, feed_type: feedType })"
       :orderBy="() => discussionOrderBy"
-      :cacheKey="`SpaceDiscussions-${spaceId}`"
+      :cacheKey="`SpaceDiscussions-${spaceId}-${feedType}`"
       :selectable="isBulkMoveMode"
+      :empty-state="feedEmptyStates[feedType]"
       v-model:selectedDiscussions="selectedDiscussions"
     />
     <Dialog
@@ -71,7 +63,13 @@
         open-on-click
         autofocus
       />
-      <ErrorMessage class="mt-2" :message="bulkMoveDiscussions.error" />
+      <ErrorMessage
+        class="mt-2"
+        :message="
+          bulkMoveDiscussions.error &&
+          errorText(bulkMoveDiscussions.error, 'Could not move the discussions.')
+        "
+      />
       <template #actions>
         <Button
           class="w-full"
@@ -90,10 +88,10 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Combobox, Dialog, ErrorMessage, Select, useCall, toast } from 'frappe-ui'
+import { Button, Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
+import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
-import SpaceTabs from '@/components/SpaceTabs.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
 import SpaceAccessDialog from '@/components/SpaceAccessDialog.vue'
 import PushPin from '@/components/icons/PushPin.vue'
@@ -101,7 +99,8 @@ import PushPinSlash from '@/components/icons/PushPinSlash.vue'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
-import { discussionOrderBy, discussionSortOptions } from '@/data/discussionSort'
+import { discussionOrderBy } from '@/data/discussionSort'
+import { feedEmptyStates, type FeedType } from '@/data/discussionFeeds'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
@@ -110,14 +109,12 @@ import {
   useSpacePermissions,
   canPostInSpace,
   spaces,
-  hasJoined,
-  joinSpace,
-  confirmLeaveSpace,
+  getSpaceUnreadCount,
   markAllAsRead,
   archiveSpace,
   unarchiveSpace,
 } from '@/data/spaces'
-import { copyToClipboard } from '@/utils'
+import { copyToClipboard, errorText } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
 
 interface BulkUpdateResponse {
@@ -130,6 +127,7 @@ interface BulkUpdateResponse {
 
 const props = defineProps<{
   spaceId: string
+  feedType?: FeedType
 }>()
 
 const route = useRoute()
@@ -144,13 +142,11 @@ const {
   isArchived,
   canEditSettings,
   canManageAccess,
-  canChangeMembership,
   canMoveDiscussions,
 } = useSpacePermissions(() => props.spaceId)
 // Not `canEditSettings`: that one is about administering the space, and posting is open
 // to every member of a live space — but not to a guest, who cannot start a discussion.
 const canStartDiscussion = computed(() => canPostInSpace(currentSpace.value))
-const isJoined = computed(() => hasJoined(props.spaceId))
 const showSpaceAccessDialog = ref(false)
 
 // The space's community, so the "Settings" shortcut can jump to its Spaces admin
@@ -159,60 +155,87 @@ const sessionUser = useSessionUser()
 const community = useCommunity(() => currentSpace.value?.team)
 const canManageCurrentCommunity = computed(() => canManageCommunity(community.value, sessionUser))
 
+// The space's feed lives in the path, as on the community feed, so a tab survives a reload
+// and Back. The router only lets a known feed type through.
+const feedType = computed<FeedType>({
+  get: () => props.feedType ?? 'recent',
+  set(feed) {
+    if (feed !== feedType.value) router.push(feedRoute(feed))
+  },
+})
+
+function feedRoute(feedType: FeedType) {
+  const params = { communityId: route.params.communityId, spaceId: props.spaceId }
+  if (feedType === 'recent') return { name: 'SpaceDiscussions', params }
+  return { name: 'SpaceDiscussionsTab', params: { ...params, feedType } }
+}
+
+// Grouped as everyday actions, managing the space, then archiving.
 const spaceActions = computed(() => [
   {
-    label: isSpacePinned(props.spaceId) ? 'Unpin space' : 'Pin space',
-    icon: isSpacePinned(props.spaceId) ? PushPinSlash : PushPin,
-    onClick: () => toggleSpacePinned(props.spaceId),
+    group: 'Space',
+    hideLabel: true,
+    options: [
+      {
+        label: isSpacePinned(props.spaceId) ? 'Unpin space' : 'Pin space',
+        icon: isSpacePinned(props.spaceId) ? PushPinSlash : PushPin,
+        onClick: () => toggleSpacePinned(props.spaceId),
+      },
+      {
+        label: 'Copy link',
+        icon: 'lucide-link',
+        onClick: () => copyToClipboard(window.location.href),
+      },
+      {
+        label: 'Mark all as read…',
+        icon: 'lucide-check',
+        onClick: () =>
+          currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
+      },
+    ],
   },
   {
-    label: 'Settings',
-    icon: 'lucide-settings',
-    onClick: () => showCommunitiesSettings(currentSpace.value?.team, 'spaces'),
-    condition: () => canManageCurrentCommunity.value,
+    group: 'Manage',
+    hideLabel: true,
+    options: [
+      {
+        label: 'Settings…',
+        icon: 'lucide-settings',
+        onClick: () => showCommunitiesSettings(currentSpace.value?.team, 'spaces'),
+        condition: () => canManageCurrentCommunity.value,
+      },
+      {
+        label: 'Manage access…',
+        icon: 'lucide-users',
+        onClick: () => (showSpaceAccessDialog.value = true),
+        condition: () => canManageAccess.value,
+      },
+      {
+        label: 'Move discussions',
+        icon: 'lucide-folder-input',
+        onClick: () => (isBulkMoveMode.value = true),
+        condition: () => canMoveDiscussions.value,
+      },
+    ],
   },
   {
-    label: 'Copy link',
-    icon: 'lucide-link',
-    onClick: () => copyToClipboard(window.location.href),
-  },
-  {
-    label: 'Mark all as read',
-    icon: 'lucide-check',
-    onClick: () => currentSpace.value && markAllAsRead([props.spaceId], currentSpace.value.title),
-  },
-  {
-    label: isJoined.value ? 'Leave space' : 'Join space',
-    icon: isJoined.value ? 'lucide-log-out' : 'lucide-log-in',
-    onClick: () => {
-      if (!currentSpace.value) return
-      return isJoined.value ? confirmLeaveSpace(currentSpace.value) : joinSpace(currentSpace.value)
-    },
-    condition: () => canChangeMembership.value,
-  },
-  {
-    label: 'Manage access',
-    icon: 'lucide-users',
-    onClick: () => (showSpaceAccessDialog.value = true),
-    condition: () => canManageAccess.value,
-  },
-  {
-    label: 'Move discussions',
-    icon: 'lucide-log-out',
-    onClick: () => (isBulkMoveMode.value = true),
-    condition: () => canMoveDiscussions.value,
-  },
-  {
-    label: 'Archive',
-    icon: 'lucide-archive',
-    onClick: () => currentSpace.value && archiveSpace(currentSpace.value),
-    condition: () => canEditSettings.value,
-  },
-  {
-    label: 'Unarchive',
-    icon: 'lucide-archive-restore',
-    onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
-    condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
+    group: 'Archive',
+    hideLabel: true,
+    options: [
+      {
+        label: 'Archive…',
+        icon: 'lucide-archive',
+        onClick: () =>
+          currentSpace.value && archiveSpace(currentSpace.value, { fromSpacePage: true }),
+        condition: () => canEditSettings.value,
+      },
+      {
+        label: 'Unarchive',
+        icon: 'lucide-archive-restore',
+        onClick: () => currentSpace.value && unarchiveSpace(currentSpace.value),
+        condition: () => !readOnlyMode && isArchived.value && canManageAccess.value,
+      },
+    ],
   },
 ])
 const selectedSpaceTitle = computed(() => {
@@ -289,8 +312,8 @@ function moveDiscussions() {
       showMoveDialog.value = false
       isBulkMoveMode.value = false
     })
-    .catch(() => {
-      toast.error(bulkMoveDiscussions.error || 'Failed to move discussions')
+    .catch((error: unknown) => {
+      toast.error(errorText(error, 'Could not move the discussions.'))
     })
 }
 </script>
