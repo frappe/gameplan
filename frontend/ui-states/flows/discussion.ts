@@ -68,11 +68,16 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     composerOpen: {
-      meta: { description: 'The reply composer open with a reply typed in, Discard and Submit under it.' },
+      meta: {
+        description: 'The reply composer open with a reply typed in, Discard and Submit under it.',
+      },
       on: { SUBMIT: 'posting' },
     },
     posting: {
-      meta: { description: 'The reply is being saved: the Submit button spins, Discard is disabled, and the text stays in the editor.' },
+      meta: {
+        description:
+          'The reply is being saved: the Submit button spins, Discard is disabled, and the text stays in the editor.',
+      },
       on: { POST_FAILS: 'postFailed' },
     },
     postFailed: {
@@ -202,7 +207,9 @@ export const discussion = defineFlow<Event>({
       await waitForThread(scene)
     },
     async FAILS(scene) {
-      const failed = scene.page.waitForResponse((r) => DOC_URL(discussionIds.get(scene) as string).test(r.url()))
+      const failed = scene.page.waitForResponse((r) =>
+        DOC_URL(discussionIds.get(scene) as string).test(r.url()),
+      )
       await holds.get(scene)?.abort(500)
       expect((await failed).status()).toBe(500)
       // No error box appears: the thread renders from the copy already in the client's store.
@@ -214,7 +221,9 @@ export const discussion = defineFlow<Event>({
       await reply(scene, priya, discussionIds.get(scene) as string, [REPLY_TEXT])
       await scene.page.reload()
       await waitForThread(scene)
-      await expect(scene.page.getByRole('separator').filter({ hasText: 'New comments' })).toBeVisible()
+      await expect(
+        scene.page.getByRole('separator').filter({ hasText: 'New comments' }),
+      ).toBeVisible()
     },
     async OPEN_COMPOSER(scene) {
       await scene.page.getByRole('button', { name: 'Add a comment' }).click()
@@ -267,7 +276,11 @@ export const discussion = defineFlow<Event>({
     },
     async CONFIRM_CLOSE(scene) {
       // The dialog's X is also labelled "Close"; the confirm button is the one with the text.
-      await scene.page.getByRole('dialog').locator('button').filter({ hasText: /^\s*Close\s*$/ }).click()
+      await scene.page
+        .getByRole('dialog')
+        .locator('button')
+        .filter({ hasText: /^\s*Close\s*$/ })
+        .click()
       await expect(scene.page.getByRole('dialog')).toBeHidden()
       await expect(scene.page.getByRole('button', { name: 'Add a comment' })).toBeHidden()
       await expect(scene.page.getByText('This discussion is closed', { exact: true })).toBeVisible()
@@ -275,7 +288,9 @@ export const discussion = defineFlow<Event>({
     },
     async DELETE(scene) {
       await scene.page.getByRole('menuitem', { name: 'Delete…' }).click()
-      await expect(scene.page.getByRole('dialog').getByText('Delete this discussion?')).toBeVisible()
+      await expect(
+        scene.page.getByRole('dialog').getByText('Delete this discussion?'),
+      ).toBeVisible()
     },
     async OPEN_POLL(scene) {
       const name = await scene.find('GP Discussion', { title: POLL_POST_TITLE })

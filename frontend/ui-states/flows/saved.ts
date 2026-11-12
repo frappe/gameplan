@@ -38,18 +38,21 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
   initial: 'bookmarksSkeleton',
   states: {
     bookmarksSkeleton: {
-      meta: { description: 'Bookmarks while the request is out: three skeleton rows under the header.' },
+      meta: {
+        description: 'Bookmarks while the request is out: three skeleton rows under the header.',
+      },
       on: { LOADS: 'bookmarks', FAILS: 'bookmarksFailed' },
     },
     bookmarksFailed: {
       meta: {
-        description: 'Bookmarks after the request failed: "Could not load discussions." and a Retry button where the rows would be.',
+        description:
+          'Bookmarks after the request failed: "Could not load discussions." and a Retry button where the rows would be.',
       },
     },
     bookmarks: {
       meta: {
         description:
-          'Maya\'s five bookmarks across communities, each row showing who wrote the post, where, its opening text and its reply count.',
+          "Maya's five bookmarks across communities, each row showing who wrote the post, where, its opening text and its reply count.",
       },
       on: {
         OPEN_BOOKMARK_MENU: 'bookmarkMenu',
@@ -67,7 +70,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { REMOVE_BOOKMARK: 'bookmarkRemoved' },
     },
     bookmarkRemoved: {
-      meta: { description: 'Back on Bookmarks after removing one from the post\'s menu: four rows, and no toast on either page.' },
+      meta: {
+        description:
+          "Back on Bookmarks after removing one from the post's menu: four rows, and no toast on either page.",
+      },
     },
     bookmarkHover: {
       meta: {
@@ -83,14 +89,23 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     bookmarksEmpty: {
-      meta: { description: 'Felix has bookmarked nothing: a bookmark icon, "No bookmarks" and "Bookmark a discussion from its ••• menu to find it here."' },
+      meta: {
+        description:
+          'Felix has bookmarked nothing: a bookmark icon, "No bookmarks" and "Bookmark a discussion from its ••• menu to find it here."',
+      },
     },
     drafts: {
-      meta: { description: 'Drafts: Maya\'s one discussion draft, with her avatar, a second line that starts with "Community / Space:" before a text preview, and when it was last edited.' },
+      meta: {
+        description:
+          'Drafts: Maya\'s one discussion draft, with her avatar, a second line that starts with "Community / Space:" before a text preview, and when it was last edited.',
+      },
       on: { OPEN_DRAFT: 'draftOpened', SELECT_DRAFT: 'draftSelected' },
     },
     draftOpened: {
-      meta: { description: 'Opening the draft puts it back in the new-discussion composer, title and body as she left them.' },
+      meta: {
+        description:
+          'Opening the draft puts it back in the new-discussion composer, title and body as she left them.',
+      },
       on: { BACK_TO_DRAFTS: 'draftLeft' },
     },
     draftLeft: {
@@ -107,11 +122,17 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { DELETE: 'confirmDelete' },
     },
     confirmDelete: {
-      meta: { description: 'The confirm before deleting: "Delete 1 draft?", "The draft will be deleted. This can\'t be undone.", with Cancel and a red Delete. No icon in the title.' },
+      meta: {
+        description:
+          'The confirm before deleting: "Delete 1 draft?", "The draft will be deleted. This can\'t be undone.", with Cancel and a red Delete. No icon in the title.',
+      },
       on: { CONFIRM: 'draftsEmpty' },
     },
     draftsEmpty: {
-      meta: { description: 'After the delete: a "Draft deleted" toast, and a full-width box with an icon, "No drafts" and "Discussions you start and don\'t publish are saved here."' },
+      meta: {
+        description:
+          'After the delete: a "Draft deleted" toast, and a full-width box with an icon, "No drafts" and "Discussions you start and don\'t publish are saved here."',
+      },
     },
     draftsLoading: {
       meta: {
@@ -131,7 +152,8 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
 
 const holds = new WeakMap<Scene, Hold>()
 
-const BOOKMARKS_URL = '**/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions*'
+const BOOKMARKS_URL =
+  '**/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions*'
 const DRAFTS_URL = '**/api/v2/method/gameplan.gameplan.doctype.gp_draft.gp_draft.get_my_drafts*'
 const DRAFT_TITLE = 'Next Fest sprint, week 1 plan (draft)'
 
@@ -184,7 +206,9 @@ export const saved = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
     async OPEN_BOOKMARK_MENU(scene) {
@@ -197,7 +221,9 @@ export const saved = defineFlow<Event>({
     async REMOVE_BOOKMARK(scene) {
       await scene.page.getByRole('menuitem', { name: 'Remove bookmark' }).click()
       await scene.page.getByRole('button', { name: 'Discussion options' }).click()
-      await expect(scene.page.getByRole('menuitem', { name: 'Bookmark', exact: true })).toBeVisible()
+      await expect(
+        scene.page.getByRole('menuitem', { name: 'Bookmark', exact: true }),
+      ).toBeVisible()
       await scene.page.keyboard.press('Escape')
       await scene.page.goBack()
       await expect(scene.page).toHaveURL(/\/bookmarks$/)
@@ -235,7 +261,9 @@ export const saved = defineFlow<Event>({
       await expect(scene.page.getByText('First Next Fest sprint')).toBeVisible()
     },
     async BACK_TO_DRAFTS(scene) {
-      const reloaded = scene.page.waitForResponse((response) => response.url().includes('get_my_drafts') && response.ok())
+      const reloaded = scene.page.waitForResponse(
+        (response) => response.url().includes('get_my_drafts') && response.ok(),
+      )
       await scene.page.goBack()
       await expect(scene.page).toHaveURL(/\/drafts$/)
       await reloaded
@@ -254,7 +282,9 @@ export const saved = defineFlow<Event>({
     async DELETE(scene) {
       await scene.page.getByRole('button', { name: 'Delete 1 draft' }).click()
       await expect(scene.page.getByRole('dialog')).toContainText('Delete 1 draft?')
-      await expect(scene.page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).toBeVisible()
+      await expect(
+        scene.page.getByRole('dialog').getByRole('button', { name: 'Cancel' }),
+      ).toBeVisible()
     },
     async CONFIRM(scene) {
       await scene.page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
@@ -270,11 +300,15 @@ export const saved = defineFlow<Event>({
       await expect(scene.page.getByLabel('Loading draft').first()).toBeVisible()
     },
     async DRAFTS_FAIL(scene) {
-      const failed = scene.page.waitForResponse((response) => response.url().includes('get_my_drafts') && response.status() === 500)
+      const failed = scene.page.waitForResponse(
+        (response) => response.url().includes('get_my_drafts') && response.status() === 500,
+      )
       await holds.get(scene)?.abort(500)
       await failed
       // The transport retries server errors with backoff before the list gives up.
-      await expect(scene.page.getByText('Could not load your drafts.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load your drafts.')).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
   },

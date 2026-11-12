@@ -68,7 +68,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     unreadTab: {
       meta: {
         description:
-          'The Unread tab of QA & Playtests (`/discussions/unread`): only the smoke-test thread Maya has not opened, with the space\'s unread count after the tab label.',
+          "The Unread tab of QA & Playtests (`/discussions/unread`): only the smoke-test thread Maya has not opened, with the space's unread count after the tab label.",
       },
     },
     markAllReadConfirm: {
@@ -104,7 +104,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     empty: {
-      meta: { description: 'A new space with no discussions yet: an icon, "No discussions yet" and "New discussions will show up here." under the tabs.' },
+      meta: {
+        description:
+          'A new space with no discussions yet: an icon, "No discussions yet" and "New discussions will show up here." under the tabs.',
+      },
     },
     notFound: {
       meta: {
@@ -172,13 +175,17 @@ export const space = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
     },
     async OPEN_MENU(scene) {
       await openMenu(scene)
       await expect(scene.page.getByRole('menuitem', { name: 'Archive…' })).toBeVisible()
-      await expect(scene.page.getByRole('menuitem', { name: /Join space|Leave space/ })).toHaveCount(0)
+      await expect(
+        scene.page.getByRole('menuitem', { name: /Join space|Leave space/ }),
+      ).toHaveCount(0)
     },
     async SHOW_UNREAD(scene) {
       await scene.page.getByRole('radio', { name: /^Unread/ }).click()
@@ -189,7 +196,9 @@ export const space = defineFlow<Event>({
     },
     async MARK_ALL_READ(scene) {
       await pick(scene, 'Mark all as read…')
-      await expect(dialog(scene).getByText(`Mark all discussions in ${SPACE_TITLE} as read?`)).toBeVisible()
+      await expect(
+        dialog(scene).getByText(`Mark all discussions in ${SPACE_TITLE} as read?`),
+      ).toBeVisible()
     },
     async CONFIRM_READ(scene) {
       const marked = scene.page.waitForResponse((r) => r.url().includes('mark_all_as_read'))
@@ -233,7 +242,9 @@ export const space = defineFlow<Event>({
       const spacesList = await scene.hold(SPACES_LIST_URL)
       await spacesList.abort(500)
       await openSpace(scene, spaceIds.get(scene) as string)
-      await expect(scene.page.getByRole('button', { name: 'Retry' })).toHaveCount(2, { timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toHaveCount(2, {
+        timeout: 30_000,
+      })
       await expect(scene.page.getByText('Space not found')).toHaveCount(0)
     },
   },

@@ -52,7 +52,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     submitting: {
-      meta: { description: 'Continue was clicked and the setup request is out: the button spins, the fields stay editable.' },
+      meta: {
+        description:
+          'Continue was clicked and the setup request is out: the button spins, the fields stay editable.',
+      },
       on: { SUCCEEDS: 'done', FAILS: 'failed' },
     },
     failed: {
@@ -62,7 +65,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     done: {
-      meta: { description: "Setup finished: the new community's feed, with Engineering and General in the sidebar, the All discussions / Participating / Unread tabs, and a \"No discussions yet\" box." },
+      meta: {
+        description:
+          'Setup finished: the new community\'s feed, with Engineering and General in the sidebar, the All discussions / Participating / Unread tabs, and a "No discussions yet" box.',
+      },
     },
     alreadySetUp: {
       meta: {
@@ -126,7 +132,8 @@ async function createCommunityElsewhere(scene: Scene): Promise<void> {
 export const onboarding = defineFlow<Event>({
   id: 'onboarding',
   title: 'Onboarding and no communities',
-  source: 'frontend/src/pages/Onboarding.vue, frontend/src/pages/NoCommunities.vue, frontend/src/router.ts (getDesktopHomeRoute)',
+  source:
+    'frontend/src/pages/Onboarding.vue, frontend/src/pages/NoCommunities.vue, frontend/src/router.ts (getDesktopHomeRoute)',
   machine,
   async enter(scene) {
     await scene.seed()
@@ -144,7 +151,9 @@ export const onboarding = defineFlow<Event>({
     async MISTYPE_EMAIL(scene) {
       await emailsField(scene).fill('nadia@moonhollow.studio, omar@moonhollow')
       await emailsField(scene).blur()
-      await expect(scene.page.getByText('omar@moonhollow is not a valid email address')).toBeVisible()
+      await expect(
+        scene.page.getByText('omar@moonhollow is not a valid email address'),
+      ).toBeVisible()
     },
     async SUBMIT(scene) {
       holds.set(scene, await scene.hold(ONBOARDING_URL))
@@ -160,12 +169,16 @@ export const onboarding = defineFlow<Event>({
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(continueButton(scene)).toBeEnabled({ timeout: 30_000 })
-      await expect(scene.page.getByText(/Could not set up Gameplan|Something went wrong/)).toBeVisible()
+      await expect(
+        scene.page.getByText(/Could not set up Gameplan|Something went wrong/),
+      ).toBeVisible()
     },
     async SUBMIT_AFTER_SETUP_ELSEWHERE(scene) {
       await createCommunityElsewhere(scene)
       await continueButton(scene).click()
-      await expect(scene.page.getByText('This site is already set up')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('This site is already set up')).toBeVisible({
+        timeout: 30_000,
+      })
       await scene.page.mouse.move(700, 20)
     },
     async COMMUNITY_CREATED_ELSEWHERE(scene) {
@@ -175,16 +188,22 @@ export const onboarding = defineFlow<Event>({
     async ADMIN_VISITS(scene) {
       // Administrator created the community, which made them a member; leave it first.
       const team = await scene.find('GP Team', { title: COMMUNITY })
-      await scene.method(scene.admin, 'GP Team', team, 'remove_member', { user: scene.people.admin.email })
+      await scene.method(scene.admin, 'GP Team', team, 'remove_member', {
+        user: scene.people.admin.email,
+      })
       await scene.signIn(scene.people.admin)
       await open(scene, '/', scene.page.getByRole('button', { name: 'Manage communities' }))
     },
     async COMMUNITY_MADE_PRIVATE(scene) {
       const team = await scene.find('GP Team', { title: COMMUNITY })
-      const response = await scene.admin.put(`/api/resource/GP%20Team/${encodeURIComponent(team)}`, {
-        data: { is_private: 1 },
-      })
-      if (!response.ok()) throw new Error(`Making ${COMMUNITY} private failed: ${response.status()}`)
+      const response = await scene.admin.put(
+        `/api/resource/GP%20Team/${encodeURIComponent(team)}`,
+        {
+          data: { is_private: 1 },
+        },
+      )
+      if (!response.ok())
+        throw new Error(`Making ${COMMUNITY} private failed: ${response.status()}`)
       await open(scene, '/', scene.page.getByText('Welcome to Gameplan'))
     },
   },

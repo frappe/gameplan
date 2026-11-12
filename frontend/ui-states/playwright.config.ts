@@ -11,7 +11,10 @@ import { resolve } from 'node:path'
  * site, so never point it at a site with data you want to keep.
  */
 const baseURL = process.env.BASE_URL
-if (!baseURL) throw new Error('BASE_URL must name the dev site to capture, such as http://gp-ui-states.localhost:8000')
+if (!baseURL)
+  throw new Error(
+    'BASE_URL must name the dev site to capture, such as http://gp-ui-states.localhost:8000',
+  )
 
 export const OUT_DIR = resolve(import.meta.dirname, 'out')
 
@@ -32,5 +35,10 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
 })

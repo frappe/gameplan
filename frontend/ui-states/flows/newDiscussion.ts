@@ -30,10 +30,18 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
         description:
           'A blank composer in Common Room: "New discussion" in the breadcrumb, a "Select space" picker with a folder icon in the header, an empty title, and Publish disabled.',
       },
-      on: { OPEN_SPACE_PICKER: 'spacePicker', WRITE: 'filled', WRITE_OFFLINE: 'saveFailed', OPEN_DRAFT: 'draftLoading' },
+      on: {
+        OPEN_SPACE_PICKER: 'spacePicker',
+        WRITE: 'filled',
+        WRITE_OFFLINE: 'saveFailed',
+        OPEN_DRAFT: 'draftLoading',
+      },
     },
     spacePicker: {
-      meta: { description: 'The space picker open: a "Search spaces" box over a list of every space Maya can post in, grouped by community.' },
+      meta: {
+        description:
+          'The space picker open: a "Search spaces" box over a list of every space Maya can post in, grouped by community.',
+      },
     },
     filled: {
       meta: {
@@ -49,29 +57,41 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     publishing: {
-      meta: { description: 'Publish is in flight: the Publish button spins at its usual width, and the solid chevron beside it ignores clicks.' },
+      meta: {
+        description:
+          'Publish is in flight: the Publish button spins at its usual width, and the solid chevron beside it ignores clicks.',
+      },
       on: { PUBLISHED: 'posted', PUBLISH_FAILS: 'publishFailed' },
     },
     publishFailed: {
-      meta: { description: 'Publishing failed: a red alert above the title repeats the server\'s message ("Something went wrong.") with a Retry button, and the draft stays as it was.' },
+      meta: {
+        description:
+          'Publishing failed: a red alert above the title repeats the server\'s message ("Something went wrong.") with a Retry button, and the draft stays as it was.',
+      },
     },
     posted: {
-      meta: { description: 'Published: the composer is replaced by the new discussion in Releases.' },
+      meta: {
+        description: 'Published: the composer is replaced by the new discussion in Releases.',
+      },
     },
     leftToDrafts: {
       meta: {
-        description: 'Leaving with unsaved text asks nothing: the draft flushes and Drafts lists it with the rest.',
+        description:
+          'Leaving with unsaved text asks nothing: the draft flushes and Drafts lists it with the rest.',
       },
     },
     draftLoading: {
       meta: {
         description:
-          "Opening Maya's saved draft while it loads: \"Loading draft…\" over an empty title, \"Loading…\" in the breadcrumb after Drafts, a dimmed toolbar and space picker, and no Publish button.",
+          'Opening Maya\'s saved draft while it loads: "Loading draft…" over an empty title, "Loading…" in the breadcrumb after Drafts, a dimmed toolbar and space picker, and no Publish button.',
       },
       on: { DRAFT_LOADS: 'draftRestored', DRAFT_FAILS: 'draftLoadFailed' },
     },
     draftRestored: {
-      meta: { description: "Maya's saved draft restored: the Next Fest sprint plan in Releases, ready to keep editing." },
+      meta: {
+        description:
+          "Maya's saved draft restored: the Next Fest sprint plan in Releases, ready to keep editing.",
+      },
     },
     draftLoadFailed: {
       meta: {
@@ -184,7 +204,11 @@ export const newDiscussion = defineFlow<Event>({
     },
     async LEAVE(scene) {
       await title(scene).fill(`${TITLE} (Friday at the latest)`)
-      await scene.page.getByRole('link', { name: 'Drafts' }).filter({ visible: true }).first().click()
+      await scene.page
+        .getByRole('link', { name: 'Drafts' })
+        .filter({ visible: true })
+        .first()
+        .click()
       await expect(scene.page).toHaveURL(/\/drafts/)
       await expect(scene.page.getByText(`${TITLE} (Friday at the latest)`)).toBeVisible()
       await scene.page.mouse.move(700, 20)
@@ -194,7 +218,9 @@ export const newDiscussion = defineFlow<Event>({
       holds.set(scene, await scene.hold(DRAFT_READ))
       await scene.goto(`/community/${COMMUNITY}/new-discussion?draft=${name}`)
       await expect(scene.page.getByText('Loading draft…')).toBeVisible()
-      await expect(scene.page.getByText('Loading…', { exact: true }).filter({ visible: true })).toBeVisible()
+      await expect(
+        scene.page.getByText('Loading…', { exact: true }).filter({ visible: true }),
+      ).toBeVisible()
     },
     async DRAFT_LOADS(scene) {
       await holds.get(scene)?.release()
@@ -203,7 +229,9 @@ export const newDiscussion = defineFlow<Event>({
     },
     async DRAFT_FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Could not load this draft')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load this draft')).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
       await expect(scene.page.getByText('Loading draft…')).toBeHidden()
     },

@@ -28,19 +28,29 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
   initial: 'empty',
   states: {
     empty: {
-      meta: { description: 'No query yet: the search box with "Search discussions and comments", the four filter buttons (Author, Space, Community, Tags), and nothing below them.' },
+      meta: {
+        description:
+          'No query yet: the search box with "Search discussions and comments", the four filter buttons (Author, Space, Community, Tags), and nothing below them.',
+      },
       on: { TYPE: 'typed', SEARCH_MISS: 'noResults' },
     },
     typed: {
-      meta: { description: 'A query typed but not sent: "Press enter to search" under the filters.' },
+      meta: {
+        description: 'A query typed but not sent: "Press enter to search" under the filters.',
+      },
       on: { SUBMIT: 'searching' },
     },
     searching: {
-      meta: { description: 'The search request is out: a spinner with "Searching…" and no rows yet.' },
+      meta: {
+        description: 'The search request is out: a spinner with "Searching…" and no rows yet.',
+      },
       on: { LOADS: 'results', FAILS: 'failed' },
     },
     failed: {
-      meta: { description: 'The search failed: "Search failed. Try again." with a Retry button where the results would be, and no summary line.' },
+      meta: {
+        description:
+          'The search failed: "Search failed. Try again." with a Retry button where the results would be, and no summary line.',
+      },
       on: { RETRY: 'results' },
     },
     results: {
@@ -55,14 +65,23 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     noResults: {
-      meta: { description: 'A query with no matches: "0 matches" in the summary line and a "No results" box suggesting different words or fewer filters.' },
+      meta: {
+        description:
+          'A query with no matches: "0 matches" in the summary line and a "No results" box suggesting different words or fewer filters.',
+      },
     },
     authorMenu: {
-      meta: { description: 'The Author filter open over the results: every user, with a count of all their indexed posts (not of matches for this query) beside the name.' },
+      meta: {
+        description:
+          'The Author filter open over the results: every user, with a count of all their indexed posts (not of matches for this query) beside the name.',
+      },
       on: { PICK_AUTHOR: 'byAuthor', PICK_ABSENT_AUTHOR: 'filterEmpty' },
     },
     byAuthor: {
-      meta: { description: 'Filtered to Lena Sorensen: her four capsule posts, tasks and replies, with "1 filter" and a "Clear filters" button.' },
+      meta: {
+        description:
+          'Filtered to Lena Sorensen: her four capsule posts, tasks and replies, with "1 filter" and a "Clear filters" button.',
+      },
     },
     filterEmpty: {
       meta: {
@@ -71,10 +90,16 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     bySpace: {
-      meta: { description: 'Filtered to the Art space: the Space button names it, only Art results remain, and the summary says "1 filter" with "Clear filters".' },
+      meta: {
+        description:
+          'Filtered to the Art space: the Space button names it, only Art results remain, and the summary says "1 filter" with "Clear filters".',
+      },
     },
     byCommunity: {
-      meta: { description: 'Filtered to Community & Marketing: only results from its spaces remain, with "1 filter" and "Clear filters".' },
+      meta: {
+        description:
+          'Filtered to Community & Marketing: only results from its spaces remain, with "1 filter" and "Clear filters".',
+      },
     },
     refining: {
       meta: {
@@ -155,7 +180,9 @@ export const search = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(summary(scene)).toBeHidden()
     },
     async RETRY(scene) {
@@ -179,7 +206,10 @@ export const search = defineFlow<Event>({
       await filtered(scene, /^[1-9]\d* match/)
     },
     async PICK_ABSENT_AUTHOR(scene) {
-      await scene.page.getByRole('option', { name: /^Felix Novak/ }).filter({ hasText: /\d/ }).click()
+      await scene.page
+        .getByRole('option', { name: /^Felix Novak/ })
+        .filter({ hasText: /\d/ })
+        .click()
       await scene.page.keyboard.press('Escape')
       await filtered(scene, /^0 matches/)
     },

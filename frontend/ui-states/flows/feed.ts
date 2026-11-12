@@ -25,7 +25,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
   initial: 'skeleton',
   states: {
     skeleton: {
-      meta: { description: 'The feed request is still out: three skeleton rows under the tabs and the sort.' },
+      meta: {
+        description:
+          'The feed request is still out: three skeleton rows under the tabs and the sort.',
+      },
       on: { LOADS: 'recent', FAILS: 'failed' },
     },
     failed: {
@@ -46,17 +49,27 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
         description:
           'All discussions in Common Room, sorted by "Latest activity": pinned posts on top, then every post, newest activity first. The header button reads "New discussion".',
       },
-      on: { SHOW_PARTICIPATING: 'participating', SHOW_UNREAD: 'unread', SORT_BY_CREATED: 'sortedByCreated' },
+      on: {
+        SHOW_PARTICIPATING: 'participating',
+        SHOW_UNREAD: 'unread',
+        SORT_BY_CREATED: 'sortedByCreated',
+      },
     },
     participating: {
       meta: { description: 'The Participating tab: posts Maya wrote or replied to.' },
     },
     unread: {
-      meta: { description: 'The Unread tab: posts by others that Maya has not opened, with the unread count after the tab label.' },
+      meta: {
+        description:
+          'The Unread tab: posts by others that Maya has not opened, with the unread count after the tab label.',
+      },
       on: { CATCH_UP: 'unreadEmpty' },
     },
     unreadEmpty: {
-      meta: { description: 'The Unread tab once everything is read: a check icon, "You\'re caught up" and "Discussions with new activity will show up here.".' },
+      meta: {
+        description:
+          'The Unread tab once everything is read: a check icon, "You\'re caught up" and "Discussions with new activity will show up here.".',
+      },
     },
     sortedByCreated: {
       meta: {
@@ -77,7 +90,10 @@ function rows(scene: Scene) {
 }
 
 async function openTab(scene: Scene, label: string) {
-  await scene.page.getByRole('radio', { name: new RegExp(`^${label}`) }).first().click()
+  await scene.page
+    .getByRole('radio', { name: new RegExp(`^${label}`) })
+    .first()
+    .click()
 }
 
 export const feed = defineFlow<Event>({
@@ -98,7 +114,9 @@ export const feed = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByText('Could not load discussions.')).toBeVisible({
+        timeout: 30_000,
+      })
       await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible()
       await expect(scene.page.getByRole('button', { name: 'Load more' })).toBeHidden()
     },

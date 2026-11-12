@@ -2,7 +2,14 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, resolve } from 'node:path'
-import { request, type APIRequestContext, type Browser, type BrowserContext, type Page, type Route } from '@playwright/test'
+import {
+  request,
+  type APIRequestContext,
+  type Browser,
+  type BrowserContext,
+  type Page,
+  type Route,
+} from '@playwright/test'
 
 const VIEWPORT = { width: 1440, height: 900 }
 /** Enough for frappe-ui transitions to finish. */
@@ -132,7 +139,11 @@ export interface Scene {
   /** The first document's name matching the filters, or throws. */
   find(doctype: string, filters: Record<string, unknown>): Promise<string>
   /** Calls a whitelisted method with POST and returns its `message`. */
-  call<T = unknown>(api: APIRequestContext, method: string, args?: Record<string, unknown>): Promise<T>
+  call<T = unknown>(
+    api: APIRequestContext,
+    method: string,
+    args?: Record<string, unknown>,
+  ): Promise<T>
   /** Runs a whitelisted document method with POST and returns its result. */
   method<T = unknown>(
     api: APIRequestContext,
@@ -142,7 +153,11 @@ export interface Scene {
     args?: Record<string, unknown>,
   ): Promise<T>
   /** Inserts a document and returns it. */
-  insert<T = Record<string, unknown>>(api: APIRequestContext, doctype: string, doc: Record<string, unknown>): Promise<T>
+  insert<T = Record<string, unknown>>(
+    api: APIRequestContext,
+    doctype: string,
+    doc: Record<string, unknown>,
+  ): Promise<T>
   /** Opens a path under `/g`. */
   goto(path: string): Promise<void>
   /** Holds requests whose URL matches until released or aborted. */
@@ -203,7 +218,10 @@ export async function openScene(browser: Browser, baseURL: string, label: string
       await signInAs(api, person)
     },
     space(community = ids.community ?? communities.commonRoom) {
-      space ??= insert<{ name: string }>(admin, 'GP Project', { title: label, team: community }).then((doc) => ({
+      space ??= insert<{ name: string }>(admin, 'GP Project', {
+        title: label,
+        team: community,
+      }).then((doc) => ({
         name: String(doc.name),
         title: label,
       }))
@@ -278,7 +296,15 @@ function loadDemo(baseURL: string): void {
   settleJobs(baseURL)
   // A past `seed()` gave the test personas cast names; left in place they show up twice in people pickers.
   const emails = JSON.stringify(Object.values(testPeople).map((person) => person.email))
-  frappe(baseURL, 'execute', 'frappe.delete_doc', '--args', `["User", ${emails}]`, '--kwargs', '{"force": True, "ignore_missing": True}')
+  frappe(
+    baseURL,
+    'execute',
+    'frappe.delete_doc',
+    '--args',
+    `["User", ${emails}]`,
+    '--kwargs',
+    '{"force": True, "ignore_missing": True}',
+  )
   frappe(baseURL, 'execute', 'gameplan.demo.demo.generate', '--kwargs', '{"force": True}')
   settleJobs(baseURL)
 }
@@ -299,10 +325,18 @@ function frappe(baseURL: string, ...args: string[]): void {
   const site = new URL(baseURL).hostname
   for (let attempt = 1; ; attempt++) {
     try {
-      execFileSync(PILOT, ['-b', BENCH, 'frappe', '--site', site, ...args], { stdio: 'pipe', timeout: 120_000 })
+      execFileSync(PILOT, ['-b', BENCH, 'frappe', '--site', site, ...args], {
+        stdio: 'pipe',
+        timeout: 120_000,
+      })
       return
     } catch (error) {
-      const { stdout, stderr, status, signal } = error as { stdout?: Buffer; stderr?: Buffer; status?: number; signal?: string }
+      const { stdout, stderr, status, signal } = error as {
+        stdout?: Buffer
+        stderr?: Buffer
+        status?: number
+        signal?: string
+      }
       const output = `${stderr ?? ''}\n${stdout ?? ''}`
       if (attempt < 3 && output.includes('database is locked')) {
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2_000)
@@ -310,8 +344,15 @@ function frappe(baseURL: string, ...args: string[]): void {
       }
       // SQLite's SQL translator warns on every ALTER SEQUENCE; drop those lines so the real error shows.
       const noise = /ALTER SEQUENCE|unsupported syntax|^Syntax error in query:$/
-      const tail = output.trim().split('\n').filter((line) => !noise.test(line.trim())).slice(-20).join('\n')
-      throw new Error(`frappe ${args.slice(0, 2).join(' ')} failed (status ${status}, signal ${signal}):\n${tail}`)
+      const tail = output
+        .trim()
+        .split('\n')
+        .filter((line) => !noise.test(line.trim()))
+        .slice(-20)
+        .join('\n')
+      throw new Error(
+        `frappe ${args.slice(0, 2).join(' ')} failed (status ${status}, signal ${signal}):\n${tail}`,
+      )
     }
   }
 }
@@ -319,10 +360,14 @@ function frappe(baseURL: string, ...args: string[]): void {
 /** Waits until no background job is running, by reading RQ's started-job registries. */
 function waitForIdleWorker(): void {
   if (!BENCH) throw new Error('UI_STATES_BENCH must name the Pilot bench that serves BASE_URL')
-  const config = readFileSync(resolve(dirname(dirname(PILOT)), 'benches', BENCH, 'bench.toml'), 'utf8')
+  const config = readFileSync(
+    resolve(dirname(dirname(PILOT)), 'benches', BENCH, 'bench.toml'),
+    'utf8',
+  )
   const port = config.match(/^queue_port\s*=\s*(\d+)/m)?.[1]
   if (!port) throw new Error(`No queue_port in ${BENCH}/bench.toml`)
-  const redis = (...args: string[]) => execFileSync('redis-cli', ['-p', port, ...args], { encoding: 'utf8' }).trim()
+  const redis = (...args: string[]) =>
+    execFileSync('redis-cli', ['-p', port, ...args], { encoding: 'utf8' }).trim()
   const deadline = Date.now() + 60_000
   while (Date.now() < deadline) {
     const registries = redis('--scan', '--pattern', 'rq:wip:*').split('\n').filter(Boolean)
@@ -356,8 +401,16 @@ async function signInAs(api: APIRequestContext, person: Person): Promise<void> {
 }
 
 /** Wipes Gameplan data, builds the scenario, then gives the personas and the community real names. */
-async function reset(admin: APIRequestContext, baseURL: string, scenario?: Scenario): Promise<SeedIds> {
-  const ids = await call<SeedIds>(admin, 'gameplan.ui_test_helpers.reset', scenario ? { scenario } : {})
+async function reset(
+  admin: APIRequestContext,
+  baseURL: string,
+  scenario?: Scenario,
+): Promise<SeedIds> {
+  const ids = await call<SeedIds>(
+    admin,
+    'gameplan.ui_test_helpers.reset',
+    scenario ? { scenario } : {},
+  )
   // The reset queues jobs that hold SQLite's write lock; the renames below would hit it.
   settleJobs(baseURL)
   for (const person of Object.values(testPeople)) {
@@ -368,9 +421,14 @@ async function reset(admin: APIRequestContext, baseURL: string, scenario?: Scena
   return ids
 }
 
-async function call<T>(api: APIRequestContext, method: string, args: Record<string, unknown> = {}): Promise<T> {
+async function call<T>(
+  api: APIRequestContext,
+  method: string,
+  args: Record<string, unknown> = {},
+): Promise<T> {
   const response = await api.post(`/api/method/${method}`, { data: args })
-  if (!response.ok()) throw new Error(`${method} failed: ${response.status()} ${await response.text()}`)
+  if (!response.ok())
+    throw new Error(`${method} failed: ${response.status()} ${await response.text()}`)
   return ((await response.json()) as { message: T }).message
 }
 
@@ -383,28 +441,54 @@ async function docMethod<T>(
 ): Promise<T> {
   const url = `/api/v2/document/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}/method/${method}`
   const response = await api.post(url, { data: args })
-  if (!response.ok()) throw new Error(`${doctype}.${method} failed: ${response.status()} ${await response.text()}`)
+  if (!response.ok())
+    throw new Error(`${doctype}.${method} failed: ${response.status()} ${await response.text()}`)
   return ((await response.json()) as { data: T }).data
 }
 
-async function find(api: APIRequestContext, doctype: string, filters: Record<string, unknown>): Promise<string> {
-  const params = new URLSearchParams({ filters: JSON.stringify(filters), fields: '["name"]', limit_page_length: '1' })
+async function find(
+  api: APIRequestContext,
+  doctype: string,
+  filters: Record<string, unknown>,
+): Promise<string> {
+  const params = new URLSearchParams({
+    filters: JSON.stringify(filters),
+    fields: '["name"]',
+    limit_page_length: '1',
+  })
   const response = await api.get(`/api/resource/${encodeURIComponent(doctype)}?${params}`)
-  if (!response.ok()) throw new Error(`Listing ${doctype} failed: ${response.status()} ${await response.text()}`)
+  if (!response.ok())
+    throw new Error(`Listing ${doctype} failed: ${response.status()} ${await response.text()}`)
   const [row] = ((await response.json()) as { data: { name: string | number }[] }).data
   if (!row) throw new Error(`No ${doctype} matches ${JSON.stringify(filters)}`)
   return String(row.name)
 }
 
-async function insert<T>(api: APIRequestContext, doctype: string, doc: Record<string, unknown>): Promise<T> {
+async function insert<T>(
+  api: APIRequestContext,
+  doctype: string,
+  doc: Record<string, unknown>,
+): Promise<T> {
   const response = await api.post(`/api/resource/${encodeURIComponent(doctype)}`, { data: doc })
-  if (!response.ok()) throw new Error(`Inserting ${doctype} failed: ${response.status()} ${await response.text()}`)
+  if (!response.ok())
+    throw new Error(`Inserting ${doctype} failed: ${response.status()} ${await response.text()}`)
   return ((await response.json()) as { data: T }).data
 }
 
-async function update(api: APIRequestContext, doctype: string, name: string, values: Record<string, unknown>): Promise<void> {
-  const response = await api.put(`/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`, {
-    data: values,
-  })
-  if (!response.ok()) throw new Error(`Updating ${doctype} ${name} failed: ${response.status()} ${await response.text()}`)
+async function update(
+  api: APIRequestContext,
+  doctype: string,
+  name: string,
+  values: Record<string, unknown>,
+): Promise<void> {
+  const response = await api.put(
+    `/api/resource/${encodeURIComponent(doctype)}/${encodeURIComponent(name)}`,
+    {
+      data: values,
+    },
+  )
+  if (!response.ok())
+    throw new Error(
+      `Updating ${doctype} ${name} failed: ${response.status()} ${await response.text()}`,
+    )
 }

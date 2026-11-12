@@ -23,7 +23,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
   initial: 'skeleton',
   states: {
     skeleton: {
-      meta: { description: 'The unread list request is still out: three skeleton rows under the Unread and Read tabs.' },
+      meta: {
+        description:
+          'The unread list request is still out: three skeleton rows under the Unread and Read tabs.',
+      },
       on: { LOADS: 'unread', FAILS: 'failed' },
     },
     failed: {
@@ -37,20 +40,37 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
         description:
           'Unread tab: Maya\'s four newest notifications, all reactions to her posts, each naming who reacted ("<name> and <name> reacted to your reply", "<name> and 2 others reacted…") beside two reactor avatars side by side, with the short date "8 Nov" (all four came the same day), a check button in the right gutter, "Mark all as read" in the toolbar and a red dot on the rail\'s bell.',
       },
-      on: { MARK_ONE_READ: 'markedOneRead', SHOW_READ: 'read', MARK_ALL: 'confirmMarkAll', AS_NEWCOMER: 'newcomer' },
+      on: {
+        MARK_ONE_READ: 'markedOneRead',
+        SHOW_READ: 'read',
+        MARK_ALL: 'confirmMarkAll',
+        AS_NEWCOMER: 'newcomer',
+      },
     },
     markedOneRead: {
-      meta: { description: 'After the check button on the first row: that notification leaves the Unread list with no toast or undo; three remain and the bell keeps its dot.' },
+      meta: {
+        description:
+          'After the check button on the first row: that notification leaves the Unread list with no toast or undo; three remain and the bell keeps its dot.',
+      },
     },
     read: {
-      meta: { description: 'Read tab: the notifications Maya has already handled, in regular weight, with dates that get older down the list (7 Nov at the top, late October further down), with no check buttons and no "Mark all as read". The bell keeps its dot for the unread ones.' },
+      meta: {
+        description:
+          'Read tab: the notifications Maya has already handled, in regular weight, with dates that get older down the list (7 Nov at the top, late October further down), with no check buttons and no "Mark all as read". The bell keeps its dot for the unread ones.',
+      },
     },
     confirmMarkAll: {
-      meta: { description: '"Mark all as read" asks first: "Mark all as read?", a one-line note that all four unread notifications will move to Read, and Cancel beside a plain "Mark all as read" button.' },
+      meta: {
+        description:
+          '"Mark all as read" asks first: "Mark all as read?", a one-line note that all four unread notifications will move to Read, and Cancel beside a plain "Mark all as read" button.',
+      },
       on: { CONFIRM: 'caughtUp' },
     },
     caughtUp: {
-      meta: { description: 'After marking all read: the "You\'re caught up" box, no "Mark all as read" button, and no dot on the rail\'s bell.' },
+      meta: {
+        description:
+          'After marking all read: the "You\'re caught up" box, no "Mark all as read" button, and no dot on the rail\'s bell.',
+      },
     },
     newcomer: {
       meta: {
@@ -83,7 +103,8 @@ async function clearReadNotifications(scene: Scene, person: Person) {
     limit_page_length: '0',
   })
   const response = await own.get(`/api/resource/GP%20Notification?${params}`)
-  if (!response.ok()) throw new Error(`Listing notifications of ${person.email} failed: ${response.status()}`)
+  if (!response.ok())
+    throw new Error(`Listing notifications of ${person.email} failed: ${response.status()}`)
   const { data } = (await response.json()) as { data: { name: string | number }[] }
   for (const { name } of data) {
     const deleted = await scene.admin.delete(`/api/resource/GP%20Notification/${name}`)
@@ -113,7 +134,8 @@ async function openTab(scene: Scene, label: string) {
 export const notifications = defineFlow<Event>({
   id: 'notifications',
   title: 'Notifications',
-  source: 'frontend/src/pages/Notifications.vue, frontend/src/data/notifications.ts, frontend/src/components/AppRail/AppRail.vue',
+  source:
+    'frontend/src/pages/Notifications.vue, frontend/src/data/notifications.ts, frontend/src/components/AppRail/AppRail.vue',
   machine,
   async enter(scene) {
     holds.set(scene, await scene.hold(LIST_URL))
@@ -128,7 +150,9 @@ export const notifications = defineFlow<Event>({
     },
     async FAILS(scene) {
       await holds.get(scene)?.abort(500)
-      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible({ timeout: 30_000 })
+      await expect(scene.page.getByRole('button', { name: 'Retry' })).toBeVisible({
+        timeout: 30_000,
+      })
     },
     async MARK_ONE_READ(scene) {
       const before = await unreadRows(scene).count()

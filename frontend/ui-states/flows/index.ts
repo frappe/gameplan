@@ -10,4 +10,14 @@ import { search } from './search'
 import { space } from './space'
 
 /** Every flow, in the order the canvas lays them out. */
-export const flows: AnyFlow[] = [feed, space, discussion, newDiscussion, search, notifications, saved, members, onboarding]
+export const flows: AnyFlow[] = [
+  feed,
+  space,
+  discussion,
+  newDiscussion,
+  search,
+  notifications,
+  saved,
+  members,
+  onboarding,
+]

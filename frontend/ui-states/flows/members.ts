@@ -56,13 +56,22 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     searchEmpty: {
-      meta: { description: 'A search that matches nobody: "0 members" and a "No members match your search" box aligned with the table.' },
+      meta: {
+        description:
+          'A search that matches nobody: "0 members" and a "No members match your search" box aligned with the table.',
+      },
     },
     profile: {
-      meta: { description: "Priya Sharma's profile: Profile, Posts and Replies tabs over her cover, avatar, name and bio cards." },
+      meta: {
+        description:
+          "Priya Sharma's profile: Profile, Posts and Replies tabs over her cover, avatar, name and bio cards.",
+      },
     },
     profileMissing: {
-      meta: { description: 'A profile link for someone who is not here: "Profile not found" inside the app shell, with a People / Not found breadcrumb and a "Go to Home" button.' },
+      meta: {
+        description:
+          'A profile link for someone who is not here: "Profile not found" inside the app shell, with a People / Not found breadcrumb and a "Go to Home" button.',
+      },
     },
     usersSettings: {
       meta: {
@@ -84,18 +93,23 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       },
     },
     inviteOpen: {
-      meta: { description: 'Invite on People opens the "Invite people" dialog in place: an empty email box with its helper line, the Role picker (User) and what it allows, and Cancel beside a disabled Invite. There are no pending invites yet, so that list is absent.' },
+      meta: {
+        description:
+          'Invite on People opens the "Invite people" dialog in place: an empty email box with its helper line, the Role picker (User) and what it allows, and Cancel beside a disabled Invite. There are no pending invites yet, so that list is absent.',
+      },
       on: { TYPE_EMAILS: 'inviteFilled' },
     },
     inviteFilled: {
       meta: {
-        description:
-          'Two addresses typed: Invite becomes enabled.',
+        description: 'Two addresses typed: Invite becomes enabled.',
       },
       on: { SEND: 'inviteSending' },
     },
     inviteSending: {
-      meta: { description: 'Invite was clicked and the request is out: the button spins and the email box, still showing the two addresses, is disabled.' },
+      meta: {
+        description:
+          'Invite was clicked and the request is out: the button spins and the email box, still showing the two addresses, is disabled.',
+      },
       on: { SENT: 'inviteSent', SEND_FAILS: 'inviteFailed' },
     },
     inviteSent: {
@@ -106,7 +120,10 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
       on: { INVITEE_OPENS_LINK: 'setPassword', INVITEE_OPENS_BROKEN_LINK: 'linkInvalid' },
     },
     inviteFailed: {
-      meta: { description: 'The invite request failed: a red sentence next to Cancel and Invite, and the two addresses stay in the box to try again.' },
+      meta: {
+        description:
+          'The invite request failed: a red sentence next to Cancel and Invite, and the two addresses stay in the box to try again.',
+      },
     },
     setPassword: {
       meta: {
@@ -127,7 +144,8 @@ const holds = new WeakMap<Scene, Hold>()
 /** A browser with no session, for what an invitee sees before they have an account. */
 const visitors = new WeakMap<Scene, Page>()
 
-const PEOPLE_URL = '**/api/v2/method/gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list*'
+const PEOPLE_URL =
+  '**/api/v2/method/gameplan.gameplan.doctype.gp_user_profile.gp_user_profile.get_list*'
 const INVITE_URL = '**/api/v2/method/gameplan.api.invite_by_email*'
 const INVITEES = ['nadia@moonhollow.studio', 'omar@moonhollow.studio']
 
@@ -166,7 +184,9 @@ export const members = defineFlow<Event>({
     holds.set(scene, await scene.hold(PEOPLE_URL))
     await scene.goto('/people')
     await expect(scene.page.getByLabel('Loading member').first()).toBeVisible({ timeout: 20_000 })
-    await expect(scene.page.getByText('Members', { exact: true }).filter({ visible: true })).toBeVisible()
+    await expect(
+      scene.page.getByText('Members', { exact: true }).filter({ visible: true }),
+    ).toBeVisible()
   },
   events: {
     async LOADS(scene) {
@@ -219,19 +239,29 @@ export const members = defineFlow<Event>({
         .last()
       await row.getByRole('combobox').click()
       await scene.page.getByRole('option', { name: 'Admin' }).click()
-      await expect(scene.page.getByRole('dialog').filter({ hasText: "Change Priya Sharma's role to Admin?" })).toBeVisible()
+      await expect(
+        scene.page.getByRole('dialog').filter({ hasText: "Change Priya Sharma's role to Admin?" }),
+      ).toBeVisible()
       await scene.page.mouse.move(700, 20)
     },
     async OPEN_INVITE(scene) {
-      await scene.page.getByRole('button', { name: 'Invite', exact: true }).filter({ visible: true }).first().click()
+      await scene.page
+        .getByRole('button', { name: 'Invite', exact: true })
+        .filter({ visible: true })
+        .first()
+        .click()
       await expect(scene.page).toHaveURL(/\/people$/)
       await expect(inviteDialog(scene).getByLabel('Invite by email')).toBeVisible()
-      await expect(inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true })).toBeDisabled()
+      await expect(
+        inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true }),
+      ).toBeDisabled()
       await scene.page.mouse.move(700, 20)
     },
     async TYPE_EMAILS(scene) {
       await inviteDialog(scene).getByLabel('Invite by email').fill(INVITEES.join(', '))
-      await expect(inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true })).toBeEnabled()
+      await expect(
+        inviteDialog(scene).getByRole('button', { name: 'Invite', exact: true }),
+      ).toBeEnabled()
     },
     async SEND(scene) {
       holds.set(scene, await scene.hold(INVITE_URL))
@@ -241,20 +271,28 @@ export const members = defineFlow<Event>({
     },
     async SENT(scene) {
       await holds.get(scene)?.release()
-      await expect(inviteDialog(scene).getByText('2 invitations sent')).toBeVisible({ timeout: 20_000 })
+      await expect(inviteDialog(scene).getByText('2 invitations sent')).toBeVisible({
+        timeout: 20_000,
+      })
       await expect(inviteDialog(scene).getByText('Pending invites')).toBeVisible()
     },
     async SEND_FAILS(scene) {
       await holds.get(scene)?.abort(500)
       await expect(inviteDialog(scene).getByRole('alert')).toBeVisible({ timeout: 30_000 })
-      await expect(inviteDialog(scene).getByLabel('Invite by email')).toHaveValue(INVITEES.join(', '))
+      await expect(inviteDialog(scene).getByLabel('Invite by email')).toHaveValue(
+        INVITEES.join(', '),
+      )
     },
     async INVITEE_OPENS_LINK(scene) {
       // The sent email's key exists only in the mail, so mint Nadia a link of her own.
-      const { key } = await scene.call<{ key: string }>(scene.admin, 'gameplan.ui_test_helpers.create_invitation', {
-        email: INVITEES[0],
-        role: 'Gameplan Member',
-      })
+      const { key } = await scene.call<{ key: string }>(
+        scene.admin,
+        'gameplan.ui_test_helpers.create_invitation',
+        {
+          email: INVITEES[0],
+          role: 'Gameplan Member',
+        },
+      )
       const page = await visitor(scene)
       await page.goto(`/api/method/gameplan.api.accept_invitation?key=${key}`)
       await expect(page).toHaveURL(/update-password/)
