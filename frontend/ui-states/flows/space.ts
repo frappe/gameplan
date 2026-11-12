@@ -23,7 +23,7 @@ type Event =
  * global spaces list; otherwise `SpaceUnavailable.vue` shows "Space not found"
  * once that list has loaded without it, or `LoadError` with Retry if the list
  * failed. `SpaceDiscussions.vue` holds the feed tabs (`DiscussionFeedBar.vue`, with
- * the tab in `?feed=`), the menu, the bulk-move mode and the dialogs;
+ * the tab in the path, `/discussions/unread`), the menu, the bulk-move mode and the dialogs;
  * `DiscussionList.vue` picks skeleton rows, rows, `LoadError` or the empty box.
  * The confirms and the archive toast live in `data/spaces.ts`.
  */
@@ -68,7 +68,7 @@ const machine = setup({ types: { events: {} as Event } }).createMachine({
     unreadTab: {
       meta: {
         description:
-          'The Unread tab of QA & Playtests (`?feed=unread`): only the smoke-test thread Maya has not opened, with the space\'s unread count after the tab label.',
+          'The Unread tab of QA & Playtests (`/discussions/unread`): only the smoke-test thread Maya has not opened, with the space\'s unread count after the tab label.',
       },
     },
     markAllReadConfirm: {
@@ -182,7 +182,7 @@ export const space = defineFlow<Event>({
     },
     async SHOW_UNREAD(scene) {
       await scene.page.getByRole('radio', { name: /^Unread/ }).click()
-      await expect(scene.page).toHaveURL(/[?&]feed=unread/)
+      await expect(scene.page).toHaveURL(/\/discussions\/unread$/)
       await expect(rows(scene).first()).toBeVisible()
       await expect(rows(scene).nth(1)).toBeHidden()
       await scene.page.mouse.move(700, 20)

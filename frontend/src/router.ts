@@ -311,6 +311,17 @@ const routes: RouteRecordRaw[] = [
         props: true,
         meta: { communityScope: true },
       },
+      {
+        name: 'SpaceDiscussionsTab',
+        path: 'discussions/:feedType',
+        component: () => import('@/pages/SpaceDiscussions.vue'),
+        props: true,
+        meta: { communityScope: true },
+        beforeEnter(to) {
+          if (isFeedType(routeParam(to.params.feedType))) return
+          return { name: 'SpaceDiscussions', params: to.params, replace: true }
+        },
+      },
       // Pages and Tasks no longer have tabs in a space. The names stay so old links and
       // breadcrumbs land on the space's discussions instead of failing to resolve.
       { name: 'SpacePages', path: 'pages', redirect: { name: 'SpaceDiscussions' } },

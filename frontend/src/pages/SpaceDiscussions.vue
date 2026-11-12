@@ -101,7 +101,7 @@ import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { discussionOrderBy } from '@/data/discussionSort'
-import { feedEmptyStates, isFeedType, type FeedType } from '@/data/discussionFeeds'
+import { feedEmptyStates, type FeedType } from '@/data/discussionFeeds'
 import { useSessionUser } from '@/data/users'
 import { canManageCommunity } from '@/utils/permissions'
 import { showCommunitiesSettings } from '@/components/Settings'
@@ -128,6 +128,7 @@ interface BulkUpdateResponse {
 
 const props = defineProps<{
   spaceId: string
+  feedType?: FeedType
 }>()
 
 const route = useRoute()
@@ -155,17 +156,20 @@ const sessionUser = useSessionUser()
 const community = useCommunity(() => currentSpace.value?.team)
 const canManageCurrentCommunity = computed(() => canManageCommunity(community.value, sessionUser))
 
-// The space's feed lives in the URL (`?feed=unread`), so a tab survives a reload and Back.
+// The space's feed lives in the path, as on the community feed, so a tab survives a reload
+// and Back. The router only lets a known feed type through.
 const feedType = computed<FeedType>({
-  get() {
-    const feed = String(route.query.feed ?? '')
-    return isFeedType(feed) ? feed : 'recent'
-  },
+  get: () => props.feedType ?? 'recent',
   set(feed) {
-    const { feed: _previous, ...query } = route.query
-    router.push({ query: feed === 'recent' ? query : { ...query, feed } })
+    if (feed !== feedType.value) router.push(feedRoute(feed))
   },
 })
+
+function feedRoute(feedType: FeedType) {
+  const params = { communityId: route.params.communityId, spaceId: props.spaceId }
+  if (feedType === 'recent') return { name: 'SpaceDiscussions', params }
+  return { name: 'SpaceDiscussionsTab', params: { ...params, feedType } }
+}
 
 // Grouped as everyday actions, managing the space, then archiving.
 const spaceActions = computed(() => [

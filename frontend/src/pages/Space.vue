@@ -27,7 +27,7 @@
       </template>
       <template #suffix>
         <Button
-          v-if="route.name === 'SpaceDiscussions' && canStartDiscussion"
+          v-if="isSpaceFeedRoute(route.name) && canStartDiscussion"
           variant="ghost"
           size="md"
           icon="lucide-plus"
@@ -64,17 +64,12 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type RouteRecordNameGeneric } from 'vue-router'
 import { BottomSheet, PageHeaderMobile, PageHeaderMobileTitle, PageHeader, Button } from 'frappe-ui'
 import PageHeaderUpButton from '@/components/PageHeaderUpButton.vue'
 import SpaceHeaderActionsTarget from '@/components/SpaceHeaderActionsTarget.vue'
 import PushPin from '@/components/icons/PushPin.vue'
-import {
-  useSpace,
-  canPostInSpace,
-  forgetArchivedSpace,
-  trackSpaceVisit,
-} from '@/data/spaces'
+import { useSpace, canPostInSpace, forgetArchivedSpace, trackSpaceVisit } from '@/data/spaces'
 import CommunityMenu from '@/components/CommunityMenu.vue'
 import SpaceUnavailable from '@/components/SpaceUnavailable.vue'
 import SpaceBreadcrumbs from '@/components/SpaceBreadcrumbs.vue'
@@ -98,6 +93,10 @@ const space = useSpace(() => props.spaceId)
 // The mobile twin of the "New discussion" button in SpaceDiscussions, so it asks the same
 // question: who may start a discussion here, not who may edit the space.
 const canStartDiscussion = computed(() => canPostInSpace(space.value))
+
+function isSpaceFeedRoute(name: RouteRecordNameGeneric) {
+  return name === 'SpaceDiscussions' || name === 'SpaceDiscussionsTab'
+}
 
 // This page also renders behind the settings overlay, where the URL belongs to /settings/*
 // and healing it from here would navigate the app off the settings route, closing the dialog.
