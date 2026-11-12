@@ -9,6 +9,7 @@ Gameplan is an async discussions app. The UI says Community for GP Team and Spac
 - GP Task and GP Page are deprecated. Do not create them or suggest them to people.
 - Replies are GP Comment with reference_doctype "GP Discussion" and reference_name set to the discussion name. Closed discussions take no new replies.
 - content fields are HTML. Mention a person with <span class="mention" data-type="mention" data-id="<user email>" data-label="<full name>">@<full name></span>.
+- Add a footnote with a marker <sup data-type="footnote-reference" data-id="<id>">1</sup> in the text and a note <li data-type="footnote" data-id="<same id>"><p>note</p></li> inside one <ol data-type="footnotes"> after the last block. Number markers 1, 2, 3 in reading order and list notes in that order.
 - Create discussions and replies with create_document. Do not update project, closed_at or pinned_at. Use these GP Discussion methods instead: move_to_project {"project": "<space>"}, close_discussion, reopen_discussion, pin_discussion {"pin_scope": "Space" or "Category"} (Category pins it in the Community), unpin_discussion.
 - Mark a discussion as read with its track_visit method, or a whole Space with GP Project mark_all_as_read.
 - React to a GP Discussion, GP Comment or GP Poll with its react method, args {"operations": [{"emoji": "👍", "operation": "add" or "remove"}]}. Bookmark with add_bookmark and remove_bookmark.
