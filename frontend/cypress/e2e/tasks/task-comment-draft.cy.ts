@@ -16,18 +16,13 @@ describe('Task comment draft', () => {
     cy.loginAs('member')
   })
 
-  // Open a task and land on its detail page, ready for the comment composer.
+  // Create a task and land on its detail page, ready for the comment composer. A space
+  // has no task list to create tasks from any more, so the task is created through the API.
   const openTask = (title: string) => {
-    cy.visit(`/g/community/${community}/space/${space}/tasks`)
-
-    cy.intercept('POST', '/api/v2/document/GP%20Task').as('createTask')
-    cy.button('Add new').click()
-    cy.contains('[role=dialog] label', 'Title').parent().find('input').type(title)
-    cy.button('Create').click()
-    cy.wait('@createTask')
-
-    cy.intercept('POST', '/api/v2/document/GP%20Task/*/method/track_visit').as('trackVisit')
-    cy.contains('a', title).click()
+    cy.request('POST', '/api/v2/document/GP%20Task', { title, project: space }).then(({ body }) => {
+      cy.intercept('POST', '/api/v2/document/GP%20Task/*/method/track_visit').as('trackVisit')
+      cy.visit(`/g/community/${community}/space/${space}/tasks/${body.data.name}`)
+    })
     cy.wait('@trackVisit')
   }
 

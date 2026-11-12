@@ -24,7 +24,7 @@ describe('Onboarding', () => {
 
     // Page tabs show the discussions feed, and the sidebar lists the auto-created
     // public General space plus the user-named space.
-    cy.contains('All Discussions').should('exist')
+    cy.contains('All discussions').should('exist')
     cy.contains('a', 'General').should('exist')
     cy.contains('a', 'Marketing').should('exist')
   })

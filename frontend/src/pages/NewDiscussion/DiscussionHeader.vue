@@ -15,7 +15,7 @@
         :items="[
           { label: 'Drafts', route: { name: 'Drafts' } },
           {
-            label: isPersisted ? draftData?.title : 'New Discussion',
+            label: draftLabel,
             route: discussionRoute,
           },
         ]"
@@ -42,11 +42,28 @@ import { useNewDiscussionContext } from './useNewDiscussion'
 import DiscussionSpaceSelector from './DiscussionSpaceSelector.vue'
 import PublishControls from './PublishControls.vue'
 
-const { isPersisted, draftData, scheduledAt, scheduledAtLabel, sessionUser, author } =
-  useNewDiscussionContext()
+const {
+  isPersisted,
+  isDraftLoading,
+  draftLoadFailed,
+  draftData,
+  scheduledAt,
+  scheduledAtLabel,
+  sessionUser,
+  author,
+} = useNewDiscussionContext()
 
 const route = useRoute()
-const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New Discussion'))
+const mobileTitle = computed(() => (isPersisted.value ? 'Draft' : 'New discussion'))
+
+// A draft opened by name has no title until it loads, and may never have one: the crumb
+// says so rather than leave "Drafts /" dangling.
+const draftLabel = computed(() => {
+  if (!isPersisted.value) return 'New discussion'
+  if (isDraftLoading.value) return 'Loading…'
+  if (draftLoadFailed.value) return 'Draft'
+  return draftData.value?.title?.trim() || 'Untitled draft'
+})
 
 // Cold-load fallback only: with any in-app history the back button walks it instead.
 // A composer opened straight from a link belongs to a space, so send the user there.

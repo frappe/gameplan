@@ -1,13 +1,18 @@
 <template>
-  <div class="relative flex h-full flex-col" v-if="postId">
+  <NotFound
+    v-if="notFound"
+    title="Discussion not found"
+    description="It may have been deleted, or you no longer have access to it."
+    :up-to="spaceRoute"
+  >
+    <template #breadcrumbs>
+      <SpaceBreadcrumbs :spaceId="currentSpaceId" :items="[{ label: 'Not found' }]" />
+    </template>
+  </NotFound>
+  <div class="relative flex h-full flex-col" v-else>
     <PageHeaderMobile class="sm:hidden" :title="mobileHeaderTitle">
       <template #prefix>
-        <PageHeaderUpButton
-          :to="{
-            name: 'SpaceDiscussions',
-            params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
-          }"
-        />
+        <PageHeaderUpButton :to="spaceRoute" />
       </template>
     </PageHeaderMobile>
     <PageHeader class="hidden sm:flex">
@@ -53,7 +58,7 @@
       <template v-else-if="discussion.doc">
         <div
           :class="{
-            'rounded-6 border mt-14 py-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
+            'rounded-6 border mt-14 pt-2 pb-4 px-3 sm:px-5 -mx-3 sm:-mx-5 focus-within:border-outline-gray-3':
               editingPost,
           }"
           @keydown.ctrl.enter.capture.stop="updatePost"
@@ -68,12 +73,16 @@
             two vertical edges visible above it, running up to the page header. The
             negative margins bleed the row out to the container's padding edge, and the
             padding puts its contents back where they were.
+
+            While editing, the row also holds Save and Discard, so it stays pinned on wider
+            screens to keep them in reach on a long post. On a phone it scrolls away instead:
+            pinned, it would cover the line being typed in a keyboard-shrunk viewport.
           -->
           <div
             class="flex items-center bg-surface-base pb-2 pt-2"
             :class="
               editingPost
-                ? 'w-full sm:pt-0'
+                ? 'w-full sm:sticky sm:top-0 sm:z-[1] sm:-mx-5 sm:w-auto sm:px-5'
                 : 'sticky -top-px z-[1] -mx-3 px-3 sm:-mx-5 sm:px-5 sm:top-0 sm:pt-14'
             "
           >
@@ -93,28 +102,38 @@
                 {{ $user(discussion.doc.owner).full_name }}
                 <span class="hidden md:inline text-ink-gray-7">&nbsp;&middot;&nbsp;</span>
               </UserProfileLink>
-              <Tooltip :text="dayjsLocal(discussion.doc.creation).format('D MMM YYYY [at] h:mm A')">
+              <Tooltip :text="fullTimestamp(discussion.doc.creation)">
                 <time
                   class="text-p-base text-ink-gray-5 sm:text-base"
                   :datetime="discussion.doc.creation"
                 >
-                  {{ timeAgo(discussion.doc.creation) }}
+                  {{ relativeTimestamp(discussion.doc.creation) }}
                 </time>
               </Tooltip>
             </div>
-            <div class="ml-auto flex space-x-2 print:hidden">
+            <div class="ml-auto flex items-center gap-2 print:hidden">
+              <template v-if="editingPost">
+                <Button label="Discard" @click="cancelEdit" />
+                <Button
+                  variant="solid"
+                  label="Save"
+                  :loading="discussion.setValue.loading"
+                  :disabled="!canSavePost"
+                  @click="updatePost"
+                />
+              </template>
               <Dropdown
                 v-if="!readOnlyMode"
-                class="ml-auto"
                 align="end"
                 :button="{
                   icon: 'lucide-more-horizontal',
                   variant: 'ghost',
-                  label: 'Discussion Options',
+                  label: 'Discussion options',
                 }"
-                :options="actions"
+                :options="actionMenu"
               />
             </div>
+            <StickyRowFade v-if="!editingPost || !isMobileViewport" />
           </div>
           <div :class="{ 'pb-4 mt-1': !editingPost }">
             <div class="flex items-start justify-between space-x-1">
@@ -172,13 +191,9 @@
                 editingPost && postDraftData ? postDraftData.content : discussion.doc.content
               "
               :editable="editingPost && !isPostDraftLoading"
-              :saving="discussion.setValue.loading"
-              :can-save="canSavePost"
               :quote-source-id="`discussion:${discussion.doc.name}`"
               :author="discussion.doc.owner"
               @change="onPostEditorChange"
-              @save="updatePost"
-              @discard="cancelEdit"
             />
           </div>
           <div class="mt-3" v-show="!editingPost">
@@ -195,7 +210,10 @@
           :space="space"
           :newCommentsFrom="discussion.doc.last_unread_comment?.toString()"
           :read-only-mode="readOnlyMode"
-          :disable-new-comment="Boolean(discussion.doc.closed_at)"
+          :closed="Boolean(discussion.doc.closed_at)"
+          :can-reopen="canEditDiscussion"
+          :reopening="discussion.reopenDiscussion.loading"
+          @reopen="reopenDiscussion"
           :hide-new-comment="editingPost"
           :activity-version="discussion.doc.modified"
           ref="commentsArea"
@@ -214,12 +232,18 @@
           <Combobox
             :options="spaceOptions"
             v-model="discussionMoveDialog.project"
-            placeholder="Select a project"
+            placeholder="Select a space"
             class="w-full"
             autofocus
             open-on-click
           />
-          <ErrorMessage class="mt-2" :message="discussion.moveToProject.error" />
+          <ErrorMessage
+            class="mt-2"
+            :message="
+              discussion.moveToProject.error &&
+              errorText(discussion.moveToProject.error, 'Could not move the discussion. Try again.')
+            "
+          />
           <template #actions>
             <Button
               class="w-full"
@@ -252,7 +276,7 @@
           <div class="space-y-2">
             <label class="flex items-center justify-between">
               <div>
-                <div class="text-base-medium text-ink-gray-9 mb-1">Pin to Community</div>
+                <div class="text-base-medium text-ink-gray-9 mb-1">Pin to community</div>
                 <div class="text-sm text-ink-gray-5" v-if="pinDialog.pinToCategory">
                   Show in all {{ communityTitle }} discussions
                 </div>
@@ -279,7 +303,7 @@
                   }
                 "
               >
-                Pin Discussion
+                Pin discussion
               </Button>
             </div>
           </template>
@@ -291,25 +315,16 @@
           fieldname="content"
         />
       </template>
-      <EmptyStateBox v-else-if="notFound" class="mx-auto mt-14 max-w-2xl px-6">
-        <span class="lucide-triangle-alert mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
-        <div class="text-base text-ink-gray-7">Discussion not found</div>
-        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
-          This discussion may have been deleted, or you no longer have access to it. Refresh to try
-          again.
-        </p>
-      </EmptyStateBox>
       <!-- Fetch finished, but there is no doc and no recognised not-found/forbidden error.
            Fail visibly instead of rendering a blank page. Gated on isFinished so the
            pre-fetch tick (useFetch defers its first execute by a microtask) doesn't flash
            an error. -->
-      <EmptyStateBox v-else-if="discussion.isFinished" class="mx-auto mt-14 max-w-2xl px-6">
-        <span class="lucide-triangle-alert mb-3 size-7 text-ink-gray-4" aria-hidden="true" />
-        <div class="text-base text-ink-gray-7">Could not load this discussion</div>
-        <p class="mt-2 max-w-md text-center text-p-sm text-ink-gray-5">
-          Something went wrong while loading it. Refresh to try again.
-        </p>
-      </EmptyStateBox>
+      <LoadError
+        v-else-if="discussion.isFinished"
+        class="mt-14"
+        :message="errorText(discussion.error, 'Could not load this discussion.')"
+        @retry="discussion.reload()"
+      />
     </div>
     <div
       v-if="!isMobileViewport && !editingPost"
@@ -351,7 +366,6 @@ import {
   Dialog,
   Tooltip,
   usePageMeta,
-  dayjsLocal,
   Switch,
   dialog,
   toast,
@@ -367,8 +381,17 @@ import UserProfileLink from './UserProfileLink.vue'
 // Lazy: htmldiff-js + motion-v only load when a viewer opens edit history.
 const RevisionsDialog = defineAsyncComponent(() => import('./RevisionsDialog.vue'))
 import SpaceBreadcrumbs from './SpaceBreadcrumbs.vue'
-import EmptyStateBox from './EmptyStateBox.vue'
-import { copyToClipboard, isEditorContentEmpty, timeAgo } from '@/utils'
+import LoadError from './LoadError.vue'
+import StickyRowFade from './StickyRowFade.vue'
+import NotFound from '@/pages/NotFound.vue'
+import {
+  copyToClipboard,
+  errorText,
+  fullTimestamp,
+  isEditorContentEmpty,
+  relativeTimestamp,
+} from '@/utils'
+import { confirmDelete } from '@/utils/confirmDelete'
 import { getSpace, useSpace } from '@/data/spaces'
 import { useCommunity } from '@/data/communities'
 import { useGroupedSpaceOptions } from '@/data/groupedSpaces'
@@ -394,6 +417,10 @@ const props = defineProps<{
 
 const router = useRouter()
 const route = useRoute()
+const spaceRoute = computed(() => ({
+  name: 'SpaceDiscussions',
+  params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
+}))
 // This view also renders behind the settings overlay, where the URL belongs to /settings/*.
 // Rewriting it from there would both throw (no postId param to spread) and navigate the app
 // off the settings route, closing the dialog. A page may only rewrite a URL it owns.
@@ -848,152 +875,161 @@ const canMoveOrPinDiscussion = computed(() =>
   canMoveOrPinContent(discussion.doc, space.value, useSessionUser()),
 )
 
-const actions = computed(() => [
-  {
-    label: 'Edit',
-    icon: 'lucide-edit',
-    onClick: startEditingPost,
-    condition: () => canEditDiscussion.value,
-  },
-  {
-    label: 'Revisions',
-    icon: 'lucide-rotate-ccw',
-    onClick: () => (showRevisionsDialog.value = true),
-  },
-  {
-    label: 'Copy link',
-    icon: 'lucide-link',
-    onClick: copyLink,
-  },
-  {
-    label: 'Mark as unread',
-    icon: 'lucide-mail',
-    onClick: () => {
-      discussion.markAsUnread
-        .submit()
-        .then(() => {
-          if (discussion.doc?.project) {
-            refreshUnreadCountForProjects([discussion.doc.project])
-          }
-        })
-        .catch(() => {})
-    },
-  },
-  {
-    label: 'Bookmark',
-    icon: 'lucide-bookmark',
-    onClick: () =>
-      discussion.addBookmark
-        .submit()
-        .catch((error) =>
-          captureError(error, { action: 'add-bookmark', discussion: props.postId }),
-        ),
-    condition: () => !discussion.doc?.is_bookmarked,
-  },
-  {
-    label: 'Pin discussion...',
-    icon: 'lucide-arrow-up-left',
-    condition: () => canMoveOrPinDiscussion.value && !discussion.doc?.pinned_at,
-    onClick: () => {
-      pinDialog.show = true
-    },
-  },
-  {
-    label: 'Unpin discussion...',
-    icon: 'lucide-arrow-down-left',
-    condition: () => canMoveOrPinDiscussion.value && !!discussion.doc?.pinned_at,
-    onClick: () => {
-      const pinScope = discussion.doc?.pin_scope
-      const scopeText =
-        pinScope === 'Category'
-          ? `This discussion is pinned across the ${communityTitle.value} community.`
-          : `This discussion is pinned in ${space.value?.title} only.`
+function toggleBookmark() {
+  const bookmarked = Boolean(discussion.doc?.is_bookmarked)
+  const request = bookmarked ? discussion.removeBookmark : discussion.addBookmark
+  request.submit().catch((error) =>
+    captureError(error, {
+      action: bookmarked ? 'remove-bookmark' : 'add-bookmark',
+      discussion: props.postId,
+    }),
+  )
+}
 
-      dialog.confirm({
-        title: 'Unpin discussion',
-        message: `${scopeText} Do you want to unpin it?`,
-        icon: 'lucide-arrow-down-left',
-        confirmLabel: 'Unpin',
-        onConfirm: () => discussion.unpinDiscussion.submit(),
+function markAsUnread() {
+  discussion.markAsUnread
+    .submit()
+    .then(() => {
+      if (discussion.doc?.project) refreshUnreadCountForProjects([discussion.doc.project])
+    })
+    .catch(() => {})
+}
+
+function confirmUnpin() {
+  const where =
+    discussion.doc?.pin_scope === 'Category'
+      ? `all ${communityTitle.value} discussions`
+      : `${space.value?.title ?? 'this space'}`
+  dialog.confirm({
+    title: 'Unpin this discussion?',
+    message: `It will no longer show at the top of ${where}.`,
+    confirmLabel: 'Unpin',
+    onConfirm: () => discussion.unpinDiscussion.submit(),
+  })
+}
+
+function confirmClose() {
+  dialog.confirm({
+    title: 'Close this discussion?',
+    message: 'No one can comment on it until it is re-opened.',
+    confirmLabel: 'Close',
+    onConfirm: () => discussion.closeDiscussion.submit(),
+  })
+}
+
+function confirmReopen() {
+  dialog.confirm({
+    title: 'Re-open this discussion?',
+    message: 'Everyone can comment on it again.',
+    confirmLabel: 'Re-open',
+    onConfirm: reopenDiscussion,
+  })
+}
+
+function reopenDiscussion() {
+  return discussion.reopenDiscussion.submit()
+}
+
+function confirmDeleteDiscussion() {
+  confirmDelete({
+    title: 'Delete this discussion?',
+    message: "The post and all its comments will be deleted. This can't be undone.",
+    onDelete: async () => {
+      await discussion.delete.submit()
+      router.replace({
+        name: 'Space',
+        params: { communityId: route.params.communityId, spaceId: route.params.spaceId },
       })
     },
-  },
-  {
-    label: 'Close discussion...',
-    icon: 'lucide-lock',
-    condition: () => canEditDiscussion.value && !discussion.doc?.closed_at,
-    onClick: () => {
-      dialog.confirm({
-        title: 'Close discussion',
-        message:
-          'When a discussion is closed, commenting is disabled. Anyone can re-open the discussion later. Do you want to close this discussion?',
-        icon: 'lucide-lock',
-        confirmLabel: 'Close',
-        onConfirm: () => discussion.closeDiscussion.submit(),
-      })
+  })
+}
+
+interface DiscussionAction {
+  label: string
+  icon: string
+  onClick: () => void
+  condition?: () => boolean
+  theme?: 'red'
+}
+
+// Grouped as everyday, management, then destructive. Items that open a dialog end in "…".
+// Toggles (bookmark, pin, close) keep one slot and switch their label, so an item never
+// jumps to another place in the menu after it is used.
+const actionGroups = computed<DiscussionAction[][]>(() => [
+  [
+    {
+      label: 'Edit',
+      icon: 'lucide-edit',
+      onClick: startEditingPost,
+      condition: () => canEditDiscussion.value && !editingPost.value,
     },
-  },
-  {
-    label: 'Re-open discussion...',
-    icon: 'lucide-unlock',
-    condition: () => canEditDiscussion.value && !!discussion.doc?.closed_at,
-    onClick: () => {
-      dialog.confirm({
-        title: 'Re-open discussion',
-        message: 'Do you want to re-open this discussion? Anyone can comment on it again.',
-        icon: 'lucide-unlock',
-        confirmLabel: 'Re-open',
-        onConfirm: () => discussion.reopenDiscussion.submit(),
-      })
+    { label: 'Copy link', icon: 'lucide-link', onClick: copyLink },
+    { label: 'Mark as unread', icon: 'lucide-mail', onClick: markAsUnread },
+    {
+      label: discussion.doc?.is_bookmarked ? 'Remove bookmark' : 'Bookmark',
+      icon: discussion.doc?.is_bookmarked ? 'lucide-bookmark-minus' : 'lucide-bookmark',
+      onClick: toggleBookmark,
     },
-  },
-  {
-    label: 'Remove Bookmark',
-    icon: 'lucide-bookmark',
-    onClick: () =>
-      discussion.removeBookmark
-        .submit()
-        .catch((error) =>
-          captureError(error, { action: 'remove-bookmark', discussion: props.postId }),
-        ),
-    condition: () => discussion.doc?.is_bookmarked,
-  },
-  {
-    label: 'Move to...',
-    icon: 'lucide-log-out',
-    condition: () => canMoveOrPinDiscussion.value,
-    onClick: () => {
-      discussionMoveDialog.show = true
-    },
-  },
-  {
-    label: 'Delete',
-    icon: 'lucide-trash',
-    condition: () => canDeleteContent(discussion.doc, space.value, useSessionUser()),
-    onClick: () => {
-      dialog.danger({
-        title: 'Delete',
-        message: 'Are you sure you want to delete this post? This is irreversible!',
-        onConfirm: async () => {
-          await discussion.delete.submit()
-          router.replace({
-            name: 'Space',
-            params: {
-              communityId: route.params.communityId,
-              spaceId: route.params.spaceId,
-            },
-          })
+    discussion.doc?.pinned_at
+      ? {
+          label: 'Unpin discussion…',
+          icon: 'lucide-arrow-down-left',
+          onClick: confirmUnpin,
+          condition: () => canMoveOrPinDiscussion.value,
+        }
+      : {
+          label: 'Pin discussion…',
+          icon: 'lucide-arrow-up-left',
+          onClick: () => (pinDialog.show = true),
+          condition: () => canMoveOrPinDiscussion.value,
         },
-      })
+  ],
+  [
+    {
+      label: 'Revisions…',
+      icon: 'lucide-rotate-ccw',
+      onClick: () => (showRevisionsDialog.value = true),
     },
-  },
+    {
+      label: 'Move to…',
+      icon: 'lucide-folder-input',
+      onClick: () => (discussionMoveDialog.show = true),
+      condition: () => canMoveOrPinDiscussion.value,
+    },
+  ],
+  [
+    discussion.doc?.closed_at
+      ? {
+          label: 'Re-open discussion…',
+          icon: 'lucide-unlock',
+          onClick: confirmReopen,
+          condition: () => canEditDiscussion.value,
+        }
+      : {
+          label: 'Close discussion…',
+          icon: 'lucide-lock',
+          onClick: confirmClose,
+          condition: () => canEditDiscussion.value,
+        },
+    {
+      label: 'Delete…',
+      icon: 'lucide-trash',
+      theme: 'red',
+      onClick: confirmDeleteDiscussion,
+      condition: () => canDeleteContent(discussion.doc, space.value, useSessionUser()),
+    },
+  ],
 ])
+
+const actionMenu = computed(() =>
+  actionGroups.value.map((options, index) => ({ group: String(index), hideLabel: true, options })),
+)
 
 useCommandPaletteCommands(
   computed(() => {
     if (props.readOnlyMode || !discussion.doc) return []
 
-    return actions.value.map((action) => {
+    return actionGroups.value.flat().map((action) => {
       const title = cleanCommandTitle(action.label)
       return {
         title,
@@ -1010,7 +1046,7 @@ useCommandPaletteCommands(
 )
 
 function cleanCommandTitle(title: string) {
-  return title.replace(/\.\.\.$/, '')
+  return title.replace(/…$/, '')
 }
 
 function discussionCommandAliases(title: string) {
@@ -1020,7 +1056,7 @@ function discussionCommandAliases(title: string) {
     'Copy link': ['copy url', 'share link'],
     'Mark as unread': ['unread', 'remind me'],
     Bookmark: ['save', 'save for later'],
-    'Remove Bookmark': ['unsave', 'remove saved'],
+    'Remove bookmark': ['unsave', 'remove saved'],
     'Pin discussion': ['pin', 'keep on top'],
     'Unpin discussion': ['unpin', 'remove pin'],
     'Close discussion': ['lock discussion', 'disable comments'],

@@ -1,42 +1,46 @@
 <template>
-  <div class="flex items-center gap-2">
-    <div class="flex items-center">
-      <Tooltip :text="blockedReason">
+  <div class="flex items-center">
+    <Tooltip :text="blockedReason">
+      <!-- Fixed width, so the spinner does not push the space picker aside. -->
+      <Button
+        variant="solid"
+        :size="size"
+        class="min-w-[5.75rem] rounded-r-none"
+        :loading="publishing"
+        :disabled="Boolean(blockedReason) || scheduling"
+        @click="publish"
+      >
+        Publish
+      </Button>
+    </Tooltip>
+    <div
+      ref="menuHost"
+      class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
+    >
+      <!-- While a request is out the chevron stays solid, like the Publish half, and
+           ignores clicks instead of turning grey. -->
+      <Dropdown
+        :options="options"
+        align="end"
+        :portal-to="menuHost ?? undefined"
+        :disabled="menuDisabled"
+      >
         <Button
           variant="solid"
           :size="size"
-          class="rounded-r-none"
-          :loading="publishing"
-          :disabled="Boolean(blockedReason) || scheduling"
-          @click="publish"
-        >
-          Publish
-        </Button>
-      </Tooltip>
-      <div
-        ref="menuHost"
-        class="flex [&_[data-slot=group]]:!p-0 [&_[data-slot=item]]:!rounded-6 [&_[data-slot=item-list-row]]:!px-3 [&_[data-slot=item-list-row]]:!py-2"
-      >
-        <Dropdown
-          :options="options"
-          align="end"
-          :portal-to="menuHost ?? undefined"
+          class="rounded-l-none"
+          :class="{
+            '!bg-surface-gray-2 !text-ink-gray-4 hover:!bg-surface-gray-3':
+              blockedReason && !menuDisabled,
+            'pointer-events-none': busy,
+          }"
+          icon="lucide-chevron-down"
+          label="More publish options"
           :disabled="menuDisabled"
-        >
-          <Button
-            variant="solid"
-            :size="size"
-            class="rounded-l-none"
-            :class="{
-              '!bg-surface-gray-2 !text-ink-gray-4 hover:!bg-surface-gray-3':
-                blockedReason && !menuDisabled,
-            }"
-            icon="lucide-chevron-down"
-            label="More publish options"
-            :disabled="menuDisabled"
-          />
-        </Dropdown>
-      </div>
+          :tabindex="busy ? -1 : undefined"
+          :aria-disabled="busy || undefined"
+        />
+      </Dropdown>
     </div>
   </div>
 
@@ -73,9 +77,8 @@ const blockedReason = computed(() => {
   return ''
 })
 
-const menuDisabled = computed(
-  () => isDraftLoading.value || !isComposerEditable.value || publishing.value || scheduling.value,
-)
+const busy = computed(() => publishing.value || scheduling.value)
+const menuDisabled = computed(() => isDraftLoading.value || !isComposerEditable.value)
 
 const menuHost = ref<HTMLElement | null>(null)
 const showSchedule = ref(false)

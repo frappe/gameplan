@@ -29,28 +29,18 @@
       <Button
         variant="solid"
         icon-left="lucide-plus"
+        label="New discussion"
         :route="{ name: 'NewDiscussion', params: { communityId } }"
-      >
-        Add new
-      </Button>
+      />
     </div>
   </PageHeader>
   <div class="body-container pt-5 pb-40">
     <LastPostReminder class="mb-3" />
 
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <TabButtons class="feed-tabs" :options="feedTabs" v-model="currentFeed" size="sm">
-        <template #suffix="{ button }">
-          <span
-            v-if="feedUnreadCount(String(button.value)) > 0"
-            class="ml-1 text-xs text-ink-gray-5"
-          >
-            {{ feedUnreadCount(String(button.value)) }}
-          </span>
-        </template>
-      </TabButtons>
-      <DiscussionSortDropdown />
-    </div>
+    <DiscussionFeedBar
+      v-model="currentFeed"
+      :counts="{ unread: communityUnreadCount, participating: participatingUnreadCount }"
+    />
 
     <KeepAlive>
       <DiscussionList
@@ -59,6 +49,7 @@
         :orderBy="() => discussionOrderBy"
         :cacheKey="`Discussions-${communityId}-${feedType}`"
         :key="JSON.stringify(filters)"
+        :empty-state="feedEmptyStates[feedType]"
       />
     </KeepAlive>
   </div>
@@ -73,18 +64,17 @@ import {
   PageHeaderMobile,
   PageHeaderMobileTitle,
   Button,
-  TabButtons,
   usePageMeta,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
 import CommunityMenu from '@/components/CommunityMenu.vue'
+import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
-import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
-import { discussionOrderBy } from '@/data/discussionSort'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
-import { feedTabs, feedTitles, type FeedType } from '@/data/discussionFeeds'
+import { feedEmptyStates, feedTitles, type FeedType } from '@/data/discussionFeeds'
+import { discussionOrderBy } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
 import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
 
@@ -120,12 +110,9 @@ const participatingUnreadCount = computed(() => {
   return getParticipatingUnreadCount(props.communityId)
 })
 const currentFeed = computed({
-  get() {
-    return props.feedType
-  },
-  set(feedType) {
-    if (!feedType || feedType === props.feedType) return
-    router.push(feedRoute(String(feedType) as FeedType))
+  get: () => props.feedType,
+  set(feedType: FeedType) {
+    if (feedType !== props.feedType) router.push(feedRoute(feedType))
   },
 })
 watch(
@@ -145,12 +132,6 @@ function feedRoute(feedType: FeedType) {
     name: 'DiscussionsTab',
     params: { communityId: props.communityId, feedType },
   }
-}
-
-function feedUnreadCount(feedType: string) {
-  if (feedType === 'unread') return communityUnreadCount.value
-  if (feedType === 'participating') return participatingUnreadCount.value
-  return 0
 }
 
 usePageMeta(() => ({ title: feedTitle.value }))

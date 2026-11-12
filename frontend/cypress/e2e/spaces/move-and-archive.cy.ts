@@ -60,10 +60,10 @@ describe('Moving and archiving a space', () => {
     cy.selectDropdownOption(`${spaceTitle} Space Options`, 'Archive')
     // The archive confirmation stacks on top of the still-open Settings dialog, so
     // scope to it by title instead of asserting "no dialog".
-    cy.contains('[role=dialog]', 'Archive space').as('archiveConfirm')
+    cy.contains('[role=dialog]', `Archive ${spaceTitle}?`).as('archiveConfirm')
     cy.get('@archiveConfirm').contains('button', 'Archive').click()
     cy.wait('@archiveSpace')
-    cy.contains('[role=dialog]', 'Archive space').should('not.exist')
+    cy.contains('[role=dialog]', `Archive ${spaceTitle}?`).should('not.exist')
 
     // Read via GET: this runs after openCommunitySpaces() has done a cy.visit,
     // so the SPA boot has installed a session CSRF token. A POST cy.request()

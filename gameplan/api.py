@@ -282,11 +282,7 @@ def unread_notifications():
 def accept_invitation(key: str = None):
 	invitation = get_invitation(key)
 	if not invitation or invitation.status not in ("Pending", "Accepted"):
-		frappe.respond_as_web_page(
-			_("This invitation link is no longer valid"),
-			_("Ask the person who invited you to send a new invitation."),
-			http_status_code=404,
-		)
+		redirect_to_invalid_invitation("expired")
 		return
 
 	if invitation.status == "Pending":
@@ -298,19 +294,33 @@ def accept_invitation(key: str = None):
 		# password link in place of the first one.
 		location = invitation.get_password_link()
 	else:
-		frappe.respond_as_web_page(
-			_("This invitation link is no longer valid"),
-			_("This invitation has already been accepted. Sign in to continue."),
-			http_status_code=410,
-			primary_action="/login",
-			primary_label=_("Sign in"),
-		)
+		redirect_to_invalid_invitation("accepted")
 		return
 
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit
 
 	frappe.local.response["type"] = "redirect"
 	frappe.local.response["location"] = location
+
+
+def redirect_to_invalid_invitation(reason: str):
+	"""Explain a dead invitation link on Gameplan's own page, /g/invitation-invalid.
+
+	A signed-in user without a Gameplan role cannot open /g (`require_app_access`), so
+	they get Frappe's message page instead. Other apps on the site are left alone.
+	"""
+	from gameplan.roles import has_app_access
+
+	if frappe.session.user != "Guest" and not has_app_access():
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("Ask the person who invited you to send a new one."),
+			http_status_code=404,
+		)
+		return
+
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = f"/g/invitation-invalid?reason={reason}"
 
 
 @frappe.whitelist(methods=["POST"])

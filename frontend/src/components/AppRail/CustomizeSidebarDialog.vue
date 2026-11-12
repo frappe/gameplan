@@ -163,7 +163,7 @@ import {
 } from '@/data/sidebarPreferences'
 import { sessionUser } from '@/data/session'
 import { useSessionUser } from '@/data/users'
-import { extractServerMessage } from '@/utils'
+import { errorText } from '@/utils'
 import {
   usePointerSortableSections,
   type PointerSortableCommit,
@@ -385,7 +385,7 @@ async function saveChanges() {
     show.value = false
     toast.success('Sidebar updated')
   } catch (error) {
-    toast.error(extractServerMessage(error) || 'Failed to update sidebar')
+    toast.error(errorText(error, 'Could not update the sidebar.'))
   } finally {
     isSaving.value = false
   }

@@ -1,17 +1,17 @@
 interface DocType {
-    name: string;
-    creation: string;
-    modified: string;
-    owner: string;
-    modified_by: string;
-  }
+  name: string
+  creation: string
+  modified: string
+  owner: string
+  modified_by: string
+}
 
-  interface ChildDocType extends DocType {
-    parent?: string;
-    parentfield?: string;
-    parenttype?: string;
-    idx?: number;
-  }
+interface ChildDocType extends DocType {
+  parent?: string
+  parentfield?: string
+  parenttype?: string
+  idx?: number
+}
 
 // Last updated: 2023-06-15 21:01:42.058336
 export interface GPTask extends DocType {
@@ -48,45 +48,52 @@ export interface GPTask extends DocType {
 // Last updated: 2026-11-10 12:00:00.000000
 export interface GPUserProfile extends DocType {
   /** User: Link (User) */
-  user: string;
+  user: string
   /** Readme: Text Editor */
-  readme?: string;
+  readme?: string
   /** Bento Cards: Table (GP Profile Bento Card) */
-  bento_cards: GPProfileBentoCard[];
+  bento_cards: GPProfileBentoCard[]
   /** Layout Customized: Check */
-  layout_customized: 0 | 1;
+  layout_customized: 0 | 1
   /** Full Name: Data */
-  full_name?: string;
+  full_name?: string
   /** Cover Image: Attach Image */
-  cover_image?: string;
+  cover_image?: string
   /** Cover Image Position: Float */
-  cover_image_position?: number;
+  cover_image_position?: number
   /** Bio: Data */
-  bio?: string;
+  bio?: string
   /** Image: Attach Image */
-  image?: string;
+  image?: string
   /** Is Image Background Removed: Check */
-  is_image_background_removed: 0 | 1;
+  is_image_background_removed: 0 | 1
   /** Original Image: Attach Image */
-  original_image?: string;
+  original_image?: string
   /** Image Background Color: Color */
-  image_background_color?: string;
+  image_background_color?: string
   /** Enabled: Check */
-  enabled: 0 | 1;
+  enabled: 0 | 1
   /** Community Order: JSON */
-  community_order?: any;
+  community_order?: any
   /** Pinned Spaces: JSON */
-  pinned_spaces?: any;
+  pinned_spaces?: any
   /** Quick Reaction Emojis: JSON */
-  quick_reaction_emojis?: any;
+  quick_reaction_emojis?: any
   /** Sidebar Badge Style: Select */
-  sidebar_badge_style?: 'Unread count' | 'Dot';
+  sidebar_badge_style?: 'Unread count' | 'Dot'
   /** Email Digest Frequency: Select */
-  email_digest_frequency?: 'Off' | 'Weekly';
+  email_digest_frequency?: 'Off' | 'Weekly'
   /** Email Digest Day of Week: Select */
-  email_digest_day_of_week?: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
+  email_digest_day_of_week?:
+    | 'Monday'
+    | 'Tuesday'
+    | 'Wednesday'
+    | 'Thursday'
+    | 'Friday'
+    | 'Saturday'
+    | 'Sunday'
   /** Email Digest Last Sent On: Date */
-  email_digest_last_sent_on?: string;
+  email_digest_last_sent_on?: string
 }
 
 // Last updated: 2024-02-06 12:18:02.871772
@@ -113,10 +120,12 @@ export interface GPMember extends ChildDocType {
   is_admin?: 0 | 1
 }
 
-// Last updated: 2026-07-31 10:15:00.000000
+// Last updated: 2026-11-12 12:00:00.000000
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
+  /** Reacted By: JSON */
+  reacted_by?: any
   /** To User: Link (User) */
   to_user: string
   /** Type: Select */
@@ -206,35 +215,35 @@ export interface GPTeam extends DocType {
 // Last updated: 2026-10-19 12:00:00.000000
 export interface GPGuestAccess extends DocType {
   /** User: Link (User) */
-  user: string;
+  user: string
   /** Project: Link (GP Project) */
-  project: string;
+  project: string
   /** Team: Link (GP Team) */
-  team?: string;
+  team?: string
 }
 
 // Last updated: 2026-10-19 13:00:00.000000
 export interface GPInvitation extends DocType {
   /** Email: Data */
-  email: string;
+  email: string
   /** Key: Data */
-  key?: string;
+  key?: string
   /** Status: Select */
-  status?: '' | 'Pending' | 'Accepted' | 'Expired';
+  status?: '' | 'Pending' | 'Accepted' | 'Expired'
   /** Email Sent At: Datetime */
-  email_sent_at?: string;
+  email_sent_at?: string
   /** Invited By: Link (User) */
-  invited_by?: string;
+  invited_by?: string
   /** Accepted At: Datetime */
-  accepted_at?: string;
+  accepted_at?: string
   /** Created Account: Check */
-  created_account: 0 | 1;
+  created_account: 0 | 1
   /** Teams: Small Text */
-  teams?: string;
+  teams?: string
   /** Projects: Small Text */
-  projects?: string;
+  projects?: string
   /** Role: Select */
-  role: '' | 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest';
+  role: '' | 'Gameplan Admin' | 'Gameplan Member' | 'Gameplan Guest'
 }
 
 // Last updated: 2024-12-15 00:46:16.394764
@@ -334,25 +343,25 @@ export interface GPPoll extends DocType {
 // Last updated: 2026-10-19 12:00:00.000000
 export interface GPActivity extends DocType {
   /** Reference DocType: Link (DocType) */
-  reference_doctype?: string;
+  reference_doctype?: string
   /** Reference Name: Dynamic Link (reference_doctype) */
-  reference_name?: string;
+  reference_name?: string
   /** User: Link (User) */
-  user?: string;
+  user?: string
   /** Action: Data */
-  action?: string;
+  action?: string
   /** Data: Code */
-  data?: string;
+  data?: string
 }
 
 // Last updated: 2026-10-19 12:00:00.000000
 export interface GPSearchFeedback extends DocType {
   /** User: Link (User) */
-  user: string;
+  user: string
   /** Helpful: Select */
-  helpful: '' | 'Yes' | 'No';
+  helpful: '' | 'Yes' | 'No'
   /** Query: Data */
-  query?: string;
+  query?: string
 }
 
 // Last updated: 2025-08-31 19:25:15.771791
@@ -380,7 +389,7 @@ export interface GPTagLink extends ChildDocType {
 // Last updated: 2026-10-19 12:00:00.000000
 export interface GPTag extends DocType {
   /** Label: Data */
-  label?: string;
+  label?: string
 }
 
 // Last updated: 2023-01-31 15:15:16.167656

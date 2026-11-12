@@ -19,6 +19,11 @@
             <GameplanLogo class="size-7 rounded-[7px]" />
           </span>
         </div>
+        <div class="flex w-full flex-col items-center gap-0.5 border-t py-3 pointer-events-none">
+          <span v-for="icon in railShortcuts" :key="icon" class="grid size-7 place-items-center">
+            <span :class="[icon, 'size-4 text-ink-gray-6']" />
+          </span>
+        </div>
         <div class="flex w-full flex-1 flex-col items-center border-t pt-3">
           <span
             class="relative flex size-7 items-center justify-center rounded-[7px] bg-surface-gray-4"
@@ -27,13 +32,6 @@
               class="absolute -left-[11px] top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-4 bg-surface-gray-8"
             />
             <span class="text-2xs-medium uppercase text-ink-gray-7">{{ communityInitials }}</span>
-          </span>
-        </div>
-        <div
-          class="mt-3 flex w-full flex-col items-center gap-0.5 border-t py-3 pointer-events-none"
-        >
-          <span v-for="icon in railShortcuts" :key="icon" class="grid size-7 place-items-center">
-            <span :class="[icon, 'size-4 text-ink-gray-6']" />
           </span>
         </div>
         <UserDropdown>
@@ -66,13 +64,24 @@
         </div>
         <div class="px-2 pt-0.5">
           <div class="flex h-7 items-center pl-2 text-base text-ink-gray-5">Spaces</div>
-          <div class="mt-0.5">
+          <div class="mt-0.5 space-y-0.5">
             <div
-              class="flex h-7 items-center rounded-4 bg-surface-elevation-3 pl-2 text-ink-gray-8 shadow-sm"
+              v-for="previewSpace in previewSpaces"
+              :key="previewSpace.key"
+              class="flex h-7 items-center rounded-4 pl-2"
+              :class="
+                previewSpace.isNew
+                  ? 'bg-surface-elevation-3 text-ink-gray-8 shadow-sm'
+                  : 'text-ink-gray-7'
+              "
             >
-              <SpaceIcon v-if="space.icon" :icon="space.icon" class="size-4 shrink-0" />
+              <SpaceIcon
+                v-if="previewSpace.icon"
+                :icon="previewSpace.icon"
+                class="size-4 shrink-0"
+              />
               <span v-else class="lucide-hash size-4 shrink-0 text-ink-gray-5" />
-              <span class="ml-2 flex-1 truncate text-sm">{{ previewSpaceTitle }}</span>
+              <span class="ml-2 flex-1 truncate text-sm">{{ previewSpace.title }}</span>
             </div>
           </div>
         </div>
@@ -98,14 +107,11 @@
                     placeholder="Acme Inc, My Company, ..."
                     id="new-community-name"
                     :modelValue="community"
-                    @update:modelValue="
-                      (value) => (community = value.length <= 50 ? value : value.slice(0, 50))
-                    "
-                    maxlength="50"
-                    description="Give your community a short and descriptive name"
+                    @update:modelValue="(value: string) => (community = value.slice(0, NAME_LIMIT))"
+                    :maxlength="NAME_LIMIT"
                   >
-                    <template #suffix>
-                      <span class="text-ink-gray-5 text-sm">{{ 50 - community.length }}</span>
+                    <template v-if="charactersLeft(community) <= 10" #suffix>
+                      <span class="text-ink-gray-5 text-sm">{{ charactersLeft(community) }}</span>
                     </template>
                   </FormControl>
                 </div>
@@ -120,12 +126,14 @@
                 <div class="mt-6 space-y-2">
                   <div class="space-x-2 flex items-start w-full">
                     <IconPicker v-model="space.icon" v-slot="{ togglePopover }">
-                      <Button @click="togglePopover()">
-                        <template #icon>
-                          <SpaceIcon v-if="space.icon" :icon="space.icon" class="size-4" />
-                          <span v-else class="lucide-plus h-4 w-4" />
-                        </template>
-                      </Button>
+                      <Tooltip text="Choose icon">
+                        <Button aria-label="Choose icon" @click="togglePopover()">
+                          <template #icon>
+                            <SpaceIcon v-if="space.icon" :icon="space.icon" class="size-4" />
+                            <span v-else class="lucide-smile-plus size-4" />
+                          </template>
+                        </Button>
+                      </Tooltip>
                     </IconPicker>
                     <div class="w-full">
                       <FormControl
@@ -135,14 +143,13 @@
                         id="new-space-name"
                         :modelValue="space.title"
                         @update:modelValue="
-                          (value) => (space.title = value.length <= 50 ? value : value.slice(0, 50))
+                          (value: string) => (space.title = value.slice(0, NAME_LIMIT))
                         "
-                        maxlength="50"
-                        description="Give your space a short and descriptive name"
+                        :maxlength="NAME_LIMIT"
                       >
-                        <template #suffix>
+                        <template v-if="charactersLeft(space.title) <= 10" #suffix>
                           <span class="text-ink-gray-5 text-sm">
-                            {{ 50 - space.title.length }}
+                            {{ charactersLeft(space.title) }}
                           </span>
                         </template>
                       </FormControl>
@@ -152,32 +159,19 @@
               </div>
               <div class="mt-8 border-t pt-8">
                 <h3 class="text-base-medium text-ink-gray-8 mb-2">Invite people</h3>
-                <p class="text-sm text-ink-gray-6">
-                  Add email addresses of people you'd like to invite to this community
+                <p class="text-p-sm text-ink-gray-6">
+                  Add the email addresses of people you'd like to invite to this community.
                 </p>
-                <div class="mt-3">
-                  <FormControl
-                    type="textarea"
-                    v-model="emailInput"
-                    placeholder="jane@example.com, mary@example.com, ..."
-                    :rows="3"
-                    class="w-full"
-                    @blur="validateEmails(emailInput)"
-                    description="Separate multiple email addresses with commas or new lines"
-                  />
-                  <p v-if="emailError" class="text-xs text-red-600 mt-1">
-                    {{ emailError }}
-                  </p>
+                <div class="mt-6">
+                  <EmailListInput ref="emailListInput" v-model="emailInput" />
                 </div>
               </div>
-              <div class="mt-4">
-                <ErrorMessage :message="errorMessage" />
-              </div>
-              <div class="mt-8 flex justify-end">
+              <div class="mt-8 flex items-center justify-end gap-3">
+                <ErrorMessage class="mr-auto" role="alert" :message="errorMessage" />
                 <Button
                   variant="solid"
                   :loading="onboarding.loading"
-                  :disabled="!community || !space.title"
+                  :disabled="!community.trim() || !space.title.trim()"
                   @click="submit"
                 >
                   Continue
@@ -191,9 +185,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, useTemplateRef } from 'vue'
 import { useRouter } from 'vue-router'
-import { FormControl, ScrollArea, useCall } from 'frappe-ui'
+import { FormControl, ScrollArea, Tooltip, useCall } from 'frappe-ui'
+import EmailListInput, { parseEmailList } from '@/components/EmailListInput.vue'
 import GameplanLogo from '@/components/GameplanLogo.vue'
 import IconPicker from '@/components/IconPicker.vue'
 import SpaceIcon from '@/components/SpaceIcon.vue'
@@ -203,6 +198,9 @@ import { joinedSpaces, spaces } from '@/data/spaces'
 import { communities } from '@/data/communities'
 import { communityState } from '@/data/communityState'
 import { useSessionUser } from '@/data/users'
+import { errorText } from '@/utils'
+
+const NAME_LIMIT = 50
 
 const community = ref('')
 const space = reactive({
@@ -210,7 +208,7 @@ const space = reactive({
   icon: '',
 })
 const emailInput = ref('')
-const emailError = ref('')
+const emailListInput = useTemplateRef('emailListInput')
 
 const router = useRouter()
 const sessionUser = useSessionUser()
@@ -233,23 +231,22 @@ const communityInitials = computed(() => {
   return previewCommunityTitle.value.slice(0, 2).toUpperCase()
 })
 
-// Bottom-of-rail shortcuts shown in the real AppRail (Search, People,
+// The shortcuts at the top of the real rail, under the logo (Search, People,
 // Notifications, Drafts). Decorative only.
 const railShortcuts = ['lucide-search', 'lucide-users-2', 'lucide-bell', 'lucide-pencil-line']
 
-const validateEmails = (emails: string) => {
-  const emailList = emails
-    .split(/[\n,]/)
-    .map((e) => e.trim())
-    .filter((e) => e)
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  const invalidEmails = emailList.filter((email) => !emailRegex.test(email.trim()))
-  if (invalidEmails.length) {
-    emailError.value = `Invalid email(s): ${invalidEmails.join(', ')}`
-    return false
-  }
-  emailError.value = ''
-  return true
+// Setup also creates a "General" space. The sidebar lists spaces by title.
+const previewSpaces = computed(() => {
+  const spaces = [
+    { key: 'new', title: previewSpaceTitle.value, icon: space.icon, isNew: true },
+    { key: 'general', title: 'General', icon: '', isNew: false },
+  ]
+  if (previewSpaceTitle.value === 'General') spaces.pop()
+  return spaces.sort((a, b) => a.title.localeCompare(b.title))
+})
+
+function charactersLeft(value: string) {
+  return NAME_LIMIT - value.length
 }
 
 type OnboardingParams = {
@@ -268,14 +265,6 @@ const onboarding = useCall<OnboardingResult, OnboardingParams>({
   url: '/api/v2/method/gameplan.api.onboarding',
   method: 'POST',
   immediate: false,
-  beforeSubmit() {
-    if (!community.value) {
-      throw new Error('Please enter a community name')
-    }
-    if (!space.title) {
-      throw new Error('Please enter a space name')
-    }
-  },
   onSuccess(result) {
     communityState.change(result.team)
     Promise.all([communities.reload(), spaces.reload(), joinedSpaces.reload()]).then(() => {
@@ -287,26 +276,20 @@ const onboarding = useCall<OnboardingResult, OnboardingParams>({
   },
 })
 
-// A `beforeSubmit` throw only rejects `submit()`; it no longer lands in
-// `onboarding.error`. Hold the validation message here so the same
-// ErrorMessage can show it.
-const validationError = ref('')
+// The request's own failure, as a sentence. Invalid emails show under the email box.
+const errorMessage = computed(() =>
+  onboarding.error ? errorText(onboarding.error, 'Could not set up Gameplan. Try again.') : '',
+)
 
-// Validation wins while it is set, because no request runs in that case and
-// `onboarding.error` would still hold the previous failure.
-const errorMessage = computed(() => validationError.value || onboarding.error || undefined)
-
-async function submit() {
-  validationError.value = ''
-  try {
-    await onboarding.submit({
-      community: community.value,
-      space: space.title,
+function submit() {
+  if (!emailListInput.value?.validate()) return
+  onboarding
+    .submit({
+      community: community.value.trim(),
+      space: space.title.trim(),
       icon: space.icon,
-      emails: emailInput.value.split(/[\n,]/),
+      emails: parseEmailList(emailInput.value).emails,
     })
-  } catch (error) {
-    validationError.value = error instanceof Error ? error.message : String(error)
-  }
+    .catch(() => {})
 }
 </script>

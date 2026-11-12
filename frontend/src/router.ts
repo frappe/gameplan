@@ -283,9 +283,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/NoCommunities.vue'),
   },
   {
+    // gameplan.api.accept_invitation sends dead invitation links here.
+    path: '/invitation-invalid',
+    name: 'InvitationInvalid',
+    component: () => import('@/pages/InvitationInvalid.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/404',
     name: 'NotFound',
     component: () => import('@/pages/NotFound.vue'),
+    meta: { communitySidebar: true },
   },
   {
     path: '/list',
@@ -312,12 +320,20 @@ const routes: RouteRecordRaw[] = [
         meta: { communityScope: true, prefetch: true },
       },
       {
-        name: 'SpacePages',
-        path: 'pages',
-        component: () => import('@/pages/SpacePages.vue'),
+        name: 'SpaceDiscussionsTab',
+        path: 'discussions/:feedType',
+        component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
         meta: { communityScope: true },
+        beforeEnter(to) {
+          if (isFeedType(routeParam(to.params.feedType))) return
+          const { communityId, spaceId } = to.params
+          return { name: 'SpaceDiscussions', params: { communityId, spaceId }, replace: true }
+        },
       },
+      // Pages and Tasks no longer have tabs in a space. The names stay so old links and
+      // breadcrumbs land on the space's discussions instead of failing to resolve.
+      { name: 'SpacePages', path: 'pages', redirect: { name: 'SpaceDiscussions' } },
       {
         name: 'SpacePage',
         path: 'pages/:pageId/:slug?',
@@ -325,13 +341,7 @@ const routes: RouteRecordRaw[] = [
         props: true,
         meta: { hideHeader: true, communityScope: true, hideMobileNav: true },
       },
-      {
-        name: 'SpaceTasks',
-        path: 'tasks',
-        component: () => import('@/pages/SpaceTasks.vue'),
-        props: true,
-        meta: { communityScope: true },
-      },
+      { name: 'SpaceTasks', path: 'tasks', redirect: { name: 'SpaceDiscussions' } },
       {
         name: 'SpaceTask',
         path: 'tasks/:taskId',
@@ -782,6 +792,8 @@ router.beforeEach(async (to, from) => {
   loadRouteLocation(to).catch(() => {})
   saveAndRestoreScrollPosition(to, from)
 
+  if (to.meta.public) return true
+
   if (to.name === 'Login' && session.isLoggedIn) {
     return { name: 'Home' }
   }
@@ -850,11 +862,9 @@ router.beforeEach(async (to, from) => {
 
   let communityId = routeParam(to.params.communityId)
 
+  // A missing space is not redirected: Space.vue and SpaceDiscussion.vue show "Space not
+  // found" in place, under the community's sidebar, once the community below checks out.
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
-
-  if (to.params.spaceId && !space) {
-    return { name: 'NotFound' }
-  }
 
   if (space?.team && space.team !== communityId) {
     return redirectCurrentRouteToCommunity(to, space.team)
@@ -996,13 +1006,15 @@ async function getCanonicalContentRoute(
   // URL is already canonical — skip the blocking server fetch and let the route change
   // immediately (the detail page shows its own skeleton). Restricted to in-app navigation:
   // deep links (first load, refresh, pasted or hand-edited URLs — from is START_LOCATION
-  // with no matched records) still hit the server so a deleted document 404s and a stale
-  // space/slug rewrites to canonical.
+  // with no matched records) still hit the server so a stale space/slug rewrites to
+  // canonical and a deleted document shows as not found.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
 
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
-  if (!doc?.project) return { name: 'NotFound' }
+  // A discussion that is missing or out of reach renders its route anyway, and
+  // DiscussionView shows "Discussion not found" in place.
+  if (!doc?.project) return descriptor.routeName === 'Discussion' ? undefined : { name: 'NotFound' }
 
   const space = await findSpace(String(doc.project))
   if (!space?.team) return { name: 'NotFound' }

@@ -42,7 +42,7 @@ describe('Community scope routing', () => {
     cy.visit(`/g/community/${community}/discussions`)
     // Sidebar lists this community's spaces, and the page owns discussion feed tabs.
     cy.contains('a', 'General').should('be.visible')
-    cy.contains('button:visible', 'All Discussions').should('be.visible')
+    cy.contains('button:visible', 'All discussions').should('be.visible')
 
     // Global routes drop the community sidebar; its space rows are gone.
     cy.visit('/g/bookmarks')

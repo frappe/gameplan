@@ -153,7 +153,7 @@ import { useProfileBentoCustomization } from '@/components/ProfileBento/useProfi
 import { useProfileFieldDraft } from '@/components/ProfileBento/useProfileFieldDraft'
 import { useProfileFieldEditing } from '@/components/ProfileBento/useProfileFieldEditing'
 import { useSessionUser } from '@/data/users'
-import { extractServerMessage } from '@/utils'
+import { errorText } from '@/utils'
 import { isPermissionError } from '@/utils/errorMessage'
 import type { ProfileFieldValues } from '@/components/ProfileBento/types'
 import type { GPUserProfile } from '@/types/doctypes'
@@ -485,6 +485,6 @@ function getSaveErrorMessage(error: unknown) {
   if (isPermissionError(error)) {
     return 'You do not have permission to save this profile layout'
   }
-  return extractServerMessage(error) || 'Could not save profile layout'
+  return errorText(error, 'Could not save the profile layout.')
 }
 </script>

@@ -47,7 +47,9 @@ const effectiveRoute = computed(() => {
 })
 
 function isCommunityScoped(route: Pick<RouteLocationNormalized, 'matched'>) {
-  return route.matched.some((record) => record.meta?.communityScope)
+  return route.matched.some(
+    (record) => record.meta?.communityScope || record.meta?.communitySidebar,
+  )
 }
 
 const onCommunityRoute = computed(() => isCommunityScoped(effectiveRoute.value))

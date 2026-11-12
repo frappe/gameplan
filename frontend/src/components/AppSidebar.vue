@@ -43,6 +43,7 @@
               :key="space.name"
               :route="{ name: 'Space', params: { communityId: space.team, spaceId: space.name } }"
               :active="isActiveSpace(space.name)"
+              :class="space.archived_at && 'opacity-60'"
             >
               <template #prefix>
                 <SpaceIcon :icon="space.icon" class="size-4" />
@@ -94,8 +95,20 @@
               </template>
             </SidebarItem>
 
+            <!-- The page's LoadError box is too tall for this column, so the sidebar
+                 says the same thing in its empty-message style. -->
             <div
-              v-if="spacesList.length === 0"
+              v-if="spacesStatus === 'failed'"
+              class="mt-1 px-2 text-xs leading-relaxed text-ink-gray-5"
+              role="alert"
+            >
+              {{ errorText(spaces.error, 'Could not load spaces.') }}
+              <Button size="sm" icon-left="lucide-rotate-ccw" class="mt-2" @click="spaces.reload()">
+                Retry
+              </Button>
+            </div>
+            <div
+              v-else-if="spacesStatus === 'ready' && spacesList.length === 0"
               class="mt-1 px-2 text-xs leading-relaxed text-ink-gray-5"
             >
               {{ communitySpaces.emptyMessage }}
@@ -149,7 +162,8 @@ import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelo
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
-import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
+import { getSpaceUnreadCount, markAllAsRead, spaces, spacesStatus, type Space } from '@/data/spaces'
+import { errorText } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
