@@ -101,32 +101,16 @@ def community_submissions(projects):
 	which took more than a minute on a large forum."""
 	Submission = frappe.qb.DocType("GP Submission")
 	Parent = frappe.qb.DocType("GP Discussion").as_("parent")
-	EditedPost = frappe.qb.DocType("GP Discussion").as_("edited_post")
-	EditedReply = frappe.qb.DocType("GP Comment").as_("edited_reply")
-	ReplyPost = frappe.qb.DocType("GP Discussion").as_("reply_post")
 	if not projects:
 		return frappe.qb.from_(Submission).where(Submission.name.isnull() & Submission.name.notnull())
 	projects = [str(name) for name in projects]
-	is_new = Submission.edit_name.isnull() | (Submission.edit_name == "")
 	has_parent = Submission.discussion.notnull() & (Submission.discussion != "")
 	return (
 		frappe.qb.from_(Submission)
 		.left_join(Parent)
 		.on(Parent.name == Submission.discussion)
-		.left_join(EditedPost)
-		.on((Submission.edit_doctype == "GP Discussion") & (EditedPost.name == Submission.edit_name))
-		.left_join(EditedReply)
-		.on((Submission.edit_doctype == "GP Comment") & (EditedReply.name == Submission.edit_name))
-		.left_join(ReplyPost)
-		.on(
-			(EditedReply.reference_doctype == "GP Discussion")
-			& (ReplyPost.name == EditedReply.reference_name)
-		)
 		.where(
-			(is_new & ~has_parent & Submission.project.isin(projects))
-			| (is_new & has_parent & Parent.project.isin(projects))
-			| (~is_new & (Submission.edit_doctype == "GP Discussion") & EditedPost.project.isin(projects))
-			| (~is_new & (Submission.edit_doctype == "GP Comment") & ReplyPost.project.isin(projects))
+			(~has_parent & Submission.project.isin(projects)) | (has_parent & Parent.project.isin(projects))
 		)
 	)
 
