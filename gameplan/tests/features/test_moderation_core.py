@@ -270,6 +270,21 @@ class TestModerationCore(IsolatedSearchIndex, GameplanTestCase):
 			summary = search.search("Original")["summary"]
 		self.assertEqual((summary["total_matches"], summary["filtered_matches"]), (0, 0))
 
+	def test_a_busy_search_index_moves_the_removal_to_a_job(self):
+		import sqlite3
+
+		from gameplan.mixins.moderation import remove_from_search
+		from gameplan.search_sqlite import GameplanSearch
+
+		busy = sqlite3.OperationalError("database is locked")
+		with (
+			patch.object(GameplanSearch, "remove_doc", side_effect=busy),
+			patch("frappe.enqueue") as enqueue,
+		):
+			remove_from_search("GP Discussion", self.discussion.name)
+		enqueue.assert_called_once()
+		self.assertEqual(enqueue.call_args.kwargs["name"], self.discussion.name)
+
 	def test_search_facets_leave_out_a_removed_discussion_and_its_replies(self):
 		from gameplan.search_sqlite import GameplanSearch
 
