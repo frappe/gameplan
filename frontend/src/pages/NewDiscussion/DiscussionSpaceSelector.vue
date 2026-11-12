@@ -9,8 +9,15 @@
     :disabled="!isComposerEditable"
     @change="handleSpaceChange"
   >
-    <template #trigger="{ selectedOption, disabled }">
-      <Button :size="size" :disabled="disabled" :class="['!justify-start', $attrs.class]">
+    <!-- A custom trigger gets none of the built-in trigger's ARIA, so it sets its own. -->
+    <template #trigger="{ selectedOption, disabled, open }">
+      <Button
+        :size="size"
+        :disabled="disabled"
+        :class="['!justify-start', $attrs.class]"
+        aria-haspopup="listbox"
+        :aria-expanded="open"
+      >
         <template #prefix>
           <SpaceIcon
             v-if="selectedOption"
