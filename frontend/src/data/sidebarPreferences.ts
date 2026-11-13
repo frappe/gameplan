@@ -86,13 +86,14 @@ type SidebarPreferenceFields = Pick<
 
 /** Applies the sidebar preferences saved on the session user's profile. */
 export function loadSidebarPreferences(user: SidebarPreferenceFields) {
-  setSidebarBadgeStyle(user.sidebar_badge_style)
+  applySidebarBadgeStyle(user.sidebar_badge_style)
   spaceSidebarSort.load(user.space_sidebar_sort, user.user_profile)
   hideInactiveSpaces.load(user.hide_inactive_spaces, user.user_profile)
   showAllDiscussions.load(user.show_all_discussions, user.user_profile)
 }
 
-export function setSidebarBadgeStyle(style: unknown) {
+/** Shows a badge style in this session only. Callers save it to the profile themselves. */
+export function applySidebarBadgeStyle(style: unknown) {
   sidebarBadgeStyle.value = normalizeSidebarBadgeStyle(style)
 }
 
