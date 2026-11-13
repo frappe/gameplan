@@ -121,7 +121,7 @@ import {
   currentSpaceSidebarSort,
   setHideInactiveSpaces,
   setShowAllDiscussions,
-  setSidebarBadgeStyle,
+  applySidebarBadgeStyle,
   setSpaceSidebarSort,
   type SidebarBadgeStyle,
   type SpaceSidebarSort,
@@ -206,7 +206,7 @@ async function saveBadgeStyle(style: SidebarBadgeStyle) {
       name: profileName,
       sidebar_badge_style: style,
     })
-    setSidebarBadgeStyle(style)
+    applySidebarBadgeStyle(style)
     sessionUser.sidebar_badge_style = style
     toast.success('Sidebar preference saved')
   } catch {

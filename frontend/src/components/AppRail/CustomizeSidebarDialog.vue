@@ -158,7 +158,7 @@ import type { Community } from '@/data/communities'
 import { setCommunityOrder } from '@/data/communityOrder'
 import {
   currentSidebarBadgeStyle,
-  setSidebarBadgeStyle,
+  applySidebarBadgeStyle,
   type SidebarBadgeStyle,
 } from '@/data/sidebarPreferences'
 import { sessionUser } from '@/data/session'
@@ -363,7 +363,7 @@ async function saveChanges() {
       sidebar_badge_style: selectedBadgeStyle.value,
     })
     setCommunityOrder(selectedCommunityNames.value)
-    setSidebarBadgeStyle(selectedBadgeStyle.value)
+    applySidebarBadgeStyle(selectedBadgeStyle.value)
     user.sidebar_badge_style = selectedBadgeStyle.value
     updateLocalCommunityMembership()
 

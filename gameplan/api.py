@@ -82,6 +82,9 @@ def get_user_info(user=None):
 			"pinned_spaces",
 			"quick_reaction_emojis",
 			"sidebar_badge_style",
+			"show_all_discussions",
+			"space_sidebar_sort",
+			"hide_inactive_spaces",
 			"email_digest_frequency",
 			"email_digest_day_of_week",
 			"email_digest_last_sent_on",
@@ -107,6 +110,9 @@ def get_user_info(user=None):
 				user.pinned_spaces = user_profile.pinned_spaces
 				user.quick_reaction_emojis = user_profile.quick_reaction_emojis
 				user.sidebar_badge_style = user_profile.sidebar_badge_style
+				user.show_all_discussions = user_profile.show_all_discussions
+				user.space_sidebar_sort = user_profile.space_sidebar_sort
+				user.hide_inactive_spaces = user_profile.hide_inactive_spaces
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on

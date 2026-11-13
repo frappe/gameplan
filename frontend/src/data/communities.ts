@@ -3,6 +3,7 @@ import { dialog, useDoctype, useList } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -111,7 +112,7 @@ export function confirmLeaveCommunity(community: Community) {
 }
 
 export function isCommunityJoined(community: Community) {
-  let user = getSessionUserFromCookie()
+  let user = sessionUserFromCookie()
   if (!user) return false
   // Guests never become community members; the backend only returns communities that
   // hold a space they've been granted, so every fetched community is one they should
@@ -132,10 +133,4 @@ function sortCommunitiesByUserOrder(communities: Community[]) {
 
     return left.title.localeCompare(right.title)
   })
-}
-
-function getSessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  let user = cookies.get('user_id')
-  return user === 'Guest' ? null : user
 }
