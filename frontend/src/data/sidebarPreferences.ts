@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import type { DropdownOptions } from 'frappe-ui'
 import { normalizeBoolean, ProfilePreference } from './profilePreference'
+import type { UserInfo } from './users'
 
 export type SidebarBadgeStyle = 'Unread count' | 'Dot'
 export type SpaceSidebarSort = 'Recent activity' | 'Alphabetical'
@@ -10,18 +11,21 @@ const sidebarBadgeStyle = ref<SidebarBadgeStyle>(defaultSidebarBadgeStyle)
 const defaultSpaceSidebarSort: SpaceSidebarSort = 'Recent activity'
 const spaceSidebarSort = new ProfilePreference<SpaceSidebarSort>({
   field: 'space_sidebar_sort',
+  cacheKey: 'spaceSidebarSort',
   defaultValue: defaultSpaceSidebarSort,
   normalize: normalizeSpaceSidebarSort,
   legacyKey: 'gameplan:spaceSidebarSort',
 })
 const hideInactiveSpaces = new ProfilePreference<boolean>({
   field: 'hide_inactive_spaces',
+  cacheKey: 'hideInactiveSpaces',
   defaultValue: false,
   normalize: normalizeBoolean,
   legacyKey: 'gameplan:hideInactiveSpaces',
 })
 const showAllDiscussions = new ProfilePreference<boolean>({
   field: 'show_all_discussions',
+  cacheKey: 'showAllDiscussions',
   defaultValue: false,
   normalize: normalizeBoolean,
   legacyKey: 'gameplan:showAllDiscussions',
@@ -71,13 +75,14 @@ export const hasCustomSpaceSidebarOptions = computed(() => {
   )
 })
 
-interface SidebarPreferenceFields {
-  user_profile: string
-  sidebar_badge_style?: unknown
-  space_sidebar_sort?: unknown
-  hide_inactive_spaces?: unknown
-  show_all_discussions?: unknown
-}
+type SidebarPreferenceFields = Pick<
+  UserInfo,
+  | 'user_profile'
+  | 'sidebar_badge_style'
+  | 'space_sidebar_sort'
+  | 'hide_inactive_spaces'
+  | 'show_all_discussions'
+>
 
 /** Applies the sidebar preferences saved on the session user's profile. */
 export function loadSidebarPreferences(user: SidebarPreferenceFields) {

@@ -2,16 +2,20 @@ import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { toast, useDoctype } from 'frappe-ui'
 import { OptimisticSave } from '@/utils/optimisticSave'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 import type { GPUserProfile } from '@/types/doctypes'
 
-type PreferenceField = 'show_all_discussions' | 'space_sidebar_sort' | 'hide_inactive_spaces'
-
-interface ProfilePreferenceOptions<T extends string | boolean> {
-  field: PreferenceField
+interface ProfilePreferenceOptions<T> {
+  field: keyof GPUserProfile
+  /** Names this browser's copy: `gameplan:<cacheKey>:<user>`. */
+  cacheKey: string
   defaultValue: T
   normalize: (value: unknown) => T
+  /** Turns the value into what the field stores. Booleans become 0 or 1 by default. */
+  encode?: (value: T) => unknown
   /** The localStorage key this preference used when it was kept per device. */
-  legacyKey: string
+  legacyKey?: string
+  errorMessage?: string
 }
 
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
@@ -22,7 +26,7 @@ const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
  * This browser keeps a copy per user, so the first paint does not wait for the server.
  * Once the profile loads, the server value wins, unless a save is in flight.
  */
-export class ProfilePreference<T extends string | boolean> {
+export class ProfilePreference<T> {
   private cached
   private profileName = ''
   private save: OptimisticSave<T>
@@ -32,18 +36,25 @@ export class ProfilePreference<T extends string | boolean> {
 
   constructor(private options: ProfilePreferenceOptions<T>) {
     this.cached = useLocalStorage<T>(
-      `gameplan:${options.field}:${sessionUserFromCookie()}`,
+      `gameplan:${options.cacheKey}:${sessionUserFromCookie() ?? 'Guest'}`,
       options.defaultValue,
     )
     this.save = new OptimisticSave<T>({
       send: (value) => this.send(value),
-      onError: () => toast.error('Could not save your preference'),
+      onError: () => toast.error(options.errorMessage ?? 'Could not save your preference'),
     })
     this.save.onSaved((value) => (this.cached.value = value))
     this.current = computed(() => options.normalize(this.save.shown(this.cached.value)))
   }
 
-  /** Applies the value from the session user's profile, which `get_user_info` returns. */
+  /**
+   * Applies the value from the session user's profile, which `get_user_info` returns.
+   *
+   * A value loaded during a save can have been read before the save landed, so it is
+   * ignored; a successful save sets the value itself. Once idle, the server value wins,
+   * so a change made on another device is kept. A value read before a save landed but
+   * loaded just after is still applied: it shows the old value until the next load.
+   */
   load(serverValue: unknown, profileName: string) {
     this.profileName = profileName
     if (!profileName || this.save.busy) return
@@ -58,12 +69,10 @@ export class ProfilePreference<T extends string | boolean> {
   private async send(value: T) {
     // Without a profile there is nowhere to save, so the value stays in this browser.
     if (!this.profileName) return
-    await userProfiles.setValue.submit({
-      name: this.profileName,
-      [this.options.field]: typeof value === 'boolean' ? Number(value) : value,
-    })
+    const { field, encode = encodeScalar, legacyKey } = this.options
+    await userProfiles.setValue.submit({ name: this.profileName, [field]: encode(value) })
     // The profile now holds a choice, so the old per-device value is not needed.
-    removeStored(this.options.legacyKey)
+    if (legacyKey) removeStored(legacyKey)
   }
 
   // A value someone chose on this device before the preference moved to the profile is
@@ -71,6 +80,7 @@ export class ProfilePreference<T extends string | boolean> {
   // only once the profile holds a value, so a failed save is retried on the next load.
   private migrateLegacyValue() {
     const { legacyKey, normalize, defaultValue } = this.options
+    if (!legacyKey) return
     const legacy = readStored(legacyKey)
     if (legacy === null) return
     const value = normalize(legacy)
@@ -81,6 +91,10 @@ export class ProfilePreference<T extends string | boolean> {
 
 export function normalizeBoolean(value: unknown) {
   return value === true || value === 1 || value === '1' || value === 'true'
+}
+
+function encodeScalar(value: unknown) {
+  return typeof value === 'boolean' ? Number(value) : value
 }
 
 function readStored(key: string) {
@@ -97,9 +111,4 @@ function removeStored(key: string) {
   } catch {
     // Storage is blocked, so there is nothing to remove.
   }
-}
-
-function sessionUserFromCookie() {
-  let cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  return cookies.get('user_id') || 'Guest'
 }
