@@ -13,6 +13,9 @@
   "pinned_spaces",
   "quick_reaction_emojis",
   "sidebar_badge_style",
+  "show_all_discussions",
+  "space_sidebar_sort",
+  "hide_inactive_spaces",
   "email_digest_frequency",
   "email_digest_day_of_week",
   "email_digest_last_sent_on",
@@ -147,6 +150,25 @@
    "options": "Unread count\nDot"
   },
   {
+   "default": "0",
+   "fieldname": "show_all_discussions",
+   "fieldtype": "Check",
+   "label": "Show All Discussions"
+  },
+  {
+   "default": "Recent activity",
+   "fieldname": "space_sidebar_sort",
+   "fieldtype": "Select",
+   "label": "Space Sidebar Sort",
+   "options": "Recent activity\nAlphabetical"
+  },
+  {
+   "default": "0",
+   "fieldname": "hide_inactive_spaces",
+   "fieldtype": "Check",
+   "label": "Hide Inactive Spaces"
+  },
+  {
    "default": "Off",
    "fieldname": "email_digest_frequency",
    "fieldtype": "Select",
@@ -169,7 +191,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-11-10 12:00:00.000000",
+ "modified": "2026-11-13 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP User Profile",

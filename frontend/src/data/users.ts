@@ -4,7 +4,11 @@ import router from '@/router'
 import { setCommunityOrder } from './communityOrder'
 import { loadPinnedSpaces } from './pinnedSpaces'
 import { loadQuickReactionSlots } from './reactionPreferences'
-import { setSidebarBadgeStyle, type SidebarBadgeStyle } from './sidebarPreferences'
+import {
+  loadSidebarPreferences,
+  type SidebarBadgeStyle,
+  type SpaceSidebarSort,
+} from './sidebarPreferences'
 import { session } from './session'
 import { onSocketEvent } from '@/socket'
 
@@ -37,6 +41,9 @@ export interface UserInfo {
   pinned_spaces?: unknown
   quick_reaction_emojis?: unknown
   sidebar_badge_style?: SidebarBadgeStyle
+  show_all_discussions?: 0 | 1
+  space_sidebar_sort?: SpaceSidebarSort
+  hide_inactive_spaces?: 0 | 1
   email_digest_frequency?: EmailDigestFrequency
   email_digest_day_of_week?: EmailDigestDayOfWeek
   email_digest_last_sent_on?: string
@@ -71,7 +78,7 @@ function mergeUserInfo(user: UserInfo) {
     setCommunityOrder(user.community_order)
     loadPinnedSpaces(user.pinned_spaces, user.user_profile)
     loadQuickReactionSlots(user.quick_reaction_emojis, user.user_profile)
-    setSidebarBadgeStyle(user.sidebar_badge_style)
+    loadSidebarPreferences(user)
   }
 }
 

@@ -927,3 +927,39 @@ class TestQuickReactions(GameplanTestCase):
 			profile.save()
 
 		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, '["👍",""]')
+
+
+class TestSidebarPreferences(GameplanTestCase):
+	"""Sidebar preferences live on the profile, so every device the member uses shows the same sidebar."""
+
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		reset_profile(self.member.name)
+
+	def save_preferences(self):
+		with self.as_user(self.member):
+			profile = get_profile(self.member.name)
+			profile.show_all_discussions = 1
+			profile.space_sidebar_sort = "Alphabetical"
+			profile.hide_inactive_spaces = 1
+			profile.save()
+
+	def test_member_gets_their_own_sidebar_preferences_in_user_info(self):
+		self.save_preferences()
+
+		with self.as_user(self.member):
+			users = get_user_info(self.member.name)
+
+		self.assertEqual(users[0].show_all_discussions, 1)
+		self.assertEqual(users[0].space_sidebar_sort, "Alphabetical")
+		self.assertEqual(users[0].hide_inactive_spaces, 1)
+
+	def test_other_members_sidebar_preferences_are_private_in_user_info(self):
+		self.save_preferences()
+
+		with self.as_user(self.second_member):
+			users = get_user_info(self.member.name)
+
+		for field in ("show_all_discussions", "space_sidebar_sort", "hide_inactive_spaces"):
+			self.assertNotIn(field, users[0])
