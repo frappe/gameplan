@@ -5,18 +5,32 @@ import { OptimisticSave } from '@/utils/optimisticSave'
 import { sessionUserFromCookie } from '@/utils/sessionCookie'
 import type { GPUserProfile } from '@/types/doctypes'
 
-interface ProfilePreferenceOptions<T> {
-  field: keyof GPUserProfile
+type PreferenceField =
+  | 'pinned_spaces'
+  | 'show_all_discussions'
+  | 'space_sidebar_sort'
+  | 'hide_inactive_spaces'
+
+interface BaseOptions<T> {
+  field: PreferenceField
   /** Names this browser's copy: `gameplan:<cacheKey>:<user>`. */
   cacheKey: string
   defaultValue: T
   normalize: (value: unknown) => T
-  /** Turns the value into what the field stores. Booleans become 0 or 1 by default. */
-  encode?: (value: T) => unknown
-  /** The localStorage key this preference used when it was kept per device. */
-  legacyKey?: string
   errorMessage?: string
 }
+
+// A string or boolean is stored as is (booleans as 0 or 1), and can be migrated from
+// an old per-device key, which compares values with `===`. Anything else has to say
+// how it is stored, and cannot be migrated.
+type ProfilePreferenceOptions<T> = BaseOptions<T> &
+  ([T] extends [string | boolean]
+    ? {
+        encode?: (value: T) => unknown
+        /** The localStorage key this preference used when it was kept per device. */
+        legacyKey?: string
+      }
+    : { encode: (value: T) => unknown; legacyKey?: never })
 
 const userProfiles = useDoctype<GPUserProfile>('GP User Profile')
 
