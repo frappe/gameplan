@@ -55,24 +55,27 @@ export class ProfilePreference<T extends string | boolean> {
     this.save.change(value)
   }
 
-  private send(value: T) {
+  private async send(value: T) {
     // Without a profile there is nowhere to save, so the value stays in this browser.
-    if (!this.profileName) return Promise.resolve()
-    return userProfiles.setValue.submit({
+    if (!this.profileName) return
+    await userProfiles.setValue.submit({
       name: this.profileName,
       [this.options.field]: typeof value === 'boolean' ? Number(value) : value,
     })
+    // The profile now holds a choice, so the old per-device value is not needed.
+    removeStored(this.options.legacyKey)
   }
 
-  // Runs once per browser: the old key is removed. A value someone chose on this device
-  // before the preference moved to the profile is kept, unless the profile already has
-  // a choice of its own.
+  // A value someone chose on this device before the preference moved to the profile is
+  // kept, unless the profile already has a choice of its own. The old key is removed
+  // only once the profile holds a value, so a failed save is retried on the next load.
   private migrateLegacyValue() {
     const { legacyKey, normalize, defaultValue } = this.options
-    const legacy = readAndRemove(legacyKey)
+    const legacy = readStored(legacyKey)
     if (legacy === null) return
     const value = normalize(legacy)
     if (this.cached.value === defaultValue && value !== defaultValue) this.set(value)
+    else removeStored(legacyKey)
   }
 }
 
@@ -80,13 +83,19 @@ export function normalizeBoolean(value: unknown) {
   return value === true || value === 1 || value === '1' || value === 'true'
 }
 
-function readAndRemove(key: string) {
+function readStored(key: string) {
   try {
-    const value = localStorage.getItem(key)
-    localStorage.removeItem(key)
-    return value
+    return localStorage.getItem(key)
   } catch {
     return null
+  }
+}
+
+function removeStored(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Storage is blocked, so there is nothing to remove.
   }
 }
 
