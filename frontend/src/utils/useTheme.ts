@@ -19,6 +19,9 @@ const getSystemTheme = (): 'light' | 'dark' => {
 const applyTheme = (theme: Theme): void => {
   resolvedTheme.value = theme === 'system' ? getSystemTheme() : theme
   document.documentElement.setAttribute('data-theme', resolvedTheme.value)
+  // index.html paints <html> for the saved theme before the app loads. Repaint it here, or
+  // overscrolling after a theme switch shows the old color behind the app.
+  document.documentElement.style.backgroundColor = THEME_COLORS[resolvedTheme.value]
   updateThemeMeta(resolvedTheme.value)
 }
 
