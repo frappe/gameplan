@@ -11,6 +11,7 @@ backend test discovery ignores it, and every entry point goes through the layere
 state, then optionally builds a named scenario and returns its ids dict.
 """
 
+import time
 from contextlib import contextmanager
 from functools import wraps
 
@@ -77,9 +78,27 @@ def whitelist(fn):
 	return whitelist_for_tests(methods=["POST"])(guarded)
 
 
+# Attempts at a reset that SQLite refuses because another request holds its write lock.
+RESET_ATTEMPTS = 4
+
+
 @whitelist
 def reset(scenario=None):
 	"""Wipe Gameplan data, reset personas, optionally build a scenario. Returns its ids."""
+	for attempt in range(RESET_ATTEMPTS):
+		try:
+			return _reset(scenario)
+		except frappe.QueryDeadlockError:
+			# Requests from the previous test can still be running. On SQLite, a transaction that
+			# has read and then needs to write fails at once while another connection writes,
+			# instead of waiting. The reset commits nothing until it returns, so start it over.
+			if attempt == RESET_ATTEMPTS - 1:
+				raise
+			frappe.db.rollback()
+			time.sleep(0.25 * (attempt + 1))
+
+
+def _reset(scenario):
 	_delete_gameplan_data()
 	_reset_personas()
 
