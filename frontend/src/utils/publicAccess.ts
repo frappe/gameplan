@@ -55,8 +55,9 @@ export function signupUrl(path?: string): string {
  */
 export function publicListUrl(
   doctype: 'GP Team' | 'GP Project' | 'GP Comment' | 'GP Poll',
-): string {
-  if (!isAnonymousVisitor()) return ''
+): `/${string}` | undefined {
+  // No URL keeps useList on its default document endpoint.
+  if (!isAnonymousVisitor()) return undefined
   const endpoint = {
     'GP Team': 'communities',
     'GP Project': 'spaces',
