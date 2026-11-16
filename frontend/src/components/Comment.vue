@@ -240,7 +240,7 @@ function moderateReply(spam = false) {
 }
 const isEditing = ref(false)
 const isUpdating = ref(false)
-const updateError = ref(null)
+const updateError = ref<unknown>(null)
 // Why the server refused the edit, e.g. a new account's 24-hour edit window.
 const updateErrorMessage = computed(
   () => extractServerMessage(updateError.value) || 'Could not save',

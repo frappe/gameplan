@@ -67,7 +67,10 @@ import { extractServerMessage } from '@/utils'
 import type { Review } from '@/data/reporting'
 
 const props = defineProps<{ communityId: string; reviews: string[] }>()
-const emit = defineEmits<{ complete: []; inspect: [review: Review] }>()
+const emit = defineEmits<{
+  complete: []
+  inspect: [review: Pick<Review, 'name' | 'reference_doctype' | 'reference_name'>]
+}>()
 const open = defineModel<boolean>('open', { default: false })
 type Preview = {
   review: string
