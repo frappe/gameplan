@@ -5,6 +5,8 @@
 // https://on.cypress.io/custom-commands
 // ***********************************************
 
+import { requestLogin } from './login'
+
 // Declare custom command types
 declare global {
   namespace Cypress {
@@ -79,11 +81,7 @@ Cypress.Commands.add('login', (email?: string, password: string = 'admin') => {
   if (!email) {
     email = (Cypress.config() as any).testUser || 'Administrator'
   }
-  cy.request({
-    url: '/api/method/login',
-    method: 'POST',
-    body: { usr: email, pwd: password },
-  })
+  requestLogin(email, password)
 })
 
 const scopeSelectors = {
