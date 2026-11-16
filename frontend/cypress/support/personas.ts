@@ -1,3 +1,5 @@
+import { requestLogin } from './login'
+
 // Test personas seeded by the backend reset helper
 // (gameplan.ui_test_helpers.reset). All personas share the password "admin".
 
@@ -52,11 +54,7 @@ declare global {
 
 Cypress.Commands.add('loginAs', (persona: PersonaName) => {
   const { email, password } = personas[persona]
-  cy.request({
-    url: '/api/method/login',
-    method: 'POST',
-    body: { usr: email, pwd: password },
-  })
+  requestLogin(email, password)
 })
 
 /**
