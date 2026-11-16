@@ -150,6 +150,12 @@ const badgeStyle = computed<'count' | 'dot'>(() =>
 )
 
 const shortcuts = computed<RailShortcut[]>(() => [
+  {
+    label: 'Search',
+    icon: 'lucide-search',
+    isActive: isRoute('Search'),
+    route: { name: 'Search' },
+  },
   ...(communities.data?.some((community) => canModerateCommunity(community, sessionUser))
     ? [
         {
@@ -160,12 +166,6 @@ const shortcuts = computed<RailShortcut[]>(() => [
         },
       ]
     : []),
-  {
-    label: 'Search',
-    icon: 'lucide-search',
-    isActive: isRoute('Search'),
-    route: { name: 'Search' },
-  },
   {
     label: 'People',
     icon: 'lucide-users-2',
