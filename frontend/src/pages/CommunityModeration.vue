@@ -231,7 +231,9 @@ const sections = computed(() => [
 
 const props = defineProps<{ communityId: string; siteWide?: boolean }>()
 const emit = defineEmits<{ community: [section: string] }>()
-function selectSection(section: string) {
+// Select reports any option value. Every section is a string, so ignore anything else.
+function selectSection(section: unknown) {
+  if (typeof section !== 'string') return
   if (props.siteWide) emit('community', section)
   else tab.value = section
 }
