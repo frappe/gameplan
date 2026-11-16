@@ -16,9 +16,11 @@
           v-if="$slots.sidebar"
           class="max-h-[35vh] shrink-0 border-b border-outline-gray-2 bg-surface-gray-1 md:order-last md:max-h-none md:w-80 md:border-b-0 md:border-l"
         >
+          <!-- On wide screens the sidebar takes the dialog's height and scrolls inside it, so a
+               resized feedback box cannot grow over the footer. -->
           <ScrollArea
-            class="max-h-[35vh] md:max-h-none"
-            viewport-class="max-h-[35vh] p-5 md:max-h-none"
+            class="max-h-[35vh] md:h-full md:max-h-none"
+            viewport-class="max-h-[35vh] p-5 md:h-full md:max-h-none"
           >
             <slot name="sidebar" />
           </ScrollArea>
@@ -53,6 +55,10 @@ watch([open, () => props.contentKey], async () => {
 <style>
 .dialog-scroll-container:has(.moderation-review-dialog) {
   overflow: hidden;
+}
+
+.moderation-review-dialog aside textarea {
+  max-height: 20rem;
 }
 
 .dialog-content:has(.moderation-review-dialog) {
