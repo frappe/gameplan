@@ -1,5 +1,5 @@
-import { isAnonymousVisitor } from "@/utils/publicAccess"
 /// <reference types="vite/client" />
+import { isAnonymousVisitor } from '@/utils/publicAccess'
 /**
  * One funnel for errors, including the ones the UI swallows.
  *

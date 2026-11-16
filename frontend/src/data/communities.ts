@@ -76,7 +76,8 @@ export let useCommunity = (communityId: MaybeRefOrGetter<string | undefined>) =>
   })
 }
 
-export let getCommunity = (communityId: string) => {
+export let getCommunity = (communityId: string | null | undefined) => {
+  if (!communityId) return undefined
   return (communities.data || []).find(
     (community) => community.name.toString() === communityId.toString(),
   )

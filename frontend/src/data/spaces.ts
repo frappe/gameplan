@@ -44,7 +44,7 @@ export let spaces = useList<Space>({
     'modified',
     'discussions_count',
     // Anonymous lists cannot read task counts or joined community titles.
-    ...(!isAnonymousVisitor() ? ['tasks_count', 'team.title as team_title'] : []),
+    ...(!isAnonymousVisitor() ? (['tasks_count', 'team.title as team_title'] as const) : []),
     { members: ['user'] },
   ],
   initialData: [],
@@ -108,7 +108,7 @@ export function useSpacePermissions(spaceId: MaybeRefOrGetter<string | undefined
     () =>
       canManageAccess.value &&
       Boolean(space.value) &&
-      canMoveContentToSpace(null, { ...space.value!, archived_at: null }, sessionUser),
+      canMoveContentToSpace(null, { ...space.value!, archived_at: undefined }, sessionUser),
   )
   // Renaming a space, moving it, merging it, archiving or deleting it are all writes
   // on GP Project, which the backend gates with can_manage_space. canEditSpace only
@@ -280,7 +280,9 @@ export function markAllAsRead(spaceIds: string[], groupTitle: string) {
     title: 'Mark all as read',
     message: `Are you sure you want to mark all discussions in ${groupTitle} as read? This action cannot be undone.`,
     confirmLabel: 'Mark all as read',
-    onConfirm: () => markSpacesAsRead(spaceIds),
+    onConfirm: async () => {
+      await markSpacesAsRead(spaceIds)
+    },
   })
 }
 

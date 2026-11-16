@@ -224,7 +224,8 @@ const showBulk = ref(false)
 const unselected = computed(() => items.value.filter((item) => !selected.value.has(item.name)))
 const pageHasSelection = computed(() => items.value.some((item) => selected.value.has(item.name)))
 const pageSelected = computed(() => items.value.length > 0 && unselected.value.length === 0)
-function toggleSelection(name: string, checked: boolean) {
+// The checkbox reports its value as a boolean, a number or nothing.
+function toggleSelection(name: string, checked: boolean | number | undefined) {
   if (!checked) selected.value.delete(name)
   else if (selected.value.size < 50) selected.value.add(name)
 }
@@ -336,7 +337,7 @@ function changePage(delta: number) {
   start.value += delta
   load()
 }
-function openReview(item: Review) {
+function openReview(item: Pick<Review, 'name'>) {
   active.value = item.name
   note.value = ''
   decision.value = 'Dismiss'
