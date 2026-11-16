@@ -91,6 +91,7 @@ import {
   call,
   dialog,
   toast,
+  type UploadedFile,
 } from 'frappe-ui'
 import { extractServerMessage } from '@/utils'
 const props = defineProps<{ communityId: string }>()
@@ -133,7 +134,11 @@ async function load() {
 function validateFile(file: File) {
   if (file.size > 1024 * 1024) return 'CSV uploads must be at most 1 MB'
 }
-async function previewFile(uploaded: { name: string }) {
+async function previewFile(uploaded: UploadedFile) {
+  if (!uploaded.name) {
+    error.value = 'Could not read the uploaded file. Upload it again.'
+    return
+  }
   file.value = uploaded.name
   error.value = ''
   try {
