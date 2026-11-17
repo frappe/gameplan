@@ -28,10 +28,9 @@
       <template #suffix>
         <Button
           v-if="isSpaceFeedRoute(route.name) && canStartDiscussion"
-          variant="ghost"
-          size="md"
-          icon="lucide-plus"
-          label="New discussion"
+          variant="solid"
+          icon-left="lucide-plus"
+          label="New"
           :route="{
             name: 'NewDiscussion',
             params: { communityId },
