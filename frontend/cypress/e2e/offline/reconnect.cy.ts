@@ -122,14 +122,15 @@ describe('Coming back online', () => {
       project: space,
     }).then(({ body }) => {
       const taskId = body.data.name
-      cy.visit(`/g/community/${community}/space/${space}/tasks`)
-      cy.contains('a', 'Task before reconnect').click()
+      // The Space no longer lists tasks, so open the task by its address, leave it in the
+      // app, and come back with Back while offline.
+      cy.visit(`/g/community/${community}/space/${space}/tasks/${taskId}`)
       cy.get('input[placeholder="Title"]').should('have.value', 'Task before reconnect')
-      cy.contains('a', 'Tasks').click()
-      cy.contains('a', 'Task before reconnect').should('be.visible')
+      cy.get('a[href="/g/people"]:visible').first().click()
+      cy.location('pathname').should('eq', '/g/people')
 
       cy.goOffline()
-      cy.contains('a', 'Task before reconnect').click()
+      cy.go('back')
       cy.get('input[placeholder="Title"]').should('have.value', 'Task before reconnect')
       cy.task('requestAsUser', {
         user: personas.secondMember.email,

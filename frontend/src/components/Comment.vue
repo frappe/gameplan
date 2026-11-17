@@ -143,9 +143,14 @@ const showRevisionsDialog = ref(false)
 const isEditing = ref(false)
 const isUpdating = ref(false)
 const updateError = ref<unknown>(null)
+// What failed, so the fallback text names it. The server's own message still wins.
+const failedAction = ref<'save' | 'discard'>('save')
 const updateErrorText = computed(() =>
   updateError.value
-    ? errorText(updateError.value, "Couldn't save your changes. Your text is kept, so try again.")
+    ? errorText(
+        updateError.value,
+        `Couldn't ${failedAction.value} your changes. Your text is kept, so try again.`,
+      )
     : null,
 )
 const author = computed(() => useUser(props.comment.owner))
@@ -183,6 +188,7 @@ const discardEdit = async () => {
     isEditing.value = false
     updateError.value = null
   } catch (error) {
+    failedAction.value = 'discard'
     updateError.value = error
   }
 }
@@ -208,6 +214,7 @@ const updateComment = () => {
 
 const saveComment = async (content: string) => {
   isUpdating.value = true
+  failedAction.value = 'save'
   updateError.value = null
 
   try {

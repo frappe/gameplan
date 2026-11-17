@@ -93,7 +93,7 @@ describe('Comment drafts', () => {
       ).as('failedDiscard')
       cy.get(comment).contains('button', 'Discard').click()
       cy.wait('@failedDiscard')
-      cy.get(comment).contains('Error').should('be.visible')
+      cy.get(comment).contains("Couldn't discard your changes").should('be.visible')
       cy.get(`${comment} [contenteditable=true]`).should('contain.text', 'with unsent edits')
       cy.get(comment).contains('button', 'Discard').click()
       cy.get(`${comment} [contenteditable=true]`).should('not.exist')

@@ -38,7 +38,7 @@
         @retry="retryLoad"
       />
       <LoadError
-        v-else-if="discussions.error && !discussions.data?.length"
+        v-else-if="discussions.error && !discussions.data"
         class="mx-3"
         :message="errorText(discussions.error, 'Could not load discussions.')"
         @retry="retryLoad"
