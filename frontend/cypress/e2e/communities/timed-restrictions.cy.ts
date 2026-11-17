@@ -13,6 +13,17 @@ function confirm(reason: string, action = 'Save restriction') {
   cy.get('[role="dialog"]').should('not.exist')
 }
 
+// The picker ignores a scroll while the previous page is still arriving, as a person
+// scrolling on would. Keep scrolling until the list reaches `count` users.
+function loadUsersByScrolling(count: number, attempts = 10) {
+  cy.get('[role="option"]').then(($options) => {
+    if ($options.length >= count || attempts === 0) return
+    cy.get('[data-reka-combobox-viewport]').scrollTo('center').scrollTo('bottom')
+    cy.wait(300) // eslint-disable-line cypress/no-unnecessary-waiting
+    loadUsersByScrolling(count, attempts - 1)
+  })
+}
+
 describe('Timed moderation restrictions', () => {
   it('applies and lifts a timed Community ban with a reason and timezone', () => {
     resetData('space_with_discussion').then(({ community }) => {
@@ -110,9 +121,10 @@ describe('Timed moderation restrictions', () => {
     cy.wait('@nextCandidates')
     cy.get('[role="option"]').should('have.length', 40)
     cy.get('[data-reka-combobox-viewport]').invoke('scrollTop').should('be.greaterThan', 0)
-    cy.get('[data-reka-combobox-viewport]').scrollTo('bottom')
+    loadUsersByScrolling(60)
     cy.wait('@nextCandidates')
     cy.get('[role="option"]').should('have.length', 60)
+    cy.contains('button', 'Load more').should('not.exist')
     cy.get('input[placeholder="Name or email"]').type('Scale')
     cy.wait('@scaleFirst')
     cy.get('[role="option"]').should('have.length', 20)
