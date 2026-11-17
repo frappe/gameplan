@@ -126,8 +126,8 @@ describe('Coming back online', () => {
       // app, and come back with Back while offline.
       cy.visit(`/g/community/${community}/space/${space}/tasks/${taskId}`)
       cy.get('input[placeholder="Title"]').should('have.value', 'Task before reconnect')
-      cy.get('a[href="/g/people"]:visible').first().click()
-      cy.location('pathname').should('eq', '/g/people')
+      cy.contains('a:visible', 'Engineering').first().click()
+      cy.location('pathname').should('not.include', '/tasks/')
 
       cy.goOffline()
       cy.go('back')

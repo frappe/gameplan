@@ -117,6 +117,8 @@ describe('Draft saves across devices and tabs', () => {
     cy.wait('@failedDiscard')
     cy.contains('Discard temporarily unavailable').should('be.visible')
     cy.get('.ProseMirror').first().should('contain.text', 'with unsent discussion edits')
+    // The confirm dialog closes after its request fails. Retry once it has gone, as a person would.
+    cy.get('[role="dialog"]').should('not.exist')
     cy.intercept('DELETE', '**/api/v2/document/GP%20Draft/*').as('discardRetry')
     cy.button('Discard').click()
     cy.contains('[role="dialog"] button', 'Discard changes').click()
