@@ -110,7 +110,7 @@ describe('Timed moderation restrictions', () => {
     cy.wait('@nextCandidates')
     cy.get('[role="option"]').should('have.length', 40)
     cy.get('[data-reka-combobox-viewport]').invoke('scrollTop').should('be.greaterThan', 0)
-    cy.contains('button', 'Load more users').click()
+    cy.get('[data-reka-combobox-viewport]').scrollTo('bottom')
     cy.wait('@nextCandidates')
     cy.get('[role="option"]').should('have.length', 60)
     cy.get('input[placeholder="Name or email"]').type('Scale')
