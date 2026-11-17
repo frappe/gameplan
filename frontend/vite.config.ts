@@ -170,6 +170,9 @@ function offlineAssetManifest(): PluginOption {
   return {
     name: 'gameplan-offline-asset-manifest',
     apply: 'build',
+    // Vite drops the empty script of a stylesheet-only chunk in its own generateBundle. Run
+    // after it, or the list names a file that is never written and the worker cannot install.
+    enforce: 'post',
     generateBundle(_, bundle) {
       const urls = Object.values(bundle)
         .map((entry) => entry.fileName)

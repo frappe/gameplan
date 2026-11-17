@@ -21,7 +21,7 @@ describe('Reply draft recovery with offline navigation', () => {
   it('keeps saved discussion edits open when discard is refused offline', () => {
     cy.intercept('POST', CREATE).as('editDraft')
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('input[placeholder="Title"]').should('be.visible')
     cy.get('.ProseMirror').first().click().type('{moveToEnd} with offline discussion edits')
     cy.wait('@editDraft')
@@ -37,7 +37,7 @@ describe('Reply draft recovery with offline navigation', () => {
     cy.contains('[role="dialog"] button', 'Discard changes').click()
     cy.wait('@discardRetry').its('response.statusCode').should('eq', 202)
     cy.get('input[placeholder="Title"]').should('not.exist')
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('input[placeholder="Title"]').should('be.visible')
     cy.get('.ProseMirror').first().should('not.contain.text', 'with offline discussion edits')
   })

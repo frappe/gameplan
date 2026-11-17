@@ -38,7 +38,7 @@ describe('Offline indicator', () => {
   it('says so when a write is refused', () => {
     cy.goOffline()
     banner().should('be.visible')
-    cy.selectDropdownOption('Discussion Options', 'Bookmark')
+    cy.selectDropdownOption('Discussion options', 'Bookmark')
     cy.contains("You're offline. Reconnect to do this.").should('be.visible')
   })
 

@@ -76,7 +76,7 @@ describe('Edits interrupted by a lost connection', () => {
       }
       cy.get('button[aria-label="More publish options"]:visible').click()
       cy.contains('[role="menuitem"]', 'Delete draft').click()
-      cy.contains('[role="dialog"] button', 'Delete draft').click()
+      cy.contains('[role="dialog"] button', 'Delete').click()
       if (saved) {
         cy.contains("You're offline. Reconnect to do this.").should('be.visible')
         cy.get('textarea[placeholder="Title"]').should('have.value', 'Draft to delete offline')

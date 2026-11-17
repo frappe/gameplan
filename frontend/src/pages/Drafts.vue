@@ -291,6 +291,8 @@ let deleteDraftsCall = useCall<DeleteDraftsResponse, { names: string[] }>({
 function confirmDeleteDrafts() {
   const count = selectedDrafts.value.length
   confirmDelete({
+    // Drafts only on this device delete offline. Deleting a saved one is refused below.
+    worksOffline: true,
     title: `Delete ${draftCountLabel(count)}?`,
     message:
       count === 1

@@ -84,7 +84,7 @@ describe('Comment drafts', () => {
       cy.intercept('POST', '/api/v2/document/GP%20Draft').as('editDraft')
       cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
       cy.get(comment).should('be.visible')
-      cy.selectDropdownOption('Comment Options', 'Edit')
+      cy.selectDropdownOption('Comment options', 'Edit')
       cy.get(`${comment} [contenteditable=true]`).click().type('{moveToEnd} with unsent edits')
       cy.wait('@editDraft')
       cy.intercept(

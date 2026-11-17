@@ -99,7 +99,7 @@ describe('Draft saves across devices and tabs', () => {
   it('keeps discussion edits open until discard succeeds and allows retry', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.intercept('POST', CREATE).as('editDraft')
-    cy.selectDropdownOption('Discussion Options', 'Edit')
+    cy.selectDropdownOption('Discussion options', 'Edit')
     cy.get('input[placeholder="Title"]').should('be.visible')
     cy.get('.ProseMirror').first().click().type('{moveToEnd} with unsent discussion edits')
     cy.wait('@editDraft')
