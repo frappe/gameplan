@@ -5,6 +5,7 @@
       :cacheKey="`PersonReplies-${personId}`"
       :key="personId"
       :show-pinned="false"
+      show-community
     />
   </div>
 </template>

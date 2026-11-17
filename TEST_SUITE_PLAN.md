@@ -107,7 +107,6 @@ One test map mirroring the product's feature catalog, at three layers:
     | `api.get_user_info` | Read | User directory query; bare whitelist retained. |
     | `api.unread_notifications` | Read | Counts unread notification rows. |
     | `api.accept_invitation` | GET mutation exception | Email-link navigation; both redirect branches persist over real HTTP. |
-    | `api.get_unsplash_photos` | Read | Fetches/caches image search results. |
     | `api.search_sqlite` | Read | Searches the FTS index. |
     | `api.get_search_filter_options` | Read | Builds filter options from accessible content. |
     | `command_palette.search_sqlite` | Read | Searches titles in the FTS index. |
@@ -533,8 +532,8 @@ Four Step-2-era failures were root-caused against the then-current local runner:
      `member` closes it from a session of their own, and the timeline entry
      appears with no reload; navigating away unsubscribes. Both socket-room
      emits (`doc_subscribe` on mount, `doc_unsubscribe` on unmount) are asserted
-     against a spy on the app's own socket
-     (`#app.__vue_app__.config.globalProperties.$socket`).
+     against a spy on the app's own socket (`window.gameplanSocket`, which
+     `src/socket.ts` sets only while Cypress drives the app).
    - The second session runs through a new `requestAsUser` Cypress **Node task**
      (`cypress.config.ts`), not `cy.request`: `cy.request` shares the browser's
      cookie jar, so it can only ever act as whoever the open page is logged in

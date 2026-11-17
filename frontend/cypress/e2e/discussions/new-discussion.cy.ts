@@ -21,7 +21,7 @@ describe('New discussion drafts', () => {
     cy.visit(`/g/community/${community}/new-discussion`)
     cy.get('textarea[placeholder="Title"]').type('Stored Draft Title')
     cy.get('[contenteditable=true]').click().type('Stored draft body.')
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click()
+    cy.contains('button', 'Select space').click()
     cy.get('[role="option"]').contains(spaceTitle).click()
     cy.url().should('include', 'draft=')
   }
@@ -29,10 +29,10 @@ describe('New discussion drafts', () => {
   it('saves a draft while composing and publishes it into the chosen space', () => {
     // The community discussions list is the only "+ New discussion" entry point.
     cy.visit(`/g/community/${community}/discussions`)
-    cy.button('Add new').click()
+    cy.button('New discussion').click()
     cy.url().should('include', `/community/${community}/new-discussion`)
 
-    cy.contains('New Discussion').should('exist')
+    cy.contains('New discussion').should('exist')
     cy.get('textarea[placeholder="Title"]').should('exist')
     cy.get('[contenteditable=true]').should('exist')
 
@@ -55,7 +55,7 @@ describe('New discussion drafts', () => {
     // Create the draft. A draft is only persisted once a space is chosen.
     cy.get('textarea[placeholder="Title"]').type('My Draft Discussion{enter}')
     cy.get('[contenteditable=true]').click().type(draftContent)
-    cy.contains('button[aria-haspopup="listbox"]', 'Select Space').click()
+    cy.contains('button', 'Select space').click()
     cy.get('[role="option"]').contains(spaceTitle).click()
     // Retries until an autosave carrying the content has completed.
     cy.wrap(null).should(() => expect(draftContentSaved, 'draft content autosaved').to.be.true)
@@ -182,7 +182,7 @@ describe('New discussion drafts', () => {
     cy.viewport('iphone-6')
     cy.visit(`/g/community/${community}/new-discussion`)
 
-    cy.contains('New Discussion').should('exist')
+    cy.contains('New discussion').should('exist')
     cy.button('Publish').should('be.visible')
   })
 

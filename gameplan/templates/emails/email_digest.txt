@@ -1,20 +1,23 @@
 Your {{ frequency | lower }} digest
 
+{% if highlight -%}
+Most popular this week
+- {{ highlight.title }}: {{ highlight.description }} ({{ highlight.metadata }}){% if highlight.url %}
+  {{ highlight.url }}{% endif %}
+
+{% endif -%}
 {% if notifications -%}
-Unread notifications
+Mentions and quotes
 {% for item in notifications -%}
 - {{ item.title }}: {{ item.description }}{% if item.metadata %} ({{ item.metadata }}){% endif %}{% if item.url %}
   {{ item.url }}{% endif %}
 {% endfor %}
 {% endif -%}
-{% if discussion_groups -%}
-Unread discussions
-{% for group in discussion_groups -%}
-{{ group.title }}
-{% for item in group.discussions -%}
-- {{ item.title }}{% if item.unread_label %} ({{ item.unread_label }}){% endif %}{% if item.metadata %}: {{ item.metadata }}{% endif %}{% if item.url %}
+{% if discussions -%}
+New this week
+{% for item in discussions -%}
+- {{ item.title }} ({{ item.unread_label }}){% if item.metadata %}: {{ item.metadata }}{% endif %}{% if item.url %}
   {{ item.url }}{% endif %}
-{% endfor %}
 {% endfor %}
 {% endif %}
 

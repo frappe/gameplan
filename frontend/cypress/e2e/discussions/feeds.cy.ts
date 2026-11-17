@@ -20,7 +20,7 @@ describe('Community discussion feeds', () => {
   it('switches between the all, participating and unread feeds', () => {
     cy.visit(`/g/community/${community}/discussions`)
 
-    cy.contains('button:visible', 'All Discussions').should('be.visible')
+    cy.contains('button:visible', 'All discussions').should('be.visible')
     cy.contains('button:visible', 'Participating').should('be.visible')
     cy.contains('button:visible', 'Unread').should('be.visible')
     cy.contains('Unread thread').should('be.visible')
@@ -63,7 +63,7 @@ describe('Community discussion feeds', () => {
     cy.scope('dialog').button('Mark all as read').first().click()
 
     cy.contains('Unread thread').should('not.exist')
-    cy.contains('No discussions').should('be.visible')
+    cy.contains("You're caught up").should('be.visible')
 
     // Only System Manager can read GP Unread Record, so verify the row as admin.
     cy.loginAs('admin')

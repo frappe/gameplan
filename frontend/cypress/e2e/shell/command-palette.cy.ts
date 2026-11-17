@@ -165,7 +165,7 @@ describe('Command palette', () => {
 
   function visitCommunityDiscussions() {
     cy.visit(`/g/community/${community}/discussions`)
-    cy.contains('button:visible', 'All Discussions').should('be.visible')
+    cy.contains('button:visible', 'All discussions').should('be.visible')
   }
 
   function openCommandPalette() {

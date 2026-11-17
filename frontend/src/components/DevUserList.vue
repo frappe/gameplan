@@ -53,6 +53,7 @@ import { computed, ref } from 'vue'
 import { LoadingIndicator, TextInput, useCall } from 'frappe-ui'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { activeUsers, useSessionUser, type UserInfo } from '@/data/users'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 defineOptions({ name: 'DevUserList' })
 
@@ -117,9 +118,5 @@ function readableError(error: unknown, email: string) {
   // The gate messages say which config key to set, which is the whole point of
   // showing them. `frappe.throw` prefixes the exception class name; drop it.
   return message.replace(/^\w*Error:\s*/, '') || `Could not switch to ${email}.`
-}
-
-function sessionUserFromCookie() {
-  return new URLSearchParams(document.cookie.split('; ').join('&')).get('user_id')
 }
 </script>

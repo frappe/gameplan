@@ -57,7 +57,8 @@ const FEED_TYPES: FeedType[] = ['recent', 'unread', 'participating']
  * Where each feed caches its rows. Shared with offline downloads, which fills the same
  * entries so a Space the device has never opened still lists its discussions offline.
  */
-export const spaceFeedKey = (spaceId: string | number) => `SpaceDiscussions-${spaceId}`
+export const spaceFeedKey = (spaceId: string | number, feedType: FeedType = 'recent') =>
+  `SpaceDiscussions-${spaceId}-${feedType}`
 export const communityFeedKey = (communityId: string, feedType: FeedType = 'recent') =>
   `Discussions-${communityId}-${feedType}`
 
@@ -75,8 +76,8 @@ export function feedScope(key: unknown): Omit<DiscussionFeed, 'key'> | null {
   const pinned = Array.isArray(inner) && inner[0] === 'pinned'
   const name = pinned ? inner[1] : inner
   if (typeof name !== 'string') return null
-  const space = /^SpaceDiscussions-(.+)$/.exec(name)
-  if (space) return { space: space[1], pinned }
+  const space = new RegExp(`^SpaceDiscussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(name)
+  if (space) return { space: space[1], pinned, filtered: space[2] !== 'recent' }
   const community = new RegExp(`^Discussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(name)
   return community ? { community: community[1], pinned, filtered: community[2] !== 'recent' } : null
 }

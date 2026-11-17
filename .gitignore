@@ -13,3 +13,7 @@ build
 frontend/components.d.ts
 sites/
 .mutation/
+
+# UI states capture output
+frontend/ui-states/out/
+frontend/ui-states/.runs/

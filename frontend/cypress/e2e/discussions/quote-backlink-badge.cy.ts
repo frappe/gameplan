@@ -73,7 +73,7 @@ describe('Quoted-by badge', () => {
     // The revisions dialog is a lazy chunk, and its styles once turned every editor
     // into a scroll container. Open and close it so those styles are on the page
     // before anything is measured, instead of racing the chunk.
-    cy.selectDropdownOption('Discussion Options', 'Revisions')
+    cy.selectDropdownOption('Discussion options', 'Revisions')
     cy.get('[role="dialog"]').should('be.visible')
     cy.get('body').type('{esc}')
     cy.get('[role="dialog"]').should('not.exist')

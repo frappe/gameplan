@@ -1,5 +1,4 @@
 // Helpers for specs that exercise the app's live socket.io connection.
-import type { App } from 'vue'
 import type { Socket } from 'socket.io-client'
 
 interface RealtimePreflightResult {
@@ -21,17 +20,12 @@ export function skipUnlessRealtime(context: Mocha.Context) {
 }
 
 /**
- * The app's socket.io client, as wired up in `src/main.ts`
- * (`app.config.globalProperties.$socket`).
+ * The app's socket.io client, which `src/socket.ts` exposes as `window.gameplanSocket` while
+ * Cypress drives the app. It connects after the first page draws, so this waits for it.
  */
 export function appSocket(): Cypress.Chainable<Socket> {
   return cy
     .window({ log: false })
-    .its('document')
-    .then((doc) => {
-      const app = (doc.querySelector('#app') as { __vue_app__?: App } | null)?.__vue_app__
-      const socket = app?.config.globalProperties.$socket as Socket | undefined
-      expect(socket, 'app socket').to.exist
-      return socket!
-    })
+    .its('gameplanSocket', { log: false })
+    .then((socket) => socket as Socket)
 }

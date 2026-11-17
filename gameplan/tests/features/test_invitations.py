@@ -380,17 +380,18 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		frappe.local.response = frappe._dict()
 		self.addCleanup(setattr, frappe.local, "response", previous_response)
 
-	def assert_message_page(self, http_status_code):
-		self.assertEqual(frappe.local.response.get("type"), "page")
-		self.assertEqual(frappe.local.response.get("http_status_code"), http_status_code)
+	def assert_sent_to_invalid_page(self, reason):
+		"""A dead link lands on Gameplan's own page, not Frappe's message page."""
+		self.assertEqual(frappe.local.response.get("type"), "redirect")
+		self.assertEqual(frappe.local.response.get("location"), f"/g/invitation-invalid?reason={reason}")
 
 	def test_missing_key_shows_a_message(self):
 		accept_invitation(key=None)
-		self.assert_message_page(404)
+		self.assert_sent_to_invalid_page("expired")
 
 	def test_unknown_key_shows_a_message(self):
 		accept_invitation(key="does-not-exist")
-		self.assert_message_page(404)
+		self.assert_sent_to_invalid_page("expired")
 
 	def test_expired_key_shows_a_message(self):
 		invitation = self.make_invitation("expired-link@example.com")
@@ -398,7 +399,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 
 		accept_invitation(key=invitation.flags.invite_key)
 
-		self.assert_message_page(404)
+		self.assert_sent_to_invalid_page("expired")
 		self.assertFalse(frappe.db.exists("User", "expired-link@example.com"))
 
 	def test_new_user_is_routed_to_password_setup(self):
@@ -452,7 +453,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		frappe.db.set_value("User", "opens-twice@example.com", "last_password_reset_date", today())
 		accept_invitation(key=key)
 
-		self.assert_message_page(410)
+		self.assert_sent_to_invalid_page("accepted")
 
 	def test_an_existing_account_that_opens_the_link_again_gets_a_message(self):
 		create_member("existing-twice@example.com")
@@ -467,7 +468,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		finally:
 			frappe.local.login_manager = previous
 
-		self.assert_message_page(410)
+		self.assert_sent_to_invalid_page("accepted")
 		self.assertFalse(frappe.db.get_value("User", "existing-twice@example.com", "reset_password_key"))
 
 	def test_an_account_made_before_accepting_gets_a_message_when_it_opens_the_link_again(self):
@@ -482,8 +483,18 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 
 		accept_invitation(key=key)
 
-		self.assert_message_page(410)
+		self.assert_sent_to_invalid_page("accepted")
 		self.assertFalse(frappe.db.get_value("User", "joined-meanwhile@example.com", "reset_password_key"))
+
+	def test_a_signed_in_user_without_gameplan_gets_the_message_page(self):
+		"""They cannot open /g, so a redirect there would end on an access error."""
+		create_user("other-app-user@example.com", "Other App User")
+
+		with self.as_user("other-app-user@example.com"):
+			accept_invitation(key="does-not-exist")
+
+		self.assertEqual(frappe.local.response.get("type"), "page")
+		self.assertEqual(frappe.local.response.get("http_status_code"), 404)
 
 	def test_stored_key_does_not_open_the_invitation(self):
 		"""The link carries the key; the row keeps only its hash."""
@@ -492,7 +503,7 @@ class TestAcceptInvitationEndpoint(InvitationTestCase):
 		self.assertNotEqual(invitation.key, invitation.flags.invite_key)
 		accept_invitation(key=invitation.key)
 
-		self.assert_message_page(404)
+		self.assert_sent_to_invalid_page("expired")
 		self.assertEqual(frappe.db.get_value("GP Invitation", invitation.name, "status"), "Pending")
 
 	def test_accept_invitation_succeeds_when_signed_in_as_ordinary_member(self):

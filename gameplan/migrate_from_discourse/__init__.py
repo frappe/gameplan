@@ -5,10 +5,8 @@
 from posixpath import splitext
 
 import frappe
-import psycopg2
 from bs4 import BeautifulSoup
 from frappe.utils import update_progress_bar
-from psycopg2.extras import DictCursor
 
 from .emojis import get_emoji
 
@@ -319,6 +317,11 @@ def run_query(query, values=None):
 	global conn, cursor
 
 	if not conn:
+		# Only this one-off importer needs the driver, so Gameplan does not depend on it.
+		# The marketplace check rejects a top-level import of an undeclared package.
+		import psycopg2
+		from psycopg2.extras import DictCursor
+
 		conn = psycopg2.connect(CONNECTION_STRING)
 		cursor = conn.cursor(cursor_factory=DictCursor)
 

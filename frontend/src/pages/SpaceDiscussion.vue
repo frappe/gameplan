@@ -8,13 +8,16 @@
       :read-only-mode="Boolean(space?.archived_at) || $readOnlyMode"
     />
   </div>
+  <SpaceUnavailable v-else :communityId="communityId" />
 </template>
 
 <script setup lang="ts">
 import DiscussionView from '@/components/DiscussionView.vue'
+import SpaceUnavailable from '@/components/SpaceUnavailable.vue'
 import { useSpace } from '@/data/spaces'
 
 interface Props {
+  communityId: string
   spaceId: string
   postId: string
   slug?: string

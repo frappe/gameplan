@@ -109,9 +109,9 @@
           <span class="text-ink-gray-7">{{ activity.data.old_value }}</span> to
           <span class="text-ink-gray-7">{{ activity.data.new_value }}</span>
         </template> </span
-      >&nbsp;<Tooltip :text="dayjsLocal(activity.creation).format('D MMM YYYY [at] h:mm A')">
+      >&nbsp;<Tooltip :text="fullTimestamp(activity.creation)">
         <time class="text-ink-gray-5" :datetime="activity.creation">
-          {{ dayjsLocal(activity.creation).fromNow() }}
+          {{ timeAgo(activity.creation) }}
         </time>
       </Tooltip>
     </p>
@@ -120,8 +120,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { dayjsLocal, Tooltip } from 'frappe-ui'
+import { timeAgo } from '@/utils'
 import UserProfileLink from './UserProfileLink.vue'
 import { getSpace } from '@/data/spaces'
+import { fullTimestamp } from '@/utils'
 import { spaceTitle } from '@/utils/formatters'
 import { useUser } from '@/data/users'
 

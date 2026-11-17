@@ -23,7 +23,7 @@ describe('Community shell IA', () => {
   it('lands on a scoped discussions URL with feed tabs', () => {
     cy.visit('/g')
     cy.url().should('match', /\/community\/[^/]+\/discussions/)
-    cy.contains('button:visible', 'All Discussions').should('be.visible')
+    cy.contains('button:visible', 'All discussions').should('be.visible')
     cy.contains('button:visible', 'Unread').should('be.visible')
     cy.contains('button:visible', 'Participating').should('be.visible')
   })

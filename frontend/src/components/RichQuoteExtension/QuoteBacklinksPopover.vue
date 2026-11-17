@@ -20,7 +20,7 @@
           <UserAvatar size="sm" :user="item.author" />
           <span class="text-base text-ink-gray-8">{{ fullName(item.author) }}</span>
           <span class="ml-auto pl-3 text-sm text-ink-gray-5">
-            {{ dayjsLocal(item.creation).fromNow() }}
+            {{ timeAgo(item.creation) }}
           </span>
         </button>
       </PopoverContent>
@@ -29,7 +29,7 @@
 </template>
 <script setup lang="ts">
 import { PopoverAnchor, PopoverContent, PopoverPortal, PopoverRoot } from 'reka-ui'
-import { dayjsLocal } from 'frappe-ui'
+import { timeAgo } from '@/utils'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useUser } from '@/data/users'
 import { type QuoteBacklink, type RichQuoteController } from './useRichQuotes'

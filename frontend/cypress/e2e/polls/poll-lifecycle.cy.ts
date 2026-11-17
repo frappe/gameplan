@@ -1,6 +1,7 @@
 import { resetData } from '../../support/seed'
+import { appSocket } from '../../support/realtime'
 
-type AppSocket = {
+type RawSocket = {
   nsp: string
   io: { engine: { emit: (event: string, data: string) => void } }
 }
@@ -114,13 +115,13 @@ describe('Poll lifecycle', () => {
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.contains('Ship on Friday?').should('be.visible')
     pollAnswer('Yes').should('be.enabled')
-    cy.selectDropdownOption('Poll Options', 'Stop poll')
-    cy.dialog('button:contains("Stop")').click()
+    cy.selectDropdownOption('Poll options', 'End poll')
+    cy.dialog('button:contains("End poll")').click()
     cy.wait('@stopPoll')
 
     cy.contains('Ended').should('exist')
     // Nothing is left in a stopped multiple-answer poll's menu, so the button is hidden.
-    cy.get('button[aria-label="Poll Options"]').should('not.exist')
+    cy.get('button[aria-label="Poll options"]').should('not.exist')
     pollAnswer('Yes').should('be.disabled')
   })
 
@@ -185,7 +186,7 @@ describe('Poll lifecycle', () => {
     assertShare('No', '100%')
 
     // A radio cannot clear itself, so leaving the poll unanswered goes through the menu.
-    cy.selectDropdownOption('Poll Options', 'Retract vote')
+    cy.selectDropdownOption('Poll options', 'Retract vote')
     cy.dialog('button:contains("Retract vote")').click()
     cy.wait('@retractVote')
     pollChoice('No').should('have.attr', 'aria-checked', 'false')
@@ -258,9 +259,9 @@ describe('Poll lifecycle', () => {
     cy.visit('/g/')
     cy.wait('@unreadCount')
     cy.get('button[aria-label="Notifications, 1 unread"]').click()
-    cy.contains('1 person reacted to your post').should('be.visible')
+    cy.contains('Member reacted to your poll').should('be.visible')
     cy.contains('Ship on Friday?').should('be.visible')
-    cy.contains('1 person reacted to your post').click()
+    cy.contains('Member reacted to your poll').click()
     cy.location('pathname').should(
       'eq',
       `/g/community/${community}/space/${space}/discussion/${discussion}/${discussionSlug}`,
@@ -287,19 +288,20 @@ describe('Poll lifecycle', () => {
 
     cy.visit(`/g/community/${community}/space/${space}/discussion/${discussion}`)
     cy.contains('Archived poll').should('be.visible')
-    cy.contains('button', 'Stop Poll').should('not.exist')
+    cy.contains('button', 'End poll').should('not.exist')
     pollChoice('Yes').should('be.disabled')
 
-    cy.iconButton('Poll Options').click()
-    cy.get('[role="menuitem"]:visible').contains('Show results').should('be.visible')
-    cy.get('[role="menuitem"]:visible').contains('Copy link').should('be.visible')
-    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Retract vote')
-    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Delete')
-    cy.get('[role="menuitem"]:visible').contains('Show results').click()
+    cy.contains('button', 'Results').click()
     cy.contains('[role="dialog"]', 'Poll results').should('be.visible')
     cy.get('body').type('{esc}')
 
-    cy.selectDropdownOption('Poll Options', 'Copy link')
+    cy.iconButton('Poll options').click()
+    cy.get('[role="menuitem"]:visible').contains('Copy link').should('be.visible')
+    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Retract vote')
+    cy.get('[role="menuitem"]:visible').should('not.contain.text', 'Delete')
+    cy.get('body').type('{esc}')
+
+    cy.selectDropdownOption('Poll options', 'Copy link')
     cy.contains('Copied to clipboard').should('be.visible')
   })
 })
@@ -347,12 +349,10 @@ function assertShare(label: string, share: string) {
 }
 
 function deliverSocketEvent(event: string, payload: unknown) {
-  cy.window({ log: false })
-    .its('document')
-    .then((doc) => {
-      const app = (doc.querySelector('#app') as { __vue_app__?: any } | null)?.__vue_app__
-      const socket = app?.config?.globalProperties?.$socket as AppSocket | undefined
-      expect(socket, 'app socket').to.exist
-      socket!.io.engine.emit('data', `2${socket!.nsp},${JSON.stringify([event, payload])}`)
-    })
+  appSocket().then((socket) => {
+    // What the server would send: an engine.io message packet carrying a socket.io event.
+    // The engine's raw emit and the namespace are not in socket.io's public types.
+    const raw = socket as unknown as RawSocket
+    raw.io.engine.emit('data', `2${raw.nsp},${JSON.stringify([event, payload])}`)
+  })
 }

@@ -3,7 +3,7 @@ import { useDoctype, useList, dialog } from 'frappe-ui'
 import { GPTeam, GPMember } from '@/types/doctypes'
 import { communityOrder } from './communityOrder'
 import { useSessionUser } from './users'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 export interface CommunityMember extends Pick<GPMember, 'user' | 'is_admin'> {
   user: string
@@ -95,7 +95,7 @@ export function leaveCommunity(community: Community) {
 /**
  * Ask before leaving. A public community is one click away again, but a private one's
  * view permission *is* its membership (backend `can_view_community`), so leaving hides
- * it and its Join action for good. Mirrors `confirmLeaveSpace`.
+ * it and its Join action for good.
  *
  * The dialog holds its loading state until the call settles and renders a rejection
  * inline, which is where the "last admin cannot leave" message lands.
@@ -112,7 +112,7 @@ export function confirmLeaveCommunity(community: Community) {
 }
 
 export function isCommunityJoined(community: Community) {
-  let user = getSessionUserFromCookie()
+  let user = sessionUserFromCookie()
   if (!user) return false
   // Guests never become community members; the backend only returns communities that
   // hold a space they've been granted, so every fetched community is one they should

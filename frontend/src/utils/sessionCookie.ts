@@ -1,12 +1,11 @@
 /**
- * The signed-in user, from the `user_id` cookie frappe sets.
+ * The signed-in user as Frappe's `user_id` cookie names it, or `null` for a guest.
  *
- * Read from the cookie rather than from `data/session`, because the modules that need it
- * while they are loading — `data/users`, `offline` — are ones `data/session` itself imports,
- * and importing back the other way would be a cycle.
+ * The cookie is set before the app boots, so this works before any request returns.
+ * Keep this file free of imports: session and preference modules read it while they
+ * load, and an import here could close a cycle between them.
  */
-export function getSessionUserFromCookie(): string | null {
-  const cookies = new URLSearchParams(document.cookie.split('; ').join('&'))
-  const user = cookies.get('user_id')
-  return user && user !== 'Guest' ? user : null
+export function sessionUserFromCookie(): string | null {
+  const user = new URLSearchParams(document.cookie.split('; ').join('&')).get('user_id')
+  return user === 'Guest' ? null : user
 }

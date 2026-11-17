@@ -3,7 +3,7 @@ import { useCall } from 'frappe-ui'
 import { users } from './users'
 import router from '@/router'
 import { clearOfflineCaches, guardAgainstUserSwitch } from '@/offline'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 interface LoginResponse {
   user: string
@@ -17,7 +17,7 @@ interface LoginParams {
 
 type LogoutResponse = void
 
-export let sessionUser = ref<string | null>(getSessionUserFromCookie())
+export let sessionUser = ref<string | null>(sessionUserFromCookie())
 
 export let session = reactive({
   login: useCall<LoginResponse, LoginParams>({
@@ -25,7 +25,7 @@ export let session = reactive({
     immediate: false,
     async onSuccess(data) {
       users.reload()
-      sessionUser.value = getSessionUserFromCookie()
+      sessionUser.value = sessionUserFromCookie()
       session.login.reset()
       // User-scoped cache keys are fixed when the modules load, so a different user needs a
       // full reload. Awaited so the reload can't cut the previous user's cache clear short.
@@ -41,7 +41,7 @@ export let session = reactive({
     method: 'POST',
     immediate: false,
     async onSuccess() {
-      sessionUser.value = getSessionUserFromCookie()
+      sessionUser.value = sessionUserFromCookie()
       // Leave nothing cached for whoever uses this browser next. Awaited so the redirect
       // can't cut the clear short.
       await clearOfflineCaches()

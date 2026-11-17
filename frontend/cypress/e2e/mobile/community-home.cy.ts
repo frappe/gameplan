@@ -31,7 +31,7 @@ describe('Mobile community home', () => {
 
     // The header title opens the community switcher sheet, which lists this
     // community's feeds and spaces only.
-    cy.contains('button', 'All Discussions').click()
+    cy.contains('button', 'All discussions').click()
     cy.scope('dialog').button('Unread').should('be.visible')
     cy.scope('dialog').button('Participating').should('be.visible')
     cy.scope('dialog').button('Alpha Space').should('be.visible')

@@ -16,7 +16,7 @@
       v-html="item.title"
     />
     <span v-if="item.modified" class="ml-auto shrink-0 whitespace-nowrap pl-2 text-ink-gray-5">
-      {{ dayjsLocal(item.modified).fromNow(true) }}
+      {{ timeAgo(item.modified, true) }}
     </span>
     <span v-else-if="item.suffix" class="ml-auto shrink-0 whitespace-nowrap pl-2 text-ink-gray-5">
       {{ item.suffix }}
@@ -24,7 +24,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { dayjsLocal } from 'frappe-ui'
+import { timeAgo } from '@/utils'
 import type { CommandPaletteItem } from './registry'
 
 defineProps<{

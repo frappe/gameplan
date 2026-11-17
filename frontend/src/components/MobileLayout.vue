@@ -15,28 +15,37 @@
           label="Notifications"
           icon="lucide-bell"
           :route="{ name: 'Notifications' }"
-          :active="route.name === 'Notifications'"
+          :active="activeRoute.name === 'Notifications'"
         />
         <MobileNavItem
           label="Search"
           icon="lucide-search"
           :route="{ name: 'Search' }"
-          :active="route.name === 'Search'"
+          :active="activeRoute.name === 'Search'"
         />
         <MobileNavItem label="You" :route="{ name: 'More' }" :active="isMoreRoute">
           <template #default="{ active }">
-            <UserAvatar
-              v-if="sessionUser.name"
-              :user="sessionUser.name"
-              class="size-6"
-              :class="active ? 'ring-2 ring-outline-gray-4' : ''"
-            />
-            <span
-              v-else
-              class="lucide-menu size-6"
-              :class="active ? 'text-ink-gray-8' : 'text-ink-gray-5'"
-              aria-hidden="true"
-            />
+            <span class="relative flex">
+              <UserAvatar
+                v-if="sessionUser.name"
+                :user="sessionUser.name"
+                class="size-6"
+                :class="active ? 'ring-2 ring-outline-gray-4' : ''"
+              />
+              <span
+                v-else
+                class="lucide-menu size-6"
+                :class="active ? 'text-ink-gray-8' : 'text-ink-gray-5'"
+                aria-hidden="true"
+              />
+              <!-- The bar-coloured padding cuts the dot out of the avatar, as on the desktop rail. -->
+              <span
+                v-if="hasUnseenEntries"
+                class="absolute -right-1 -top-1 rounded-full bg-surface-elevation-2 p-0.5"
+              >
+                <UnseenDot />
+              </span>
+            </span>
           </template>
         </MobileNavItem>
       </MobileNav>
@@ -55,11 +64,16 @@ import { MobileShell, MobileNav, MobileNavItem } from 'frappe-ui'
 import { useSessionUser } from '@/data/users'
 import ReadOnlyBanner from './ReadOnlyBanner.vue'
 import UserAvatar from './UserAvatar.vue'
+import UnseenDot from './Changelog/UnseenDot.vue'
+import { hasUnseenEntries } from '@/data/changelog'
 import { readOnlyMode } from '@/data/readOnlyMode'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
 
 const route = useRoute()
 const router = useRouter()
 const sessionUser = useSessionUser()
+// The tab bar lights up the tapped tab at once; `route` is where the page actually is.
+const activeRoute = useActiveNavRoute()
 
 // The app mounts before the first navigation settles, so on a reload `route` is still
 // the empty start location and its meta says nothing. Read the meta off the URL being
@@ -69,16 +83,21 @@ const hideMobileNav = computed(() => {
   return Boolean(current.meta.hideMobileNav)
 })
 
-const onCommunityRoute = computed(() => route.matched.some((record) => record.meta?.communityScope))
+const onCommunityRoute = computed(() =>
+  activeRoute.value.matched.some((record) => record.meta?.communityScope),
+)
 
-// Home stays lit across every community route, not just the Home page — tapping it
-// still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
-const isHomeRoute = computed(() => route.name === 'Home' || onCommunityRoute.value)
+// Home stays lit across every community route and the All Discussions feed, not just the
+// Home page — tapping it still navigates home (MobileNavItem decides scroll-vs-navigate off the current route).
+const isHomeRoute = computed(() => {
+  const name = activeRoute.value.name?.toString() || ''
+  return ['Home', 'AllDiscussions', 'AllDiscussionsTab'].includes(name) || onCommunityRoute.value
+})
 
 // "You" spans the whole More section (profile, pages, tasks, bookmarks, drafts,
 // and the settings pages the More menu links to).
 const isMoreRoute = computed(() => {
-  const name = route.name?.toString() || ''
+  const name = activeRoute.value.name?.toString() || ''
   return [
     'More',
     'Bookmarks',

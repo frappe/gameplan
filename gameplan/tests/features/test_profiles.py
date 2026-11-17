@@ -139,6 +139,23 @@ class TestProfiles(GameplanTestCase):
 		with self.assertRaises(frappe.PermissionError):
 			alice_profile.save(ignore_permissions=True)
 
+	def test_member_cannot_take_over_another_profile_by_reassigning_user(self):
+		"""Reassigning `user` to the session user must not grant edit of that row."""
+		alice_profile = get_profile(self.alice.name)
+		frappe.set_user(self.bob.name)
+		alice_profile.user = self.bob.name
+		alice_profile.bio = "taken over by bob"
+		with self.assertRaises(frappe.PermissionError):
+			alice_profile.save(ignore_permissions=True)
+		self.assertEqual(frappe.db.get_value("GP User Profile", alice_profile.name, "user"), self.alice.name)
+
+	def test_owner_cannot_reassign_their_profile_to_another_user(self):
+		frappe.set_user(self.alice.name)
+		profile = get_profile(self.alice.name)
+		profile.user = self.bob.name
+		with self.assertRaises(frappe.CannotChangeConstantError):
+			profile.save(ignore_permissions=True)
+
 	def test_admin_cannot_edit_others_profile(self):
 		alice_profile = get_profile(self.alice.name)
 		self.assertFalse(has_permission(alice_profile, ptype="write", user=self.admin.name))
@@ -910,3 +927,39 @@ class TestQuickReactions(GameplanTestCase):
 			profile.save()
 
 		self.assertEqual(get_profile(self.member.name).quick_reaction_emojis, '["👍",""]')
+
+
+class TestSidebarPreferences(GameplanTestCase):
+	"""Sidebar preferences live on the profile, so every device the member uses shows the same sidebar."""
+
+	def setUp(self):
+		super().setUp()
+		frappe.set_user("Administrator")
+		reset_profile(self.member.name)
+
+	def save_preferences(self):
+		with self.as_user(self.member):
+			profile = get_profile(self.member.name)
+			profile.show_all_discussions = 1
+			profile.space_sidebar_sort = "Alphabetical"
+			profile.hide_inactive_spaces = 1
+			profile.save()
+
+	def test_member_gets_their_own_sidebar_preferences_in_user_info(self):
+		self.save_preferences()
+
+		with self.as_user(self.member):
+			users = get_user_info(self.member.name)
+
+		self.assertEqual(users[0].show_all_discussions, 1)
+		self.assertEqual(users[0].space_sidebar_sort, "Alphabetical")
+		self.assertEqual(users[0].hide_inactive_spaces, 1)
+
+	def test_other_members_sidebar_preferences_are_private_in_user_info(self):
+		self.save_preferences()
+
+		with self.as_user(self.second_member):
+			users = get_user_info(self.member.name)
+
+		for field in ("show_all_discussions", "space_sidebar_sort", "hide_inactive_spaces"):
+			self.assertNotIn(field, users[0])

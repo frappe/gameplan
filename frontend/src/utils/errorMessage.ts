@@ -1,7 +1,7 @@
 /**
  * Classifying a Frappe error, rather than reading its text.
  *
- * For the wording to put in front of a person, use `extractServerMessage` from `@/utils`.
+ * For the wording to put in front of a person, use `errorText` from `@/utils`.
  */
 
 interface FrappeError extends Error {

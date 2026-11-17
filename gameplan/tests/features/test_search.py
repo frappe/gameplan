@@ -548,6 +548,25 @@ class TestSearchIndexLifecycle(IsolatedSearchIndex, GameplanTestCase):
 
 		self.assertEqual([result["id"] for result in results], [f"GP Comment:{comment.name}"])
 
+	def test_comment_results_carry_the_title_of_their_post(self):
+		discussion = self.create_discussion("Quarterly roadmap", "A parent discussion")
+		task = create_task("Fix the login page", self.space)
+		create_comment(discussion, content="reftitleneedle on a discussion", owner=self.member)
+		frappe.get_doc(
+			doctype="GP Comment",
+			reference_doctype="GP Task",
+			reference_name=task.name,
+			content="reftitleneedle on a task",
+		).insert(ignore_permissions=True)
+		drain_search_index_queue()
+
+		results = self.search_as(self.member, "reftitleneedle")
+
+		self.assertEqual(
+			{(result["reference_doctype"], result.get("reference_title")) for result in results},
+			{("GP Discussion", "Quarterly roadmap"), ("GP Task", "Fix the login page")},
+		)
+
 	def test_search_filters_are_limited_to_the_fields_the_search_page_uses(self):
 		discussion = self.create_discussion(
 			"Filter field coverage",

@@ -459,7 +459,7 @@ describe('Download for offline', () => {
     })
     cachedValue(
       cacheNamespace(personas.member.email) +
-        JSON.stringify(['useList:v2', 'Discussions', `SpaceDiscussions-${space}`]),
+        JSON.stringify(['useList:v2', 'Discussions', `SpaceDiscussions-${space}-recent`]),
     ).then((value) => expect(JSON.parse(value)).to.deep.eq([]))
     cy.goOffline()
     cy.visit(`/g/community/${community}/space/${space}/discussions`)

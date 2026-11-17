@@ -82,6 +82,9 @@ def get_user_info(user=None):
 			"pinned_spaces",
 			"quick_reaction_emojis",
 			"sidebar_badge_style",
+			"show_all_discussions",
+			"space_sidebar_sort",
+			"hide_inactive_spaces",
 			"email_digest_frequency",
 			"email_digest_day_of_week",
 			"email_digest_last_sent_on",
@@ -107,6 +110,9 @@ def get_user_info(user=None):
 				user.pinned_spaces = user_profile.pinned_spaces
 				user.quick_reaction_emojis = user_profile.quick_reaction_emojis
 				user.sidebar_badge_style = user_profile.sidebar_badge_style
+				user.show_all_discussions = user_profile.show_all_discussions
+				user.space_sidebar_sort = user_profile.space_sidebar_sort
+				user.hide_inactive_spaces = user_profile.hide_inactive_spaces
 				user.email_digest_frequency = user_profile.email_digest_frequency
 				user.email_digest_day_of_week = user_profile.email_digest_day_of_week
 				user.email_digest_last_sent_on = user_profile.email_digest_last_sent_on
@@ -282,11 +288,7 @@ def unread_notifications():
 def accept_invitation(key: str = None):
 	invitation = get_invitation(key)
 	if not invitation or invitation.status not in ("Pending", "Accepted"):
-		frappe.respond_as_web_page(
-			_("This invitation link is no longer valid"),
-			_("Ask the person who invited you to send a new invitation."),
-			http_status_code=404,
-		)
+		redirect_to_invalid_invitation("expired")
 		return
 
 	if invitation.status == "Pending":
@@ -298,13 +300,7 @@ def accept_invitation(key: str = None):
 		# password link in place of the first one.
 		location = invitation.get_password_link()
 	else:
-		frappe.respond_as_web_page(
-			_("This invitation link is no longer valid"),
-			_("This invitation has already been accepted. Sign in to continue."),
-			http_status_code=410,
-			primary_action="/login",
-			primary_label=_("Sign in"),
-		)
+		redirect_to_invalid_invitation("accepted")
 		return
 
 	frappe.db.commit()  # nosemgrep: frappe-manual-commit
@@ -313,15 +309,24 @@ def accept_invitation(key: str = None):
 	frappe.local.response["location"] = location
 
 
-@frappe.whitelist()
-def get_unsplash_photos(keyword=None):
-	"""Return Unsplash photos for `keyword`, or a default set."""
-	from gameplan.unsplash import get_by_keyword, get_list
+def redirect_to_invalid_invitation(reason: str):
+	"""Explain a dead invitation link on Gameplan's own page, /g/invitation-invalid.
 
-	if keyword:
-		return get_by_keyword(keyword)
+	A signed-in user without a Gameplan role cannot open /g (`require_app_access`), so
+	they get Frappe's message page instead. Other apps on the site are left alone.
+	"""
+	from gameplan.roles import has_app_access
 
-	return frappe.cache().get_value("unsplash_photos", generator=get_list)
+	if frappe.session.user != "Guest" and not has_app_access():
+		frappe.respond_as_web_page(
+			_("This invitation link is no longer valid"),
+			_("Ask the person who invited you to send a new one."),
+			http_status_code=404,
+		)
+		return
+
+	frappe.local.response["type"] = "redirect"
+	frappe.local.response["location"] = f"/g/invitation-invalid?reason={reason}"
 
 
 @frappe.whitelist(methods=["POST"])

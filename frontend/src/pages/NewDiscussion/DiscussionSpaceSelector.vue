@@ -1,12 +1,42 @@
 <template>
+  <!-- The Combobox puts its placeholder on the trigger and the search box alike. A custom
+       trigger lets the button say "Select space" while the search box says "Search spaces". -->
   <Combobox
-    trigger="button"
     :options="spaceOptions"
     v-model="selectedSpace"
-    placeholder="Select Space"
+    placeholder="Search spaces"
+    :size="size"
     :disabled="!isComposerEditable"
     @change="handleSpaceChange"
   >
+    <!-- A custom trigger gets none of the built-in trigger's ARIA, so it sets its own. -->
+    <template #trigger="{ selectedOption, disabled, open }">
+      <Button
+        :size="size"
+        :disabled="disabled"
+        :class="['!justify-start', $attrs.class]"
+        aria-haspopup="listbox"
+        :aria-expanded="open"
+      >
+        <template #prefix>
+          <SpaceIcon
+            v-if="selectedOption"
+            :icon="optionIcon(selectedOption)"
+            class="size-4 text-ink-gray-6"
+          />
+          <span v-else class="lucide-folder size-4 shrink-0 text-ink-gray-6" aria-hidden="true" />
+        </template>
+        <span :class="{ 'text-ink-gray-7': !selectedOption && !disabled }">
+          {{ selectedOption?.label ?? 'Select space' }}
+        </span>
+        <template #suffix>
+          <span
+            class="lucide-chevron-down ml-auto size-4 shrink-0 text-ink-gray-4"
+            aria-hidden="true"
+          />
+        </template>
+      </Button>
+    </template>
     <template #item-prefix="{ item }">
       <SpaceIcon :icon="optionIcon(item)" class="size-4 text-ink-gray-6" />
     </template>
@@ -14,9 +44,13 @@
 </template>
 
 <script setup lang="ts">
-import { Combobox } from 'frappe-ui'
+import { Button, Combobox } from 'frappe-ui'
 import SpaceIcon from '@/components/SpaceIcon.vue'
 import { useNewDiscussionContext } from './useNewDiscussion'
+
+// The class goes on the trigger button: the Combobox drops it when a #trigger slot is used.
+defineOptions({ inheritAttrs: false })
+withDefaults(defineProps<{ size?: 'sm' | 'md' }>(), { size: 'sm' })
 
 const { selectedSpace, spaceOptions, isComposerEditable, handleSpaceChange } =
   useNewDiscussionContext()

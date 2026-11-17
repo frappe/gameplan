@@ -1,6 +1,7 @@
 import {
   createRouter,
   createWebHistory,
+  loadRouteLocation,
   type RouteLocationNormalized,
   type RouteLocationRaw,
   type RouteRecordRaw,
@@ -13,10 +14,20 @@ import { communities, getCommunity } from './data/communities'
 import { spaces, getSpace } from './data/spaces'
 import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
+import { isFeedType, type FeedType } from './data/discussionFeeds'
+import { currentShowAllDiscussions } from './data/sidebarPreferences'
 import { settingsBackgroundPath } from './components/Settings'
+import {
+  isLeavingOverlay,
+  isSettingsRoute,
+  leaveOverlayFor,
+  recordOverlayBase,
+  resolveOverlayBase,
+} from './components/Settings/overlayHistory'
 import { shellScrollContainer } from 'frappe-ui'
 import { isNetworkError } from './data/offline/requests'
 import { isOnline } from './data/online'
+import { navigationTarget } from './utils/navigationTarget'
 
 declare const __FRONTEND_ROUTE__: string
 
@@ -40,7 +51,6 @@ type ProjectContentDoc = {
   slug?: string
 }
 
-const discussionFeeds = ['recent', 'unread', 'participating']
 const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null | undefined>>()
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
@@ -85,6 +95,24 @@ async function redirectLegacyTeamRoute(to: RouteLocationNormalized): Promise<Rou
   return { name: 'Discussions', params: { communityId } }
 }
 
+/**
+ * With the All Discussions preference off, `/discussions` stays a compatibility entry
+ * point that opens the same feed in the current community.
+ */
+async function redirectToCommunityFeed(feedType: FeedType): Promise<RouteLocationRaw> {
+  await ensureCommunityDataLoaded()
+
+  if (!communityState.id) {
+    return getHomeRoute()
+  }
+
+  if (feedType === 'recent') {
+    return { name: 'Discussions', params: { communityId: communityState.id } }
+  }
+
+  return { name: 'DiscussionsTab', params: { communityId: communityState.id, feedType } }
+}
+
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
@@ -99,6 +127,7 @@ const routes: RouteRecordRaw[] = [
     path: '/home',
     name: 'Home',
     component: () => import('@/pages/MobileHome.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
       await ensureCommunityDataLoaded()
 
@@ -137,7 +166,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/discussions',
     component: () => import('@/pages/Discussions.vue'),
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
   },
   {
     name: 'DiscussionsTab',
@@ -152,7 +181,7 @@ const routes: RouteRecordRaw[] = [
         return { name: 'Bookmarks' }
       }
 
-      if (discussionFeeds.includes(feedType)) {
+      if (isFeedType(feedType)) {
         return
       }
 
@@ -164,43 +193,33 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    name: 'AllDiscussions',
     path: '/discussions',
-    component: RouteGuard,
+    component: () => import('@/pages/AllDiscussions.vue'),
+    meta: { prefetch: true },
     async beforeEnter() {
-      await ensureCommunityDataLoaded()
-
-      // `/discussions` stays as a compatibility entry point, but there is no global feed anymore.
-      if (!communityState.id) {
-        return getHomeRoute()
-      }
-
-      return {
-        name: 'Discussions',
-        params: { communityId: communityState.id },
-      }
+      if (currentShowAllDiscussions.value) return
+      return redirectToCommunityFeed('recent')
     },
   },
   {
+    name: 'AllDiscussionsTab',
     path: '/discussions/:feedType',
-    component: RouteGuard,
+    component: () => import('@/pages/AllDiscussions.vue'),
+    props: true,
     async beforeEnter(to) {
-      await ensureCommunityDataLoaded()
-
       const feedType = routeParam(to.params.feedType)
       if (feedType === 'bookmarks') {
         return { name: 'Bookmarks' }
       }
 
-      if (!communityState.id) {
-        return getHomeRoute()
+      const validFeedType = isFeedType(feedType) ? feedType : 'recent'
+      if (!currentShowAllDiscussions.value) {
+        return redirectToCommunityFeed(validFeedType)
       }
 
-      return {
-        name: 'DiscussionsTab',
-        params: {
-          communityId: communityState.id,
-          feedType: discussionFeeds.includes(feedType) ? feedType : 'recent',
-        },
+      if (validFeedType === 'recent') {
+        return { name: 'AllDiscussions', replace: true }
       }
     },
   },
@@ -208,11 +227,13 @@ const routes: RouteRecordRaw[] = [
     name: 'Bookmarks',
     path: '/bookmarks',
     component: () => import('@/pages/Bookmarks.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'Drafts',
     path: '/drafts',
     component: () => import('@/pages/Drafts.vue'),
+    meta: { prefetch: true },
   },
   {
     name: 'MyTasks',
@@ -241,11 +262,13 @@ const routes: RouteRecordRaw[] = [
     path: '/people',
     name: 'People',
     component: () => import('@/pages/People.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/search',
     name: 'Search',
     component: () => import('@/pages/Search.vue'),
+    meta: { prefetch: true },
   },
   {
     path: '/onboarding',
@@ -265,9 +288,17 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/NoCommunities.vue'),
   },
   {
+    // gameplan.api.accept_invitation sends dead invitation links here.
+    path: '/invitation-invalid',
+    name: 'InvitationInvalid',
+    component: () => import('@/pages/InvitationInvalid.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/404',
     name: 'NotFound',
     component: () => import('@/pages/NotFound.vue'),
+    meta: { communitySidebar: true },
   },
   {
     path: '/offline-unavailable',
@@ -289,22 +320,30 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/pages/Space.vue'),
     redirect: { name: 'SpaceDiscussions' },
     props: true,
-    meta: { communityScope: true },
+    meta: { communityScope: true, prefetch: true },
     children: [
       {
         name: 'SpaceDiscussions',
         path: 'discussions',
         component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
-        meta: { communityScope: true },
+        meta: { communityScope: true, prefetch: true },
       },
       {
-        name: 'SpacePages',
-        path: 'pages',
-        component: () => import('@/pages/SpacePages.vue'),
+        name: 'SpaceDiscussionsTab',
+        path: 'discussions/:feedType',
+        component: () => import('@/pages/SpaceDiscussions.vue'),
         props: true,
         meta: { communityScope: true },
+        beforeEnter(to) {
+          if (isFeedType(routeParam(to.params.feedType))) return
+          const { communityId, spaceId } = to.params
+          return { name: 'SpaceDiscussions', params: { communityId, spaceId }, replace: true }
+        },
       },
+      // Pages and Tasks no longer have tabs in a space. The names stay so old links and
+      // breadcrumbs land on the space's discussions instead of failing to resolve.
+      { name: 'SpacePages', path: 'pages', redirect: { name: 'SpaceDiscussions' } },
       {
         name: 'SpacePage',
         path: 'pages/:pageId/:slug?',
@@ -312,13 +351,7 @@ const routes: RouteRecordRaw[] = [
         props: true,
         meta: { hideHeader: true, communityScope: true, hideMobileNav: true },
       },
-      {
-        name: 'SpaceTasks',
-        path: 'tasks',
-        component: () => import('@/pages/SpaceTasks.vue'),
-        props: true,
-        meta: { communityScope: true },
-      },
+      { name: 'SpaceTasks', path: 'tasks', redirect: { name: 'SpaceDiscussions' } },
       {
         name: 'SpaceTask',
         path: 'tasks/:taskId',
@@ -333,7 +366,7 @@ const routes: RouteRecordRaw[] = [
     path: '/community/:communityId/space/:spaceId/discussion/:postId/:slug?',
     component: () => import('@/pages/SpaceDiscussion.vue'),
     props: true,
-    meta: { communityScope: true, hideMobileNav: true },
+    meta: { communityScope: true, hideMobileNav: true, prefetch: 'last' },
   },
   {
     name: 'NewDiscussion',
@@ -358,6 +391,7 @@ const routes: RouteRecordRaw[] = [
     path: '/people/:personId',
     name: 'PersonProfile',
     component: () => import('@/pages/PersonProfile.vue'),
+    meta: { prefetch: true },
     props: true,
     beforeEnter(to) {
       if (to.name === 'PersonProfile') {
@@ -369,6 +403,7 @@ const routes: RouteRecordRaw[] = [
         name: 'PersonProfileProfile',
         path: '',
         component: () => import('@/pages/PersonProfileProfile.vue'),
+        meta: { prefetch: true },
       },
       {
         // The About tab is now a card in the profile grid.
@@ -401,6 +436,7 @@ const routes: RouteRecordRaw[] = [
     path: '/notifications',
     name: 'Notifications',
     component: () => import('@/pages/Notifications.vue'),
+    meta: { prefetch: true },
   },
   {
     // On desktop settings is an overlay: the URL changes to /settings/:tab but the
@@ -434,6 +470,7 @@ const routes: RouteRecordRaw[] = [
     path: '/more',
     name: 'More',
     component: () => import('@/pages/MoreMenu.vue'),
+    meta: { prefetch: true },
   },
   {
     // Mobile's way into the offline settings (desktop has them in Settings > Preferences).
@@ -773,18 +810,30 @@ function loadPage(to: RouteLocationNormalized) {
   return true
 }
 
-router.onError((_error, to) => {
-  if (chunkLoadFailed && isOnline.value) loadPage(to)
+router.afterEach((to, _from, failure) => {
+  navigationTarget.value = null
+  if (!failure) sessionStorage.removeItem(RELOADED_KEY)
+  if (!failure && isSettingsRoute(to)) recordOverlayBase()
 })
 
-router.afterEach((_to, _from, failure) => {
-  if (!failure) sessionStorage.removeItem(RELOADED_KEY)
+router.onError((_error, to) => {
+  navigationTarget.value = null
+  if (chunkLoadFailed && isOnline.value) loadPage(to)
 })
 
 router.beforeEach(async (to, from) => {
   if (chunkLoadFailed && isOnline.value && loadPage(to)) return false
 
+  // Set before anything below awaits, so navigation lights up the clicked item at once.
+  // The settings dialog opens over the current page, which stays the active one.
+  if (!isSettingsRoute(to)) navigationTarget.value = to
+  // The router downloads a page's code only after every guard has finished, and the
+  // guards below wait for the boot data on a cold load. Start the download now, so the
+  // two arrive together: about half a second sooner on a 3G connection.
+  loadRouteLocation(to).catch(() => {})
   saveAndRestoreScrollPosition(to, from)
+
+  if (to.meta.public) return true
 
   if (to.name === 'Login' && session.isLoggedIn) {
     return { name: 'Home' }
@@ -809,26 +858,26 @@ router.beforeEach(async (to, from) => {
 
   await ensureCommunityDataLoaded()
 
+  if (isLeavingOverlay(to, from)) {
+    leaveOverlayFor(to)
+    return false
+  }
+
   // Settings overlay: don't run the community-scope/canonical logic below, which
   // would tear down the page the dialog is layered over. Just remember which page
   // that is so App.vue can keep rendering it behind the dialog.
-  if (to.matched.some((route) => route.meta?.settingsOverlay)) {
-    const comingFromSettings = from.matched.some((route) => route.meta?.settingsOverlay)
-    if (!comingFromSettings) {
-      if (from.matched.length > 0) {
-        // In-app open: layer over the page we came from (already scoped correctly).
-        settingsBackgroundPath.value = from.fullPath
-      } else {
-        // Cold load / refresh on a /settings URL: default to Home and scope its
-        // community so the background page can actually render.
-        const home = getHomeRoute()
-        const homeCommunityId =
-          typeof home === 'object' && 'params' in home
-            ? (home.params?.communityId as string | undefined)
-            : undefined
-        if (homeCommunityId) communityState.scope(homeCommunityId)
-        settingsBackgroundPath.value = router.resolve(home).fullPath
-      }
+  if (isSettingsRoute(to)) {
+    const base = resolveOverlayBase(to, from)
+    if (from.matched.length === 0) {
+      // Cold load or reload: render Home behind the dialog, even when the record names
+      // another page. A page mounted now reads /settings from useRoute() instead of its
+      // own URL, so it would stay wrong after closing. Closing mounts the real page.
+      const home = router.resolve(getHomeRoute())
+      const communityId = home.params.communityId
+      if (communityId) communityState.scope(routeParam(communityId))
+      settingsBackgroundPath.value = home.fullPath
+    } else if (base && !isSettingsRoute(from)) {
+      settingsBackgroundPath.value = base.path
     }
     return
   }
@@ -854,11 +903,9 @@ router.beforeEach(async (to, from) => {
 
   let communityId = routeParam(to.params.communityId)
 
+  // A missing space is not redirected: Space.vue and SpaceDiscussion.vue show "Space not
+  // found" in place, under the community's sidebar, once the community below checks out.
   let space = to.params.spaceId ? getSpace(routeParam(to.params.spaceId)) : null
-
-  if (to.params.spaceId && !space) {
-    return notFound(to, 'space')
-  }
 
   if (space?.team && space.team !== communityId) {
     return redirectCurrentRouteToCommunity(to, space.team)
@@ -881,6 +928,45 @@ router.beforeEach(async (to, from) => {
 })
 
 export default router
+
+/**
+ * Each page's code is a separate download, so the first visit to a page used to wait
+ * for it with nothing changing on screen: about 700 ms on a 3G connection. Fetch the
+ * common pages while the browser is idle, so that switching to one only has to render.
+ * Skipped when the person has asked their browser to save data.
+ */
+export function prefetchPages() {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+  if (connection?.saveData) return
+
+  // Routes marked `prefetch: 'last'` go after the rest: the discussion page carries the
+  // editor, about 1 MB before compression.
+  const prefetched = router.getRoutes().filter((route) => route.meta.prefetch)
+  const ordered = [
+    ...prefetched.filter((route) => route.meta.prefetch !== 'last'),
+    ...prefetched.filter((route) => route.meta.prefetch === 'last'),
+  ]
+  const loaders = ordered.flatMap((record) => {
+    return Object.values(record.components ?? {}).filter(
+      (component): component is () => Promise<unknown> => typeof component === 'function',
+    )
+  })
+
+  const whenIdle = (callback: () => void) =>
+    'requestIdleCallback' in window
+      ? window.requestIdleCallback(callback, { timeout: 3000 })
+      : window.setTimeout(callback, 200)
+
+  // One at a time, so the downloads never compete with what the current page is loading.
+  const loadNext = () => {
+    const load = loaders.shift()
+    if (!load) return
+    load()
+      .catch(() => {})
+      .finally(() => whenIdle(loadNext))
+  }
+  whenIdle(loadNext)
+}
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
@@ -933,8 +1019,13 @@ export function getHomeRoute(): RouteLocationRaw {
 }
 
 function getDesktopHomeRoute(): RouteLocationRaw {
-  // Home resolves to the active community when possible; onboarding stays only for truly empty sites.
+  // Home is All Discussions when that preference is on, else the active community's feed.
+  // Onboarding stays only for truly empty sites.
   if (communityState.id) {
+    if (currentShowAllDiscussions.value) {
+      return { name: 'AllDiscussions' }
+    }
+
     return {
       name: 'Discussions',
       params: { communityId: communityState.id },
@@ -986,8 +1077,8 @@ async function getCanonicalContentRoute(
   // URL is already canonical — skip the blocking server fetch and let the route change
   // immediately (the detail page shows its own skeleton). Restricted to in-app navigation:
   // deep links (first load, refresh, pasted or hand-edited URLs — from is START_LOCATION
-  // with no matched records) still hit the server so a deleted document 404s and a stale
-  // space/slug rewrites to canonical.
+  // with no matched records) still hit the server so a stale space/slug rewrites to
+  // canonical and a deleted document shows as not found.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
   // The server can't confirm the URL; let the page show its cached copy or its own fallback.
@@ -996,7 +1087,9 @@ async function getCanonicalContentRoute(
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
   // undefined: the server couldn't be reached (fetchProjectContentDoc).
   if (doc === undefined) return
-  if (!doc?.project) return { name: 'NotFound' }
+  // A discussion that is missing or out of reach renders its route anyway, and
+  // DiscussionView shows "Discussion not found" in place.
+  if (!doc?.project) return descriptor.routeName === 'Discussion' ? undefined : { name: 'NotFound' }
 
   const space = await findSpace(String(doc.project))
   if (!space?.team) return { name: 'NotFound' }

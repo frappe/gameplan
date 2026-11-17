@@ -27,6 +27,7 @@ import threading
 
 import frappe
 from frappe.tests.utils import FrappeTestCase
+from frappe.utils import get_fullname
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.mixins.reactions import HasReactions
@@ -313,7 +314,8 @@ class TestReactionsAtTheSameMoment(FrappeTestCase):
 			filters={"to_user": self.owner.name, "type": "Reaction"},
 			pluck="message",
 		)
-		self.assertEqual(notifications, [f"{self.PEOPLE} people reacted to your post"])
+		self.assertEqual(len(notifications), 1)
+		self.assertRegex(notifications[0], rf"^Reactor \d and {self.PEOPLE - 1} others reacted to your post$")
 
 	def test_one_person_adding_the_same_emoji_from_two_tabs_at_once_stores_one_row(self):
 		person = self.people[0].name
@@ -580,7 +582,8 @@ class TestWhichReactionChangesNotify(ReactionTestCase):
 		self.react(self.discussion, self.admin, [add(THUMBS_UP)])
 
 		self.assertEqual(
-			self.notification(self.member, self.discussion).message, "2 people reacted to your post"
+			self.notification(self.member, self.discussion).message,
+			f"{get_fullname(self.admin.name)} and {get_fullname(self.second_member.name)} reacted to your post",
 		)
 
 

@@ -43,7 +43,7 @@ describe('Adding members to a community', () => {
     selectAll().should('contain.text', 'Select 1 matching')
 
     cy.get('input[aria-label="Search people"]').clear().type('nobodyhasthisname')
-    cy.contains('No people match your search.').should('be.visible')
+    cy.contains('No people match your search').should('be.visible')
   })
 
   it('selects every addable person at once and counts them on the button', () => {
@@ -76,6 +76,6 @@ describe('Adding members to a community', () => {
 
     // Reopening offers nobody: everyone belongs to the community now.
     cy.contains('button:visible', 'Add members').click()
-    cy.contains('Everyone already belongs to this community.').should('be.visible')
+    cy.contains('Everyone already belongs to this community').should('be.visible')
   })
 })

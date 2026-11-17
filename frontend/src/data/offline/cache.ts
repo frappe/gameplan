@@ -5,13 +5,13 @@
  * `data-fetching/utils.ts` (lists and calls) and `docStore.ts` (documents).
  */
 import { keys } from 'idb-keyval'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 const VERSION = 'v2'
 
 /** `user`'s cache keys (the signed-in user's by default). A sync binds them to its account, so a
  *  sign-in in another tab cannot redirect its writes. */
-export function cacheFor(user = getSessionUserFromCookie()) {
+export function cacheFor(user = sessionUserFromCookie()) {
   const namespace = user ? `ns:${encodeURIComponent(user)}:` : ''
   const listKey = (cacheKey: unknown[]) =>
     namespace + JSON.stringify([`useList:${VERSION}`, ...cacheKey])

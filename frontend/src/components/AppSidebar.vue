@@ -43,6 +43,7 @@
               :key="space.name"
               :route="{ name: 'Space', params: { communityId: space.team, spaceId: space.name } }"
               :active="isActiveSpace(space.name)"
+              :class="space.archived_at && 'opacity-60'"
             >
               <template #prefix>
                 <SpaceIcon :icon="space.icon" class="size-4" />
@@ -66,12 +67,15 @@
                 <!--
                     Count and options menu share one cell: the count fades out on
                     row hover/focus while the "…" menu fades in. The group is
-                    SidebarItem's root (`group/sidebar-item`).
+                    SidebarItem's root (`group/sidebar-item`). A touch screen has no
+                    hover, so there the menu always shows, beside the count.
                   -->
-                <div class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end">
+                <div
+                  class="relative mr-1 flex h-7 w-7 shrink-0 items-center justify-end gap-1 [@media(hover:none)]:w-auto"
+                >
                   <span
                     v-if="getSpaceUnreadCount(space.name) > 0"
-                    class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/sidebar-item:opacity-0 group-focus-within/sidebar-item:opacity-0"
+                    class="absolute right-1 text-xs text-ink-gray-5 transition-opacity group-hover/sidebar-item:opacity-0 group-focus-within/sidebar-item:opacity-0 [@media(hover:none)]:static [@media(hover:none)]:!opacity-100"
                   >
                     {{ getSpaceUnreadCount(space.name) }}
                   </span>
@@ -82,7 +86,7 @@
                         size="xs"
                         icon="lucide-more-horizontal text-ink-gray-5"
                         :label="`${space.title} options`"
-                        class="absolute right-0 -mr-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100"
+                        class="absolute right-0 -mr-0.5 opacity-0 group-hover/sidebar-item:opacity-100 group-focus-within/sidebar-item:opacity-100 [@media(hover:none)]:static [@media(hover:none)]:opacity-100"
                         :class="open ? 'opacity-100' : ''"
                       />
                     </template>
@@ -91,8 +95,20 @@
               </template>
             </SidebarItem>
 
+            <!-- The page's LoadError box is too tall for this column, so the sidebar
+                 says the same thing in its empty-message style. -->
             <div
-              v-if="spacesList.length === 0"
+              v-if="spacesStatus === 'failed'"
+              class="mt-1 px-2 text-xs leading-relaxed text-ink-gray-5"
+              role="alert"
+            >
+              {{ errorText(spaces.error, 'Could not load spaces.') }}
+              <Button size="sm" icon-left="lucide-rotate-ccw" class="mt-2" @click="spaces.reload()">
+                Retry
+              </Button>
+            </div>
+            <div
+              v-else-if="spacesStatus === 'ready' && spacesList.length === 0"
               class="mt-1 px-2 text-xs leading-relaxed text-ink-gray-5"
             >
               {{ communitySpaces.emptyMessage }}
@@ -109,6 +125,17 @@
           </nav>
         </div>
       </ScrollArea>
+
+      <div v-if="latestUnseenEntry" class="shrink-0 p-2">
+        <SidebarCard
+          title="What's new"
+          :description="latestUnseenEntry.title"
+          icon="lucide-sparkles"
+          dismissible
+          :action="changelogAction"
+          @dismiss="markChangelogSeen"
+        />
+      </div>
     </template>
   </Sidebar>
 
@@ -120,13 +147,23 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
-import { Button, Dropdown, Sidebar, SidebarItem, SidebarLabel, ScrollArea } from 'frappe-ui'
+import {
+  Button,
+  Dropdown,
+  Sidebar,
+  SidebarCard,
+  SidebarItem,
+  SidebarLabel,
+  ScrollArea,
+} from 'frappe-ui'
 import { communityState } from '@/data/communityState'
+import { useActiveNavRoute } from '@/utils/navigationTarget'
+import { markChangelogSeen, openChangelog, unseenEntries } from '@/data/changelog'
 import { communitySpaces } from '@/data/communitySpaces'
 import { hasCustomSpaceSidebarOptions, spaceSortMenuOptions } from '@/data/sidebarPreferences'
 import { isSpacePinned, toggleSpacePinned } from '@/data/pinnedSpaces'
-import { getSpaceUnreadCount, markAllAsRead, type Space } from '@/data/spaces'
+import { getSpaceUnreadCount, markAllAsRead, spaces, spacesStatus, type Space } from '@/data/spaces'
+import { errorText } from '@/utils'
 import { useSessionUser } from '@/data/users'
 import CommunityDropdown from './CommunityDropdown.vue'
 import NewSpaceDialog from './NewSpaceDialog.vue'
@@ -134,13 +171,18 @@ import SpaceIcon from './SpaceIcon.vue'
 import PushPin from './icons/PushPin.vue'
 import PushPinSlash from './icons/PushPinSlash.vue'
 
-const route = useRoute()
+const activeRoute = useActiveNavRoute()
 const sessionUser = computed(() => useSessionUser())
 
 const spacesList = computed(() => communitySpaces.list)
 const showNewSpaceDialog = ref(false)
 
+// The newest unseen "What's new" entry, until the dialog is opened or the card dismissed.
+const latestUnseenEntry = computed(() => unseenEntries.value[0])
+const changelogAction = { label: "See what's new", onClick: openChangelog }
+
 const activeSpaceId = computed(() => {
+  const route = activeRoute.value
   const routeName = route.name?.toString() || ''
   if (routeName.startsWith('Space') || routeName === 'Discussion') {
     return route.params.spaceId?.toString() || null

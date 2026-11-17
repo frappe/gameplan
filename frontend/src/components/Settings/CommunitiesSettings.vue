@@ -192,6 +192,7 @@ import {
   showCustomizeSidebarDialog,
 } from '@/components/AppRail/customizeSidebar'
 import { panelOwnsPageHeader } from './index'
+import { returnToSettingsEntry } from './overlayHistory'
 import PanelHeader from './PanelHeader.vue'
 import PanelBody from './PanelBody.vue'
 import { communities } from '@/data/communities'
@@ -290,7 +291,7 @@ function openCommunityMembers(communityId: string) {
 }
 
 function showCommunities() {
-  router.push({ name: 'SettingsTab', params: { tab: 'communities' } })
+  returnToSettingsEntry({ name: 'SettingsTab', params: { tab: 'communities' } })
 }
 
 // Clear a community's search/filter state when entering, leaving, or switching

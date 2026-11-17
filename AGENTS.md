@@ -28,6 +28,14 @@ still carries the old names. Do not rename the doctypes.
 - Patches sit next to their doctype in `gameplan/gameplan/doctype/<dt>/patches/`,
   registered in `gameplan/patches.txt`. App-level `gameplan/patches/` is for
   cross-doctype work only.
+- Shared UI states: `errorText()` and `fullTimestamp()` in `frontend/src/utils`,
+  `LoadError`, `EmptyStateBox` (icon, title, description props) and `NotFound`
+  (`pages/NotFound.vue`). A failed load shows `LoadError` with Retry, never raw
+  server text.
+- UI state screenshots: `frontend/ui-states/` walks one XState machine per flow
+  in `flows/` with Playwright and writes a PNG per state to `out/`. Run one flow
+  at a time against a throwaway dev site; each path wipes its Gameplan data.
+  `playwright.config.ts` lists the environment it needs.
 
 ## Traps
 
@@ -39,7 +47,7 @@ still carries the old names. Do not rename the doctypes.
   calls `gameplan.ui_test_helpers.reset`. Point it at a disposable site, nothing else.
 - **Colour shades**: in Gameplan code use gray tokens. Amber survives in
   `ReactionsDesktop.vue`, `ReactionsMobile.vue` and the `DiscussionRow.vue` unread
-  badge — the exception, not a licence to add more. frappe-ui's own components do
+  badge, and the "What's new" dot (`UnseenDot.vue`) is orange — the exception, not a licence to add more. frappe-ui's own components do
   ship colour (the Rail unread badge is `theme="red"`); that is the library's call
   and not a precedent for new Gameplan markup. Unread is drawn amber, red and gray
   in three different places, so match the rule here, not the nearest neighbour.
@@ -53,7 +61,18 @@ still carries the old names. Do not rename the doctypes.
 - Fix a `frappe` or `frappe-ui` bug upstream, not with a Gameplan workaround. A local
   workaround needs a comment naming the upstream PR that removes it.
 - Verify UI work in a browser before calling it done. Screenshots belong in the PR as
-  GitHub attachments, never in the repo.
+  GitHub attachments, never in the repo. The one exception is changelog media, below.
+- A change that people will notice, such as a new feature or a visible change to how
+  something works, adds a "What's new" entry in the same pull request. Bug fixes,
+  refactors and small polish do not. Add `frontend/src/changelog/<slug>.md` with
+  `title`, `version: unreleased` and `media` in the front matter, and one or two plain
+  sentences that say what people can now do and where to find it. The release workflow
+  stamps the version and date; never write them by hand. `frontend/src/data/changelog.ts`
+  documents the format.
+- Changelog media is a short clip of the real flow, recorded twice: `<slug>.mp4` for light
+  and `<slug>.dark.mp4` for dark. Frame it on a neutral gray background, zoom to the part
+  that changes, and keep each file near 2 MB (1280 wide, H.264). A raw screen recording is
+  not good enough.
 - Keep the agent guide in `gameplan/mcp.py` current. Frappe's MCP server sends it to
   every assistant, and most members' assistants cannot look methods up (method discovery
   is for System Users only). When a change renames, removes or changes the arguments of
@@ -62,6 +81,7 @@ still carries the old names. Do not rename the doctypes.
 - Do not change `__version__` in `gameplan/__init__.py`. Every merge to `develop` is
   released by `.github/workflows/release.yml`, which commits the next version itself.
   Only the maintainer sets a version by hand, such as 1.0.0.
+- Ship tier: prod
 
 ## Environment
 

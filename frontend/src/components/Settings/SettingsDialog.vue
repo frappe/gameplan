@@ -51,8 +51,8 @@ import {
   SettingsContent,
   SettingsPanel,
 } from 'frappe-ui'
-import { show, activeTab, registerTabs, settingsBackgroundPath } from './index'
-import { getHomeRoute } from '@/router'
+import { show, activeTab, registerTabs } from './index'
+import { closeSettings, isSettingsRoute } from './overlayHistory'
 import UserAvatar from '@/components/UserAvatar.vue'
 import { useSessionUser } from '@/data/users'
 import { useSettingsTabs, type SettingsTab } from './tabs'
@@ -88,7 +88,7 @@ const tabGroups = computed<TabGroup[]>(() => {
 // Keep the label→slug registry in sync for the imperative showSettingsDialog().
 watch(tabs, (list) => registerTabs(list), { immediate: true })
 
-const onSettingsRoute = computed(() => route.matched.some((r) => r.meta?.settingsOverlay))
+const onSettingsRoute = computed(() => isSettingsRoute(route))
 const routeTab = computed(() => {
   // The nested community detail routes (/settings/communities/:communityId/...)
   // still belong to the Communities tab, so the dialog highlights and mounts it.
@@ -123,18 +123,17 @@ watch(
 
 // Closing the dialog (Esc, backdrop click, or the X) returns to the underlying page.
 watch(show, (open) => {
-  if (!open && onSettingsRoute.value) {
-    router.push(settingsBackgroundPath.value || getHomeRoute())
-  }
+  if (!open && onSettingsRoute.value) closeSettings()
 })
 
 // Drives reka-ui Tabs (v-model:tab): the value mirrors the active slug, and
-// selecting a tab (click or keyboard) pushes the canonical settings URL, which
-// the route watcher above resolves back into activeTab.
+// selecting a tab (click or keyboard) replaces the URL with the canonical settings
+// URL, which the route watcher above resolves back into activeTab. Replace, because
+// Back should leave the dialog, not walk through the tabs visited in it.
 const activeTabValue = computed<string>({
   get: () => activeTab.value?.slug ?? '',
   set: (slug) => {
-    if (slug) router.push({ name: 'SettingsTab', params: { tab: slug } })
+    if (slug) router.replace({ name: 'SettingsTab', params: { tab: slug } })
   },
 })
 
@@ -157,7 +156,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.code !== 'Comma' || !e.shiftKey || !(e.metaKey || e.ctrlKey)) return
   e.preventDefault()
   if (onSettingsRoute.value) {
-    router.push(settingsBackgroundPath.value || getHomeRoute())
+    show.value = false
     return
   }
   const slug = activeTab.value?.slug || tabs.value[0]?.slug

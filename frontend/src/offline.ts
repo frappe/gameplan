@@ -3,7 +3,7 @@ import { toast } from 'frappe-ui'
 import { useLocalStorage } from '@vueuse/core'
 import { clearDraftStore } from '@/data/draftStore'
 import { onReconnect } from '@/data/online'
-import { getSessionUserFromCookie } from '@/utils/sessionCookie'
+import { sessionUserFromCookie } from '@/utils/sessionCookie'
 import { withLock } from '@/utils/locks'
 
 const SERVICE_WORKER_URL = '/gameplan-sw.js'
@@ -22,7 +22,7 @@ const USER_CACHE_LOCK = `${CACHE_PREFIX}-user-caches`
 /** Whether the app may show: nobody switched, or the previous user's data is gone. The session
  *  can change outside the app's login (another tab, `bench browse --sid`, the dev switcher). */
 export async function clearCachesOnUserSwitch(): Promise<boolean> {
-  const { switched, cleared } = await guardAgainstUserSwitch(getSessionUserFromCookie())
+  const { switched, cleared } = await guardAgainstUserSwitch(sessionUserFromCookie())
   return !switched || cleared
 }
 

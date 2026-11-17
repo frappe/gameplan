@@ -19,9 +19,9 @@
         <ScrollArea
           orientation="horizontal"
           class="w-full transition-opacity"
-          :class="{ 'opacity-50': isDraftLoading }"
-          :inert="isDraftLoading"
-          :aria-disabled="isDraftLoading"
+          :class="{ 'opacity-50': toolbarInert }"
+          :inert="toolbarInert"
+          :aria-disabled="toolbarInert"
         >
           <EditorFixedMenu :editor="editor" :items="gameplanToolbar" />
         </ScrollArea>
@@ -44,10 +44,10 @@
 
       <div
         v-if="author?.name === sessionUser.name"
-        :inert="isDraftLoading"
-        :aria-disabled="isDraftLoading"
+        :inert="toolbarInert"
+        :aria-disabled="toolbarInert"
         class="fixed inset-x-0 bottom-0 z-20 border-t bg-surface-base px-2 pt-1 pb-2 shadow-[0_-1px_3px_rgba(15,23,42,0.06)] sm:hidden standalone:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
-        :class="{ 'opacity-50': isDraftLoading }"
+        :class="{ 'opacity-50': toolbarInert }"
       >
         <ScrollArea
           orientation="horizontal"
@@ -65,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Badge, PageHeaderBase, ScrollArea } from 'frappe-ui'
 import { EditorFixedMenu } from 'frappe-ui/editor'
 import { gameplanToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
@@ -80,12 +81,15 @@ const {
   sessionUser,
   author,
   isDraftLoading,
+  draftLoadFailed,
   isComposerEditable,
   hasSpaceToPostIn,
   scheduledAt,
   scheduledAtLabel,
   initialize,
 } = provideNewDiscussion()
+
+const toolbarInert = computed(() => isDraftLoading.value || draftLoadFailed.value)
 
 // The editor emits on mount, before the draft has resolved. Dropping those changes is the
 // point: there is no buffer to write them into yet, and the composer is not editable.

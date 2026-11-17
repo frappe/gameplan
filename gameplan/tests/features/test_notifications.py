@@ -20,7 +20,7 @@ digest mirrors the same split: `get_unread_notifications` vs `get_unread_discuss
 """
 
 import frappe
-from frappe.utils import cint
+from frappe.utils import cint, get_fullname
 
 from gameplan.api import mark_all_notifications_as_read, unread_notifications
 from gameplan.gameplan.doctype.gp_notification.gp_notification import GPNotification
@@ -81,6 +81,7 @@ class NotificationTestCase(GameplanTestCase):
 				"type",
 				"message",
 				"from_user",
+				"reacted_by",
 				"discussion",
 				"comment",
 				"poll",
@@ -381,7 +382,7 @@ class TestReactionNotifications(NotificationTestCase):
 		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Reaction")
-		self.assertEqual(rows[0].message, "1 person reacted to your post")
+		self.assertEqual(rows[0].message, f"{get_fullname(self.second_member.name)} reacted to your post")
 		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
 
 	def test_reacting_to_your_own_post_creates_no_notification(self):
@@ -395,7 +396,7 @@ class TestReactionNotifications(NotificationTestCase):
 
 		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
-		self.assertEqual(rows[0].message, "1 person reacted to your post")
+		self.assertEqual(rows[0].message, f"{get_fullname(self.second_member.name)} reacted to your post")
 
 	def test_reaction_on_a_poll_notifies_its_author(self):
 		poll = create_poll("Ship on Friday?", self.discussion, owner=self.member)
@@ -405,7 +406,7 @@ class TestReactionNotifications(NotificationTestCase):
 		rows = self.notifications_for(self.member)
 		self.assertEqual(len(rows), 1)
 		self.assertEqual(rows[0].type, "Reaction")
-		self.assertEqual(rows[0].message, "1 person reacted to your post")
+		self.assertEqual(rows[0].message, f"{get_fullname(self.second_member.name)} reacted to your poll")
 		self.assertEqual(str(rows[0].poll), str(poll.name))
 		self.assertEqual(str(rows[0].discussion), str(self.discussion.name))
 
@@ -440,9 +441,15 @@ class TestReactionNotifications(NotificationTestCase):
 		discussion_row = next(row for row in rows if not row.poll)
 		self.assertEqual(str(poll_row.poll), str(poll.name))
 		self.assertEqual(str(poll_row.discussion), str(self.discussion.name))
-		self.assertEqual(poll_row.message, "2 people reacted to your post")
+		self.assertEqual(
+			poll_row.message,
+			f"{get_fullname(self.admin.name)} and {get_fullname(self.second_member.name)} reacted to your poll",
+		)
+		self.assertEqual(frappe.parse_json(poll_row.reacted_by), [self.admin.name, self.second_member.name])
 		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
-		self.assertEqual(discussion_row.message, "1 person reacted to your post")
+		self.assertEqual(
+			discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post"
+		)
 
 	def test_comment_and_discussion_reactions_create_distinct_notifications(self):
 		comment = create_comment(self.discussion, owner=self.member)
@@ -456,9 +463,31 @@ class TestReactionNotifications(NotificationTestCase):
 		discussion_row = next(row for row in rows if not row.comment)
 		self.assertEqual(str(comment_row.comment), str(comment.name))
 		self.assertEqual(str(comment_row.discussion), str(self.discussion.name))
-		self.assertEqual(comment_row.message, "1 person reacted to your post")
+		self.assertEqual(
+			comment_row.message, f"{get_fullname(self.second_member.name)} reacted to your reply"
+		)
 		self.assertEqual(str(discussion_row.discussion), str(self.discussion.name))
-		self.assertEqual(discussion_row.message, "1 person reacted to your post")
+		self.assertEqual(
+			discussion_row.message, f"{get_fullname(self.second_member.name)} reacted to your post"
+		)
+
+	def test_modified_is_the_newest_reaction_and_marking_read_keeps_it(self):
+		"""The bell sorts and dates rows by `modified`, so it must track news, not reads."""
+		self._react(self.discussion, self.second_member)
+		name = self.notifications_for(self.member)[0].name
+		backdated = "2026-01-01 10:00:00"
+		frappe.db.set_value("GP Notification", name, "modified", backdated, update_modified=False)
+
+		with self.as_user(self.member):
+			notification = frappe.get_doc("GP Notification", name)
+			notification.read = 1
+			notification.save()
+		self.assertEqual(str(frappe.db.get_value("GP Notification", name, "modified")), backdated)
+
+		self._react(self.discussion, self.second_member, emoji="🎉")
+		row = frappe.db.get_value("GP Notification", name, ["modified", "read"], as_dict=True)
+		self.assertGreater(str(row.modified), backdated)
+		self.assertEqual(row.read, 0)
 
 
 class TestUnreadNotificationsCount(NotificationTestCase):

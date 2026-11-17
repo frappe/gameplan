@@ -45,7 +45,7 @@ export interface GPTask extends DocType {
   comments_count?: number
 }
 
-// Last updated: 2026-09-10 10:00:00.000000
+// Last updated: 2026-11-13 12:00:00.000000
 export interface GPUserProfile extends DocType {
   /** User: Link (User) */
   user: string
@@ -81,8 +81,14 @@ export interface GPUserProfile extends DocType {
   quick_reaction_emojis?: any
   /** Sidebar Badge Style: Select */
   sidebar_badge_style?: 'Unread count' | 'Dot'
+  /** Show All Discussions: Check */
+  show_all_discussions: 0 | 1
+  /** Space Sidebar Sort: Select */
+  space_sidebar_sort?: 'Recent activity' | 'Alphabetical'
+  /** Hide Inactive Spaces: Check */
+  hide_inactive_spaces: 0 | 1
   /** Email Digest Frequency: Select */
-  email_digest_frequency?: 'Off' | 'Weekly' | 'Fortnightly' | 'Monthly'
+  email_digest_frequency?: 'Off' | 'Weekly'
   /** Email Digest Day of Week: Select */
   email_digest_day_of_week?:
     | 'Monday'
@@ -120,10 +126,12 @@ export interface GPMember extends ChildDocType {
   is_admin?: 0 | 1
 }
 
-// Last updated: 2026-07-31 10:15:00.000000
+// Last updated: 2026-11-12 12:00:00.000000
 export interface GPNotification extends DocType {
   /** From User: Link (User) */
   from_user?: string
+  /** Reacted By: JSON */
+  reacted_by?: any
   /** To User: Link (User) */
   to_user: string
   /** Type: Select */
@@ -210,7 +218,7 @@ export interface GPTeam extends DocType {
   image?: string
 }
 
-// Last updated: 2023-05-08 16:57:35.133580
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPGuestAccess extends DocType {
   /** User: Link (User) */
   user: string
@@ -220,7 +228,7 @@ export interface GPGuestAccess extends DocType {
   team?: string
 }
 
-// Last updated: 2023-05-08 16:58:26.857607
+// Last updated: 2026-10-19 13:00:00.000000
 export interface GPInvitation extends DocType {
   /** Email: Data */
   email: string
@@ -234,6 +242,8 @@ export interface GPInvitation extends DocType {
   invited_by?: string
   /** Accepted At: Datetime */
   accepted_at?: string
+  /** Created Account: Check */
+  created_account: 0 | 1
   /** Teams: Small Text */
   teams?: string
   /** Projects: Small Text */
@@ -336,7 +346,7 @@ export interface GPPoll extends DocType {
   comment?: string
 }
 
-// Last updated: 2022-12-07 21:34:41.411618
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPActivity extends DocType {
   /** Reference DocType: Link (DocType) */
   reference_doctype?: string
@@ -350,7 +360,7 @@ export interface GPActivity extends DocType {
   data?: string
 }
 
-// Last updated: 2025-02-17 15:58:11.863114
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPSearchFeedback extends DocType {
   /** User: Link (User) */
   user: string
@@ -382,7 +392,7 @@ export interface GPTagLink extends ChildDocType {
   label?: string
 }
 
-// Last updated: 2025-05-22 12:26:40.729595
+// Last updated: 2026-10-19 12:00:00.000000
 export interface GPTag extends DocType {
   /** Label: Data */
   label?: string

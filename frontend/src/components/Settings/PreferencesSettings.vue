@@ -56,6 +56,13 @@
           </SettingsRow>
 
           <SettingsRow
+            title="All Discussions"
+            description="Add a feed of discussions from every community you have joined"
+          >
+            <Switch v-model="showAllDiscussions" />
+          </SettingsRow>
+
+          <SettingsRow
             title="Space sorting"
             description="Choose how spaces are ordered in the current community sidebar"
           >
@@ -114,10 +121,12 @@ import CustomizeSidebarDialog from '@/components/AppRail/CustomizeSidebarDialog.
 import { resetQuickReactionEmojis } from '@/data/reactionPreferences'
 import {
   currentHideInactiveSpaces,
+  currentShowAllDiscussions,
   currentSidebarBadgeStyle,
   currentSpaceSidebarSort,
   setHideInactiveSpaces,
-  setSidebarBadgeStyle,
+  setShowAllDiscussions,
+  applySidebarBadgeStyle,
   setSpaceSidebarSort,
   type SidebarBadgeStyle,
   type SpaceSidebarSort,
@@ -178,6 +187,11 @@ const hideInactiveSpaces = computed({
   set: (value: boolean) => setHideInactiveSpaces(value),
 })
 
+const showAllDiscussions = computed({
+  get: () => currentShowAllDiscussions.value,
+  set: (value: boolean) => setShowAllDiscussions(value),
+})
+
 const selectedBadgeStyle = computed({
   get: () => currentSidebarBadgeStyle.value,
   set: saveBadgeStyle,
@@ -198,7 +212,7 @@ async function saveBadgeStyle(style: SidebarBadgeStyle) {
       name: profileName,
       sidebar_badge_style: style,
     })
-    setSidebarBadgeStyle(style)
+    applySidebarBadgeStyle(style)
     sessionUser.sidebar_badge_style = style
     toast.success('Sidebar preference saved')
   } catch {
