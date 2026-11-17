@@ -88,13 +88,32 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 		"""What a device asks for: everything in the window unless a test names its own."""
 		with self.as_user(self.member):
 			wanted = wanted if wanted is not None else self.index(window)["discussions"]
-			return get_offline_bundle(window, FIELDS, wanted)
+			# Over HTTP the request's own `fields` sits in form_dict, which `read_doc` also reads.
+			frappe.form_dict["fields"] = FIELDS
+			try:
+				return get_offline_bundle(window, FIELDS, wanted)
+			finally:
+				frappe.form_dict.pop("fields", None)
 
 	def settle_before(self, when):
 		"""Backdate every discussion in the window, so only what a test touches is a change."""
 		for name in self.index(90)["discussions"]:
 			set_modified("GP Discussion", name, when)
 			frappe.db.set_value("GP Discussion", name, "last_post_at", when, update_modified=False)
+
+
+class TestOfflineBundle(OfflineDownloadsTestCase):
+	def test_the_request_fields_do_not_reach_the_discussion_read(self):
+		"""Current Frappe's `read_doc` reads `fields` from the request and wants a list."""
+		bundle = self.bundle(30)
+		self.assertTrue(bundle["discussions"])
+		with self.as_user(self.member):
+			frappe.form_dict["fields"] = FIELDS
+			try:
+				get_offline_bundle(30, FIELDS, self.index(30)["discussions"])
+				self.assertEqual(frappe.form_dict["fields"], FIELDS, "the request is left as it was")
+			finally:
+				frappe.form_dict.pop("fields", None)
 
 
 class TestOfflineIndex(OfflineDownloadsTestCase):

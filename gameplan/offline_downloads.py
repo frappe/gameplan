@@ -78,13 +78,28 @@ def get_offline_bundle(window_days: Window, fields: dict[str, FieldList], names:
 
 	bundle = {
 		"user": frappe.session.user,
-		"discussions": [read_doc("GP Discussion", name) for name in names],
+		"discussions": [_read_discussion(name) for name in names],
 		"rows": _feed_rows(names),
 		"reactions": _thread_reactions(names),
 	}
 	for key, doctype in CHILD_LISTS.items():
 		bundle[key] = _rows_by_discussion(doctype, fields.get(key), names)
 	return bundle
+
+
+def _read_discussion(name: str) -> dict:
+	"""Read one discussion the way `GET /api/v2/document` does.
+
+	`read_doc` takes the fields to return from the request's own `fields`. This request's
+	`fields` says which comment, activity and poll fields to send, so current Frappe rejects
+	it as not a list. Hide it while the discussion is read.
+	"""
+	fields = frappe.form_dict.pop("fields", None)
+	try:
+		return read_doc("GP Discussion", name)
+	finally:
+		if fields is not None:
+			frappe.form_dict["fields"] = fields
 
 
 def _thread_reactions(names: list[str]) -> dict[str, list]:
