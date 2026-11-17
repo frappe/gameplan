@@ -3,6 +3,14 @@
     <template #prefix>
       <PageHeaderBackButton :fallback-route="{ name: 'Home' }" />
     </template>
+    <template #suffix>
+      <Button
+        variant="solid"
+        icon-left="lucide-plus"
+        label="New"
+        :route="{ name: 'LegacyNewDiscussion' }"
+      />
+    </template>
   </PageHeaderMobile>
   <PageHeader class="hidden sm:flex">
     <span class="min-w-0 truncate px-0.5 py-1 text-lg-medium text-ink-gray-9">All discussions</span>

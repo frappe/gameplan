@@ -11,6 +11,14 @@
       <PageHeaderMobileTitle :title="feedTitle" />
       <span class="size-4 shrink-0 text-ink-gray-5 lucide-chevron-down" aria-hidden="true" />
     </button>
+    <template #suffix>
+      <Button
+        variant="solid"
+        icon-left="lucide-plus"
+        label="New"
+        :route="{ name: 'NewDiscussion', params: { communityId } }"
+      />
+    </template>
   </PageHeaderMobile>
 
   <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">
