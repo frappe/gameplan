@@ -3,6 +3,7 @@ import { revalidateOnReconnect } from '@/data/offline/resources'
 import { type CacheKey, UseListOptions, useDoc, useList } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
+import type { FeedType } from './discussionFeeds'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -49,7 +50,7 @@ export interface DiscussionFeedRow {
   pin_scope?: string
 }
 
-export type FeedType = 'recent' | 'unread' | 'participating'
+export type { FeedType }
 
 const FEED_TYPES: FeedType[] = ['recent', 'unread', 'participating']
 
