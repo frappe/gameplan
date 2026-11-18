@@ -7,7 +7,7 @@
         <div class="divide-y divide-outline-gray-1">
           <SettingsRow
             title="Tasks and Pages"
-            description="Show the Tasks and Pages tabs in every space. Tasks and Pages are deprecated and will be removed soon."
+            description="Show Tasks and Pages in every space and in the menus. Tasks and Pages are deprecated and will be removed soon."
           >
             <Switch v-model="enabled" :disabled="saving || readOnlyMode" />
           </SettingsRow>

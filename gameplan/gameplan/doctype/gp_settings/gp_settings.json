@@ -9,7 +9,7 @@
  "fields": [
   {
    "default": "0",
-   "description": "Show the Tasks and Pages tabs in every space. Tasks and Pages are deprecated and will be removed soon.",
+   "description": "Show Tasks and Pages in every space and in the menus. Tasks and Pages are deprecated and will be removed soon.",
    "fieldname": "enable_tasks_and_pages",
    "fieldtype": "Check",
    "label": "Enable Tasks and Pages"
