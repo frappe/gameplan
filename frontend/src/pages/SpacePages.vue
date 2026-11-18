@@ -12,12 +12,24 @@
     </SpaceHeaderActions>
     <div class="mb-4 flex items-center justify-between gap-2">
       <SpaceTabs :spaceId="spaceId" />
-      <Select class="shrink-0 !w-fit" :options="sortOptions" v-model="orderBy" />
+      <div class="flex shrink-0 items-center gap-2">
+        <Select class="!w-fit" :options="sortOptions" v-model="orderBy" />
+        <!-- SpaceHeaderActions sits in the desktop header, so phones get their own button. -->
+        <Button
+          v-if="canEditSpace"
+          class="sm:hidden"
+          variant="solid"
+          icon-left="lucide-plus"
+          label="New"
+          :loading="newPage.loading"
+          @click="createNewPage"
+        />
+      </div>
     </div>
     <PageGrid
       :key="spaceId"
       class="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4"
-      :listOptions="{ filters: { project: spaceId }, orderBy: () => orderBy }"
+      :listOptions="{ filters: { project: spaceId }, orderBy: () => orderBy, limit: 99999 }"
       :readOnly="!canEditSpace"
     />
   </div>
