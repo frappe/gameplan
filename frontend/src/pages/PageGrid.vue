@@ -43,7 +43,7 @@
               <div
                 class="mt-1.5 text-sm flex gap-1 text-ink-gray-6"
                 v-if="d.project"
-                :set="(space = getSpace(d))"
+                :set="space = getSpace(d)"
               >
                 <SpaceIcon :icon="space?.icon" class="size-4 text-ink-gray-6" />
                 <div>{{ space?.title }}</div>
@@ -80,21 +80,22 @@ const props = defineProps<{
   listOptions: {
     filters: UseListOptions<GPPage>['filters']
     orderBy?: UseListOptions<GPPage>['orderBy']
+    limit?: UseListOptions<GPPage>['limit']
   }
   readOnly?: boolean
 }>()
 
-interface Page
-  extends Pick<
-    GPPage,
-    'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
-  > {}
+interface Page extends Pick<
+  GPPage,
+  'name' | 'creation' | 'title' | 'content' | 'slug' | 'project' | 'team' | 'modified' | 'owner'
+> {}
 
 const pages = useList<Page>({
   doctype: 'GP Page',
   fields: ['name', 'creation', 'title', 'content', 'slug', 'project', 'team', 'modified', 'owner'],
   filters: props.listOptions.filters,
   orderBy: props.listOptions.orderBy,
+  limit: props.listOptions.limit,
   cacheKey: ['Pages', props.listOptions],
 })
 

@@ -125,6 +125,7 @@ import { hideCommandPalette, show, toggleCommandPalette } from './commandPalette
 import KeyboardShortcut from '../KeyboardShortcut.vue'
 
 import { showNewTaskDialog } from '../NewTaskDialog'
+import { tasksAndPagesEnabled } from '@/data/tasksAndPages'
 import { GPPage } from '@/types/doctypes'
 import { showCommunitiesSettings, showSettingsDialog } from '@/components/Settings'
 import {
@@ -258,6 +259,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         icon: 'lucide-list-todo',
         aliases: ['my tasks', 'todos', 'todo'],
         route: { name: 'MyTasks' },
+        condition: () => tasksAndPagesEnabled.value,
       },
       {
         title: 'Pages',
@@ -265,6 +267,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         icon: 'lucide-files',
         aliases: ['my pages', 'docs', 'documents', 'wiki'],
         route: { name: 'MyPages' },
+        condition: () => tasksAndPagesEnabled.value,
       },
       {
         title: 'People',
@@ -339,6 +342,15 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         condition: () => !sessionUser.isGuest,
       },
       {
+        title: 'General',
+        name: 'settings-general',
+        icon: 'lucide-settings-2',
+        search: 'Settings General tasks pages administration',
+        aliases: ['tasks and pages', 'site settings'],
+        onClick: () => showSettingsDialog('General'),
+        condition: () => isGameplanAdmin(sessionUser),
+      },
+      {
         title: 'Users',
         name: 'settings-users',
         icon: 'lucide-users',
@@ -381,7 +393,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         search: 'Add Task New Task',
         aliases: ['new task', 'todo', 'create task'],
         icon: 'lucide-square-plus',
-        condition: () => canCreateFromPalette.value,
+        condition: () => canCreateFromPalette.value && tasksAndPagesEnabled.value,
         onClick() {
           let spaceId = router.currentRoute.value?.params?.spaceId ?? null
           showNewTaskDialog({
@@ -412,7 +424,7 @@ const shortcuts = computed((): CommandPaletteGroup[] => [
         search: 'Add Page New Page',
         aliases: ['new page', 'doc', 'document', 'note'],
         icon: 'lucide-file-plus',
-        condition: () => canCreateFromPalette.value,
+        condition: () => canCreateFromPalette.value && tasksAndPagesEnabled.value,
         onClick() {
           let spaceId = router.currentRoute.value.params?.spaceId ?? null
 

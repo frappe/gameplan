@@ -83,6 +83,7 @@ import { isGameplanAdmin, useSessionUser } from '@/data/users'
 import { hasUnseenEntries, openChangelog } from '@/data/changelog'
 import UnseenDot from '@/components/Changelog/UnseenDot.vue'
 import { session } from '@/data/session'
+import { tasksAndPagesEnabled } from '@/data/tasksAndPages'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { useTheme, type Theme } from '@/utils/useTheme'
 
@@ -139,8 +140,12 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
   const workspaceItems: MoreItem[] = [
     { label: 'Drafts', icon: 'lucide-pencil-line', route: { name: 'Drafts' } },
     { label: 'Bookmarks', icon: 'lucide-bookmark', route: { name: 'Bookmarks' } },
-    { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
-    { label: 'Tasks', icon: 'lucide-list-todo', route: { name: 'MyTasks' } },
+    ...(tasksAndPagesEnabled.value
+      ? [
+          { label: 'Pages', icon: 'lucide-files', route: { name: 'MyPages' } },
+          { label: 'Tasks', icon: 'lucide-list-todo', route: { name: 'MyTasks' } },
+        ]
+      : []),
     { label: 'People', icon: 'lucide-users-2', route: { name: 'People' } },
     {
       label: "What's new",
@@ -192,6 +197,11 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
                 label: 'Emojis',
                 icon: 'lucide-smile-plus',
                 route: { name: 'SettingsTab', params: { tab: 'emojis' } },
+              },
+              {
+                label: 'General',
+                icon: 'lucide-settings-2',
+                route: { name: 'SettingsTab', params: { tab: 'general' } },
               },
               {
                 label: 'Users',

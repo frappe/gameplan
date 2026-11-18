@@ -37,6 +37,7 @@
             query: { spaceId },
           }"
         />
+        <SpaceHeaderActionsTarget placement="mobile" />
       </template>
     </PageHeaderMobile>
     <BottomSheet v-model:open="menuOpen" :title="community?.title || 'Community'">

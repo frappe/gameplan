@@ -11,7 +11,8 @@ import { computed, nextTick, onMounted, shallowRef } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    placement?: 'title' | 'actions'
+    // 'mobile' is the phone header's right side; the other two sit in the desktop header.
+    placement?: 'title' | 'actions' | 'mobile'
   }>(),
   {
     placement: 'actions',
@@ -19,9 +20,12 @@ const props = withDefaults(
 )
 
 const targetSelector = computed(() => {
-  return props.placement === 'title'
-    ? '[data-space-header-title-actions]'
-    : '[data-space-header-actions]'
+  const selectors = {
+    title: '[data-space-header-title-actions]',
+    actions: '[data-space-header-actions]',
+    mobile: '[data-space-header-mobile-actions]',
+  }
+  return selectors[props.placement]
 })
 
 // Space.vue hides the header on a page route and brings it back in the same render as

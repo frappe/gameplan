@@ -16,6 +16,7 @@ import type { Space } from './data/spaces'
 import { communityState } from './data/communityState'
 import { isFeedType, type FeedType } from './data/discussionFeeds'
 import { currentShowAllDiscussions } from './data/sidebarPreferences'
+import { tasksAndPagesEnabled } from './data/tasksAndPages'
 import { settingsBackgroundPath } from './components/Settings'
 import {
   isLeavingOverlay,
@@ -60,6 +61,13 @@ function optionalRouteParam(value: RouteParamValue | undefined): string | undefi
 
   const resolvedValue = routeParam(value)
   return resolvedValue || undefined
+}
+
+/** A space's Pages and Tasks lists open only while GP Settings switches them on. */
+function requireTasksAndPages(to: RouteLocationNormalized): RouteLocationRaw | undefined {
+  if (tasksAndPagesEnabled.value) return
+  const { communityId, spaceId } = to.params
+  return { name: 'SpaceDiscussions', params: { communityId, spaceId }, replace: true }
 }
 
 function redirectOldSpacesRoute(to: RouteLocationNormalized): RouteLocationRaw {
@@ -331,9 +339,17 @@ const routes: RouteRecordRaw[] = [
           return { name: 'SpaceDiscussions', params: { communityId, spaceId }, replace: true }
         },
       },
-      // Pages and Tasks no longer have tabs in a space. The names stay so old links and
-      // breadcrumbs land on the space's discussions instead of failing to resolve.
-      { name: 'SpacePages', path: 'pages', redirect: { name: 'SpaceDiscussions' } },
+      // Pages and Tasks are deprecated. Their tabs show only while GP Settings switches
+      // them on. Otherwise these lists, and old links to them, land on the space's
+      // discussions. A single page or task still opens at its own URL either way.
+      {
+        name: 'SpacePages',
+        path: 'pages',
+        component: () => import('@/pages/SpacePages.vue'),
+        props: true,
+        meta: { communityScope: true },
+        beforeEnter: requireTasksAndPages,
+      },
       {
         name: 'SpacePage',
         path: 'pages/:pageId/:slug?',
@@ -341,7 +357,14 @@ const routes: RouteRecordRaw[] = [
         props: true,
         meta: { hideHeader: true, communityScope: true, hideMobileNav: true },
       },
-      { name: 'SpaceTasks', path: 'tasks', redirect: { name: 'SpaceDiscussions' } },
+      {
+        name: 'SpaceTasks',
+        path: 'tasks',
+        component: () => import('@/pages/SpaceTasks.vue'),
+        props: true,
+        meta: { communityScope: true },
+        beforeEnter: requireTasksAndPages,
+      },
       {
         name: 'SpaceTask',
         path: 'tasks/:taskId',

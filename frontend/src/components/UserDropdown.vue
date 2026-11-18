@@ -20,6 +20,7 @@ import { hasUnseenEntries, openChangelog } from '@/data/changelog'
 import { useUser } from '@/data/users'
 import { session } from '@/data/session'
 import { useTheme } from '@/utils/useTheme'
+import { tasksAndPagesEnabled } from '@/data/tasksAndPages'
 
 const user = useUser()
 const { currentTheme, setTheme } = useTheme()
@@ -47,11 +48,13 @@ const dropdownItems = computed(() => [
     icon: 'lucide-list-todo',
     label: 'Tasks',
     route: { name: 'MyTasks' },
+    condition: () => tasksAndPagesEnabled.value,
   },
   {
     icon: 'lucide-files',
     label: 'Pages',
     route: { name: 'MyPages' },
+    condition: () => tasksAndPagesEnabled.value,
   },
   {
     icon: 'lucide-sparkles',
