@@ -11,6 +11,8 @@ from gameplan.www.g import get_boot
 
 class TestTasksAndPagesSetting(GameplanTestCase):
 	def test_off_by_default_and_boot_follows_the_saved_value(self):
+		# Start from a site that never saved the setting; the test rolls this back.
+		frappe.db.delete("Singles", {"doctype": "GP Settings"})
 		self.assertFalse(get_boot().enable_tasks_and_pages)
 
 		with self.as_user(self.admin):
