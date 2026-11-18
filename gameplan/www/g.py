@@ -48,6 +48,9 @@ def get_boot():
 			"max_file_size": get_max_file_size(),
 			"app_version": get_app_version(),
 			"system_timezone": get_system_timezone(),
+			"enable_tasks_and_pages": bool(
+				frappe.db.get_single_value("GP Settings", "enable_tasks_and_pages")
+			),
 		}
 	)
 

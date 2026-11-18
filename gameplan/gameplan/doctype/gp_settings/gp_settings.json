@@ -1,0 +1,44 @@
+{
+ "actions": [],
+ "creation": "2026-11-18 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enable_tasks_and_pages"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "description": "Show the Tasks and Pages tabs in every space. Tasks and Pages are deprecated and will be removed soon.",
+   "fieldname": "enable_tasks_and_pages",
+   "fieldtype": "Check",
+   "label": "Enable Tasks and Pages"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-18 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Gameplan",
+ "name": "GP Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "read": 1,
+   "role": "Gameplan Admin",
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
