@@ -199,6 +199,11 @@ const itemGroups = computed<MoreItemGroup[]>(() => {
                 route: { name: 'SettingsTab', params: { tab: 'emojis' } },
               },
               {
+                label: 'General',
+                icon: 'lucide-settings-2',
+                route: { name: 'SettingsTab', params: { tab: 'general' } },
+              },
+              {
                 label: 'Users',
                 icon: 'lucide-users',
                 route: { name: 'SettingsTab', params: { tab: 'users' } },
