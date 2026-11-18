@@ -14,6 +14,7 @@ const NotificationsSettings = lazyTab(() => import('./NotificationsSettings.vue'
 const CommunitiesSettings = lazyTab(() => import('./CommunitiesSettings.vue'))
 const CustomEmojiSettings = lazyTab(() => import('./CustomEmojiSettings.vue'))
 const MembersSettings = lazyTab(() => import('./MembersSettings.vue'))
+const GeneralSettings = lazyTab(() => import('./GeneralSettings.vue'))
 
 export interface SettingsTab extends Tab {
   // Tabs that drive global role management / invites; these only make sense for
@@ -65,6 +66,14 @@ const allTabs: SettingsTab[] = [
     group: 'App settings',
     icon: 'lucide-smile-plus',
     component: CustomEmojiSettings,
+    adminOnly: true,
+  },
+  {
+    label: 'General',
+    slug: 'general',
+    group: 'Administration',
+    icon: 'lucide-settings-2',
+    component: GeneralSettings,
     adminOnly: true,
   },
   {

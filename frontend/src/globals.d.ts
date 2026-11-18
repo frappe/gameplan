@@ -34,6 +34,8 @@ declare global {
     read_only_mode?: boolean
     system_timezone?: string
     max_file_size?: number | string
+    /** GP Settings.enable_tasks_and_pages, from the boot data in `gameplan/www/g.py`. */
+    enable_tasks_and_pages?: boolean
     /** Set from the boot data in `gameplan/www/g.py`; absent when the site has no DSN. */
     gameplan_frontend_sentry_dsn?: string
     /** Present only while Cypress drives the app. */

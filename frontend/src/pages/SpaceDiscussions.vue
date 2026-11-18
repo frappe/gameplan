@@ -38,6 +38,7 @@
         </Button>
       </template>
     </SpaceHeaderActions>
+    <SpaceTabs class="mb-4" :spaceId="spaceId" />
     <DiscussionFeedBar
       v-model="feedType"
       :counts="{ unread: getSpaceUnreadCount(spaceId) }"
@@ -94,6 +95,7 @@ import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
 import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
+import SpaceTabs from '@/components/SpaceTabs.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
