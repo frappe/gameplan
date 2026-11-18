@@ -1,6 +1,7 @@
 import { computed, MaybeRefOrGetter, ref, toValue } from 'vue'
 import { useCall, useList, useDoctype, dialog, toast } from 'frappe-ui'
 import { GPProject, GPMember } from '@/types/doctypes'
+import { reloadDiscussionLists } from './discussions'
 import { getProjectUnreadCount, markSpacesAsRead } from './unreadCount'
 import { useSessionUser } from './users'
 import { canManageSpace, isGuest } from '@/utils/permissions'
@@ -192,6 +193,8 @@ export function markAllAsRead(spaceIds: string[], groupTitle: string) {
     confirmLabel: 'Mark all as read',
     onConfirm: async () => {
       await markSpacesAsRead(spaceIds)
+      // The rows carry their own read state, so an open Unread feed would keep them.
+      reloadDiscussionLists()
     },
   })
 }

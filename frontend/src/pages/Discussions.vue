@@ -48,6 +48,7 @@
     <DiscussionFeedBar
       v-model="currentFeed"
       :counts="{ unread: communityUnreadCount, participating: participatingUnreadCount }"
+      @mark-all-as-read="confirmMarkAllAsRead"
     />
 
     <KeepAlive>
@@ -72,6 +73,7 @@ import {
   PageHeaderMobile,
   PageHeaderMobileTitle,
   Button,
+  dialog,
   usePageMeta,
 } from 'frappe-ui'
 import { useRouter } from 'vue-router'
@@ -80,11 +82,16 @@ import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
 import { communityState } from '@/data/communityState'
+import { reloadDiscussionLists } from '@/data/discussions'
 import { useCommunity } from '@/data/communities'
 import { feedEmptyStates, feedTitles, type FeedType } from '@/data/discussionFeeds'
 import { discussionOrderBy } from '@/data/discussionSort'
 import { getSpaceUnreadCount, spaces } from '@/data/spaces'
-import { fetchParticipatingUnreadCount, getParticipatingUnreadCount } from '@/data/unreadCount'
+import {
+  fetchParticipatingUnreadCount,
+  getParticipatingUnreadCount,
+  markCommunityAsRead,
+} from '@/data/unreadCount'
 
 interface Props {
   communityId: string
@@ -140,6 +147,20 @@ function feedRoute(feedType: FeedType) {
     name: 'DiscussionsTab',
     params: { communityId: props.communityId, feedType },
   }
+}
+
+// The phone's version of "Mark all as read" in the desktop community menu, without its
+// date picker: on a phone the Unread tab is the place to clear everything at once.
+function confirmMarkAllAsRead() {
+  dialog.confirm({
+    title: `Mark all discussions in ${community.value?.title || 'this community'} as read?`,
+    message: 'Their unread counts will be cleared.',
+    confirmLabel: 'Mark all as read',
+    onConfirm: async () => {
+      await markCommunityAsRead(props.communityId)
+      reloadDiscussionLists()
+    },
+  })
 }
 
 usePageMeta(() => ({ title: feedTitle.value }))
