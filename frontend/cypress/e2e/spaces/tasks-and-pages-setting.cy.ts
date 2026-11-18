@@ -40,6 +40,8 @@ describe('Tasks and Pages setting', () => {
     setTasksAndPages(true)
 
     cy.visit(spaceUrl)
+    // The space tabs replace the feed tabs, as before the feed tabs existed.
+    cy.contains('button', 'All discussions').should('not.exist')
     cy.contains('[role="radio"]', 'Tasks').click()
     cy.url().should('include', '/tasks')
     cy.button('New task').should('be.visible')
@@ -53,6 +55,7 @@ describe('Tasks and Pages setting', () => {
     cy.visit(`${spaceUrl}/tasks`)
     cy.url().should('include', '/discussions')
     cy.contains('[role="radio"]', 'Tasks').should('not.exist')
+    cy.contains('button', 'All discussions').should('be.visible')
   })
 
   it('is not offered to members', () => {

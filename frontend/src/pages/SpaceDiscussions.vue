@@ -38,8 +38,14 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <SpaceTabs class="mb-4" :spaceId="spaceId" />
+    <!-- While the deprecated Tasks and Pages are on, the space tabs take the feed tabs'
+         place, as they did before the feed tabs existed. -->
+    <div v-if="tasksAndPagesEnabled" class="mb-3 flex items-center justify-between gap-2">
+      <SpaceTabs :spaceId="spaceId" />
+      <DiscussionSortDropdown />
+    </div>
     <DiscussionFeedBar
+      v-else
       v-model="feedType"
       :counts="{ unread: getSpaceUnreadCount(spaceId) }"
       @mark-all-as-read="currentSpace && markAllAsRead([spaceId], currentSpace.title)"
@@ -95,7 +101,9 @@ import { computed, ref, useTemplateRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Button, Combobox, Dialog, ErrorMessage, useCall, toast } from 'frappe-ui'
 import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
+import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
 import SpaceTabs from '@/components/SpaceTabs.vue'
+import { tasksAndPagesEnabled } from '@/data/tasksAndPages'
 import DiscussionList from '@/components/DiscussionList.vue'
 import SpaceHeaderActions from '@/components/SpaceHeaderActions.vue'
 import DropdownMoreOptions from '@/components/DropdownMoreOptions.vue'
@@ -164,7 +172,8 @@ const canManageCurrentCommunity = computed(() => canManageCommunity(community.va
 // The space's feed lives in the path, as on the community feed, so a tab survives a reload
 // and Back. The router only lets a known feed type through.
 const feedType = computed<FeedType>({
-  get: () => props.feedType ?? 'recent',
+  // With no feed tabs on screen, an old feed link shows all discussions.
+  get: () => (tasksAndPagesEnabled.value ? 'recent' : (props.feedType ?? 'recent')),
   set(feed) {
     if (feed !== feedType.value) router.push(feedRoute(feed))
   },
