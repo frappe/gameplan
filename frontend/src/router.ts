@@ -25,12 +25,17 @@ import {
   resolveOverlayBase,
 } from './components/Settings/overlayHistory'
 import { shellScrollContainer } from 'frappe-ui'
+import { isNetworkError } from './data/offline/requests'
+import { isOnline } from './data/online'
 import { navigationTarget } from './utils/navigationTarget'
 
 declare const __FRONTEND_ROUTE__: string
 
 type ResourceLike = {
   isFinished?: boolean
+  data?: unknown
+  error?: unknown
+  cacheLoaded?: Promise<unknown>
 }
 
 type RouteParamValue = string | string[]
@@ -46,7 +51,7 @@ type ProjectContentDoc = {
   slug?: string
 }
 
-const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null>>()
+const projectContentDocRequests = new Map<string, Promise<ProjectContentDoc | null | undefined>>()
 
 // Redirect-style guards still need a component record so Vue Router matches them consistently.
 const RouteGuard = { render: () => null }
@@ -296,6 +301,11 @@ const routes: RouteRecordRaw[] = [
     meta: { communitySidebar: true },
   },
   {
+    path: '/offline-unavailable',
+    name: 'OfflineUnavailable',
+    component: () => import('@/pages/OfflineUnavailable.vue'),
+  },
+  {
     path: '/list',
     name: 'Teams',
     component: () => import('@/pages/Teams.vue'),
@@ -461,6 +471,12 @@ const routes: RouteRecordRaw[] = [
     name: 'More',
     component: () => import('@/pages/MoreMenu.vue'),
     meta: { prefetch: true },
+  },
+  {
+    // Mobile's way into the offline settings (desktop has them in Settings > Preferences).
+    path: '/offline',
+    name: 'OfflineSettings',
+    component: () => import('@/pages/OfflineSettingsPage.vue'),
   },
   // Keep old shared space links working while moving canonical URLs under `/community/:communityId/...`.
   {
@@ -773,16 +789,41 @@ function saveAndRestoreScrollPosition(to: RouteLocationNormalized, from: RouteLo
   }
 }
 
+// Browsers cache a failed dynamic import for the life of the page and never re-fetch it, so a
+// route or component chunk that failed to download while offline keeps failing after the network
+// returns. Only a real page load clears that, so once online, navigate for real instead.
+// `vite:preloadError` fires for every lazy chunk (routes and defineAsyncComponent alike).
+let chunkLoadFailed = false
+window.addEventListener('vite:preloadError', () => {
+  chunkLoadFailed = true
+})
+
+// Once per link: a chunk the server keeps refusing would otherwise reload the page forever.
+const RELOADED_KEY = 'gameplan:reloaded-for-chunk'
+
+/** Loads `to` for real; false when that was already tried for this link. */
+function loadPage(to: RouteLocationNormalized) {
+  const href = router.resolve(to.fullPath).href
+  if (sessionStorage.getItem(RELOADED_KEY) === href) return false
+  sessionStorage.setItem(RELOADED_KEY, href)
+  window.location.assign(href)
+  return true
+}
+
 router.afterEach((to, _from, failure) => {
   navigationTarget.value = null
+  if (!failure) sessionStorage.removeItem(RELOADED_KEY)
   if (!failure && isSettingsRoute(to)) recordOverlayBase()
 })
 
-router.onError(() => {
+router.onError((_error, to) => {
   navigationTarget.value = null
+  if (chunkLoadFailed && isOnline.value) loadPage(to)
 })
 
 router.beforeEach(async (to, from) => {
+  if (chunkLoadFailed && isOnline.value && loadPage(to)) return false
+
   // Set before anything below awaits, so navigation lights up the clicked item at once.
   // The settings dialog opens over the current page, which stays the active one.
   if (!isSettingsRoute(to)) navigationTarget.value = to
@@ -876,7 +917,7 @@ router.beforeEach(async (to, from) => {
   // Public communities are visible even when the user has not joined them, so route validity
   // cannot be tied to the active sidebar community list.
   if (!community) {
-    return { name: 'NotFound' }
+    return notFound(to, 'community')
   }
 
   if (community.archived_at) {
@@ -929,6 +970,11 @@ export function prefetchPages() {
 
 async function ensureCommunityDataLoaded() {
   await Promise.all([waitForResource(communities), waitForResource(spaces)])
+  // Offline, the home route is picked from the cached lists, so wait for any that are cached.
+  // A network error counts as offline too: navigator.onLine can lag after a reload.
+  if (isNetworkUnreliable()) {
+    await Promise.all([waitForCachedData(communities), waitForCachedData(spaces)])
+  }
 }
 
 async function waitForResource(resource: ResourceLike) {
@@ -937,6 +983,31 @@ async function waitForResource(resource: ResourceLike) {
   }
 
   await until(() => resource?.isFinished).toBe(true)
+}
+
+async function waitForCachedData(resource: ResourceLike) {
+  if (!hasContent(await resource.cacheLoaded)) return
+  // Bounded: an answer that did get through may replace the cached rows with none.
+  await until(() => hasContent(resource.data)).toBe(true, { timeout: 3000 })
+}
+
+function hasContent(data: unknown) {
+  return Array.isArray(data) ? data.length > 0 : data != null
+}
+
+// Offline, an uncached space or community may still be real: say it isn't available
+// offline rather than that it doesn't exist, and keep the link so Retry can open it.
+function notFound(to: RouteLocationNormalized, what: 'space' | 'community'): RouteLocationRaw {
+  if (!isNetworkUnreliable()) return { name: 'NotFound' }
+  return { name: 'OfflineUnavailable', query: { redirect: to.fullPath, what } }
+}
+
+function isNetworkUnreliable() {
+  return !isOnline.value || hasNetworkError(communities) || hasNetworkError(spaces)
+}
+
+function hasNetworkError(resource: ResourceLike) {
+  return Boolean(resource?.error && isNetworkError(resource.error))
 }
 
 export function getHomeRoute(): RouteLocationRaw {
@@ -1010,8 +1081,12 @@ async function getCanonicalContentRoute(
   // canonical and a deleted document shows as not found.
   const isInAppNavigation = from.matched.length > 0
   if (isInAppNavigation && hasCanonicalLocalParams(to, descriptor)) return
+  // The server can't confirm the URL; let the page show its cached copy or its own fallback.
+  if (isNetworkUnreliable()) return
 
   const doc = await getProjectContentDoc(descriptor.doctype, documentName)
+  // undefined: the server couldn't be reached (fetchProjectContentDoc).
+  if (doc === undefined) return
   // A discussion that is missing or out of reach renders its route anyway, and
   // DiscussionView shows "Discussion not found" in place.
   if (!doc?.project) return descriptor.routeName === 'Discussion' ? undefined : { name: 'NotFound' }
@@ -1101,7 +1176,8 @@ async function getProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], 
 async function fetchProjectContentDoc(doctype: ContentRouteDescriptor['doctype'], name: string) {
   try {
     return await call<ProjectContentDoc>('frappe.client.get', { doctype, name })
-  } catch {
+  } catch (error) {
+    if (isNetworkError(error)) return undefined
     return null
   }
 }

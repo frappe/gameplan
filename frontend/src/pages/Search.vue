@@ -211,7 +211,18 @@
           <div v-else-if="feedbackGiven" class="text-ink-gray-6">Thanks for your feedback!</div>
         </div>
 
-        <LoadError v-if="search.error" class="mt-5" :message="searchErrorText" @retry="submit()" />
+        <OfflineContentFallback
+          v-if="offlineFailure"
+          class="mt-6"
+          v-bind="offlineFailure"
+          @retry="submit()"
+        />
+        <LoadError
+          v-else-if="search.error"
+          class="mt-5"
+          :message="searchErrorText"
+          @retry="submit()"
+        />
         <EmptyStateBox
           v-else-if="hasNoResults"
           class="mt-5"
@@ -267,7 +278,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, useTemplateRef } from 'vue'
+import { computed, onMounted, onScopeDispose, onUnmounted, ref, useTemplateRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   PageHeader,
@@ -284,8 +295,9 @@ import {
   debounce,
   getConfig,
   usePageMeta,
+  useCall,
 } from 'frappe-ui'
-import { useCall, useNewDoc } from 'frappe-ui'
+import { useNewDoc } from 'frappe-ui'
 import { List, ListCell, ListRow } from 'frappe-ui/list'
 import { GPSearchFeedback } from '@/types/doctypes'
 import { useSessionUser, useUser } from '@/data/users'
@@ -298,6 +310,9 @@ import { getSpace } from '@/data/spaces'
 import { activeCommunities } from '@/data/communities'
 import { users } from '@/data/users'
 import { vFocus } from '@/directives'
+import { onReconnect } from '@/data/online'
+import { isOfflineError } from '@/data/loadFailure'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 
 // Type Definitions
 interface SearchSummary {
@@ -412,6 +427,16 @@ const search = useCall<SearchResponse, SearchParams>({
     }
   },
 })
+
+// Searching needs the server, so offline it gets the same fallback as the other pages.
+const offlineFailure = computed(() =>
+  search.error && isOfflineError(search.error)
+    ? {
+        title: 'Search needs a connection',
+        message: "You're offline. Reconnect and retry to search.",
+      }
+    : null,
+)
 
 const filterOptions = useCall<FilterOptions>({
   url: '/api/v2/method/gameplan.api.get_search_filter_options',
@@ -615,6 +640,15 @@ const submit = debounce(function (text?: string) {
 
   search.submit(params).catch(() => {})
 }, 300)
+
+// A search is something you asked for, so it is not revalidated with the lists
+// (data/offline/resources.ts). One that failed for want of a connection is worth running
+// again by itself: the page is showing a dead end the connection has just cleared.
+onScopeDispose(
+  onReconnect(() => {
+    if (offlineFailure.value && query.value) submit(query.value)
+  }),
+)
 
 function clearSearch() {
   query.value = ''

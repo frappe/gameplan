@@ -2,6 +2,7 @@ import { computed, MaybeRef, reactive, ref } from 'vue'
 import { useCall } from 'frappe-ui'
 import { users } from './users'
 import router from '@/router'
+import { clearOfflineCaches, guardAgainstUserSwitch } from '@/offline'
 import { sessionUserFromCookie } from '@/utils/sessionCookie'
 
 interface LoginResponse {
@@ -22,19 +23,28 @@ export let session = reactive({
   login: useCall<LoginResponse, LoginParams>({
     url: '/api/v2/method/login',
     immediate: false,
-    onSuccess(data) {
+    async onSuccess(data) {
       users.reload()
       sessionUser.value = sessionUserFromCookie()
       session.login.reset()
-      router.replace(data.default_route || '/')
+      // User-scoped cache keys are fixed when the modules load, so a different user needs a
+      // full reload. Awaited so the reload can't cut the previous user's cache clear short.
+      if ((await guardAgainstUserSwitch(sessionUser.value)).switched) {
+        window.location.href = data.default_route || '/'
+      } else {
+        router.replace(data.default_route || '/')
+      }
     },
   }),
   logout: useCall<LogoutResponse>({
     url: '/api/v2/method/logout',
     method: 'POST',
     immediate: false,
-    onSuccess() {
+    async onSuccess() {
       sessionUser.value = sessionUserFromCookie()
+      // Leave nothing cached for whoever uses this browser next. Awaited so the redirect
+      // can't cut the clear short.
+      await clearOfflineCaches()
       window.location.href = '/login'
     },
   }),

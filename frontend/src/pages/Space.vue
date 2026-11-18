@@ -76,6 +76,7 @@ import SpaceIcon from '@/components/SpaceIcon.vue'
 import { isSpacePinned } from '@/data/pinnedSpaces'
 import { useCommunity } from '@/data/communities'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
+import { whenOnline } from '@/data/online'
 
 const props = defineProps<{
   communityId: string
@@ -124,7 +125,8 @@ function routeParam(value: string | string[] | undefined) {
 }
 
 onMounted(() => {
-  if (space.value) trackSpaceVisit(props.spaceId)
+  // A missed visit only leaves the space's read state as it was; the next visit records it.
+  if (space.value) whenOnline(() => trackSpaceVisit(props.spaceId).catch(() => {}))
 })
 
 // A space archived here stays in the sidebar only while you are on it.

@@ -1,8 +1,9 @@
 import { ref, watch } from 'vue'
-import { useDoc, useList } from 'frappe-ui'
-import { UseListOptions } from 'frappe-ui'
+import { revalidateOnReconnect } from '@/data/offline/resources'
+import { type CacheKey, UseListOptions, useDoc, useList } from 'frappe-ui'
 import { useDocumentVisibility } from '@vueuse/core'
 import { GPDiscussion } from '@/types/doctypes'
+import type { FeedType } from './discussionFeeds'
 
 // Reload the feed when the tab is re-activated after sitting in the background
 // for at least this long, so new posts show up without a manual refresh.
@@ -35,6 +36,53 @@ export interface Discussion extends GPDiscussion {
   bookmarked_post_at?: string
 }
 
+export const FEED_LIMIT = 50
+export const discussionFeedKey = (name: CacheKey) => ['Discussions', name]
+export const pinnedFeedKey = (name: CacheKey) => ['pinned', name]
+// Community pins also appear in their own Space.
+export const pinScopes = (space: boolean) => (space ? ['Space', 'Category'] : ['Category'])
+
+export interface DiscussionFeedRow {
+  project?: string | number
+  team?: string
+  last_post_at?: string
+  pinned_at?: string | null
+  pin_scope?: string
+}
+
+export type { FeedType }
+
+const FEED_TYPES: FeedType[] = ['recent', 'unread', 'participating']
+
+/**
+ * Where each feed caches its rows. Shared with offline downloads, which fills the same
+ * entries so a Space the device has never opened still lists its discussions offline.
+ */
+export const spaceFeedKey = (spaceId: string | number, feedType: FeedType = 'recent') =>
+  `SpaceDiscussions-${spaceId}-${feedType}`
+export const communityFeedKey = (communityId: string, feedType: FeedType = 'recent') =>
+  `Discussions-${communityId}-${feedType}`
+
+export interface DiscussionFeed {
+  key: string
+  space?: string
+  community?: string
+  pinned: boolean
+  filtered?: boolean
+}
+
+/** Scope and pin rules of a cached feed, shared by online feeds and downloads. */
+export function feedScope(key: unknown): Omit<DiscussionFeed, 'key'> | null {
+  const inner = Array.isArray(key) ? key[1] : key
+  const pinned = Array.isArray(inner) && inner[0] === 'pinned'
+  const name = pinned ? inner[1] : inner
+  if (typeof name !== 'string') return null
+  const space = new RegExp(`^SpaceDiscussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(name)
+  if (space) return { space: space[1], pinned, filtered: space[2] !== 'recent' }
+  const community = new RegExp(`^Discussions-(.+)-(${FEED_TYPES.join('|')})$`).exec(name)
+  return community ? { community: community[1], pinned, filtered: community[2] !== 'recent' } : null
+}
+
 export type UseDiscussionOptions = Pick<
   UseListOptions<Discussion>,
   'cacheKey' | 'filters' | 'limit' | 'orderBy' | 'immediate'
@@ -47,9 +95,9 @@ export function useDiscussions(options: UseDiscussionOptions) {
   const discussions = useList<Discussion>({
     url: '/api/v2/method/gameplan.gameplan.doctype.gp_discussion.api.get_discussions',
     doctype: 'GP Discussion',
-    cacheKey: options.cacheKey ? ['Discussions', options.cacheKey] : undefined,
+    cacheKey: options.cacheKey ? discussionFeedKey(options.cacheKey) : undefined,
     filters: options.filters,
-    limit: options.limit || 50,
+    limit: options.limit || FEED_LIMIT,
     orderBy: options.orderBy,
     immediate: options.immediate ?? true,
     onSuccess() {
@@ -115,6 +163,9 @@ export function useDiscussion(name: string) {
         moveToProject: 'move_to_project',
       },
     })
+  } else {
+    // Reused by a later mount, which revalidates it on reconnect too.
+    revalidateOnReconnect(discussionsCache[name])
   }
   return discussionsCache[name] as ReturnType<typeof useDoc<Discussion, DiscussionMethods>>
 }

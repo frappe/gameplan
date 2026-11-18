@@ -42,10 +42,10 @@
     <DiscussionList
       class="-mx-3"
       ref="discussionListRef"
-      :key="feedType"
+      :key="`${spaceId}-${feedType}`"
       :filters="() => ({ project: spaceId, feed_type: feedType })"
       :orderBy="() => discussionOrderBy"
-      :cacheKey="`SpaceDiscussions-${spaceId}-${feedType}`"
+      :cacheKey="spaceFeedKey(spaceId, feedType)"
       :selectable="isBulkMoveMode"
       :empty-state="feedEmptyStates[feedType]"
       v-model:selectedDiscussions="selectedDiscussions"
@@ -114,6 +114,7 @@ import {
   archiveSpace,
   unarchiveSpace,
 } from '@/data/spaces'
+import { spaceFeedKey } from '@/data/discussions'
 import { copyToClipboard, errorText } from '@/utils'
 import { readOnlyMode } from '@/data/readOnlyMode'
 

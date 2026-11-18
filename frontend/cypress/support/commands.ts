@@ -126,7 +126,8 @@ Cypress.Commands.add('combobox', { prevSubject: 'optional' }, (subject, placehol
 })
 
 Cypress.Commands.add('iconButton', { prevSubject: 'optional' }, (subject, text: string) => {
-  const selector = `button[aria-label="${text}"]:visible`
+  // A button can add a note after its name, such as "Account menu, new updates to see".
+  const selector = `button[aria-label="${text}"]:visible, button[aria-label^="${text}, "]:visible`
   return subject ? cy.wrap(subject).find(selector) : cy.get(selector)
 })
 
@@ -172,7 +173,9 @@ Cypress.Commands.add('selectCombobox', (placeholder: string, option: string) => 
 })
 
 Cypress.Commands.add('selectDropdownOption', (dropdownName: string, option: string) => {
-  cy.get(`button[aria-haspopup=menu][aria-label="${dropdownName}"]`).click()
+  cy.get(
+    `button[aria-haspopup=menu][aria-label="${dropdownName}"], button[aria-haspopup=menu][aria-label^="${dropdownName}, "]`,
+  ).click()
   cy.get(`[role="menuitem"]:contains("${option}"):visible`).click()
   // A modal reka menu locks the page while it is open (`pointer-events: none` on
   // <body>) and only releases that lock when the menu content unmounts at the end of

@@ -16,3 +16,8 @@ const MOBILE_QUERY = '(max-width: 639.98px)'
 export function useIsMobile(): Ref<boolean> {
   return useMediaQuery(MOBILE_QUERY)
 }
+
+/** The same check read once, for code that runs outside a component (useMediaQuery needs one). */
+export function isMobileViewport(): boolean {
+  return window.matchMedia(MOBILE_QUERY).matches
+}

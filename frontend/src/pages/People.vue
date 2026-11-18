@@ -71,8 +71,14 @@
               </template>
             </TextInput>
           </div>
+          <OfflineContentFallback
+            v-if="listFailure"
+            class="mx-auto mt-6 max-w-2xl px-6"
+            v-bind="listFailure"
+            @retry="people.reload()"
+          />
           <LoadError
-            v-if="phase === 'failed'"
+            v-else-if="phase === 'failed'"
             class="mt-4"
             :message="errorText(people.error, 'Could not load people.')"
             @retry="people.reload()"
@@ -293,11 +299,14 @@ import {
   sortPeopleBy,
   type PeopleSortField,
 } from '@/data/people'
+import { revalidateOnReconnect } from '@/data/offline/resources'
+import OfflineContentFallback from '@/components/OfflineContentFallback.vue'
 import EmptyStateBox from '@/components/EmptyStateBox.vue'
 import ListRowSkeleton from '@/components/ListRowSkeleton.vue'
 import LoadError from '@/components/LoadError.vue'
 import UserAvatarWithHover from '@/components/UserAvatarWithHover.vue'
 import ReactionFaceIcon from '@/components/ReactionFaceIcon.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import { errorText } from '@/utils'
 
 defineOptions({
@@ -311,6 +320,7 @@ const skeletonRowCount = 3
 
 // Counts change between visits, and a failed load should not stick, so fetch on each visit.
 people.reload()
+revalidateOnReconnect(people)
 
 // Guests are left out. Name and email come from the users store, the copy the rest of the
 // app shows, so search matches it.
@@ -363,6 +373,8 @@ const peopleList = computed(() => {
   const myProfile = list.find((profile) => profile.user === useSessionUser().name)
   return myProfile ? [myProfile, ...list.filter((profile) => profile !== myProfile)] : list
 })
+
+const listFailure = useLoadFailure(people, 'people')
 
 /** What the list area shows. A cached list stays on screen while it refetches. */
 const phase = computed((): 'loading' | 'failed' | 'empty' | 'noMatch' | 'rows' => {

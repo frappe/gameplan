@@ -50,6 +50,17 @@ declare global {
   }
 }
 
+export function unloadApp() {
+  cy.window({ log: false }).then((win) => {
+    win.location.href = 'about:blank'
+  })
+  cy.window({ log: false }).its('location.href').should('eq', 'about:blank')
+  // Worker fetches survive page unload and can restore the previous session's cookies.
+  cy.then(() =>
+    Cypress.automation('remote:debugger:protocol', { command: 'ServiceWorker.stopAllWorkers' }),
+  )
+}
+
 Cypress.Commands.add('loginAs', (persona: PersonaName) => {
   const { email, password } = personas[persona]
   cy.request({
@@ -73,10 +84,7 @@ Cypress.Commands.add('loginAs', (persona: PersonaName) => {
  * only continue once the server itself names the acting user.
  */
 Cypress.Commands.add('switchUser', (persona: PersonaName) => {
-  cy.window({ log: false }).then((win) => {
-    win.location.href = 'about:blank'
-  })
-  cy.window({ log: false }).its('location.href').should('eq', 'about:blank')
+  unloadApp()
 
   // Drop the old session's cookie outright, so a login that somehow fails shows up
   // as a guest error instead of quietly passing as the previous user.

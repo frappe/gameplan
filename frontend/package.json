@@ -9,6 +9,7 @@
     "serve": "vite preview",
     "test-local": "cypress open --e2e --browser chrome",
     "test": "cypress run",
+    "test:offline-worker": "node --test tests/offline-worker.test.mjs",
     "coverage:merge": "rm -rf .nyc_merged && mkdir -p .nyc_merged && cp coverage/baseline.json .nyc_merged/baseline.json && cp .nyc_output/out.json .nyc_merged/out.json && nyc report --nycrc-path \"$PWD/.nycrc.json\" --temp-dir \"$PWD/.nyc_merged\" --cwd \"${COVERAGE_ROOT:-$PWD}\" --report-dir \"$PWD/coverage\""
   },
   "dependencies": {
@@ -18,7 +19,7 @@
     "@tiptap/core": "^3.26.0",
     "@tiptap/pm": "^3.26.0",
     "@tiptap/vue-3": "^3.26.0",
-    "@vueuse/core": "^10.1.2",
+    "@vueuse/core": "^14.1.0",
     "feather-icons": "^4.28.0",
     "frappe-ui": "1.2.0",
     "fuzzysort": "^2.0.4",

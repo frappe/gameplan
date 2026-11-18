@@ -1,0 +1,614 @@
+import { reactive, watch } from 'vue'
+import { useLocalStorage } from '@vueuse/core'
+import { call, toast } from 'frappe-ui'
+import { delMany, get, getMany, set, setMany, values } from 'idb-keyval'
+import { cacheFor, type Cache } from './offline/cache'
+import { isNetworkError, refuseOffline } from './offline/requests'
+import { DOWNLOADS_LOCK, getWorkerCacheGeneration, onBeforeClear } from '@/offline'
+import { isOnline, onReconnect, saveData } from './online'
+import { session } from './session'
+import { withLock } from '@/utils/locks'
+import { customEmojis } from './customEmojis'
+import * as discussionFeeds from './discussions'
+import {
+  ACTIVITY_FIELDS,
+  COMMENT_FIELDS,
+  POLL_FIELDS,
+  activitiesCacheKey,
+  commentsCacheKey,
+  pollsCacheKey,
+} from './discussionTimeline'
+
+/**
+ * "Download for offline": keeps the chosen window of discussions on the device, filed into the
+ * same entries frappe-ui's resources read (offline/cache.ts), so a downloaded discussion opens
+ * like a visited one.
+ *
+ * Nothing here reads or writes the cache as whoever is signed in now. A run binds its cache to
+ * the account it belongs to (`cacheFor(owner)`), and keeps an answer only when the server says
+ * it answered for that account, so a sign-in in another tab can never mix two accounts' data.
+ */
+
+export type OfflineWindow = 0 | 7 | 30 | 90
+
+export const WINDOW_OPTIONS: { label: string; value: OfflineWindow }[] = [
+  { label: 'Recently viewed only', value: 0 },
+  { label: 'Past week', value: 7 },
+  { label: 'Past month', value: 30 },
+  { label: 'Past 3 months', value: 90 },
+]
+
+const INDEX = 'gameplan.offline_downloads.get_offline_index'
+const BUNDLE = 'gameplan.offline_downloads.get_offline_bundle'
+const META_KEY = 'gameplan:offline-downloads'
+// PAGE_SIZE, MAX_DISCUSSIONS and VISIT_CHECK_LIMIT mirror gameplan/offline_downloads.py.
+const PAGE_SIZE = 20
+export const MAX_DISCUSSIONS = 500
+const VISIT_CHECK_LIMIT = 2000
+const MAX_IMAGES = 300
+// Each background sync still costs an index query, so they are kept to a few a day.
+const SYNC_INTERVAL = 6 * 60 * 60 * 1000
+// A failed sync backs off from here, doubling up to SYNC_INTERVAL.
+const RETRY_DELAY = 5 * 60 * 1000
+// Spreads the first sync so a team opening the app together doesn't sync together.
+const MAX_START_DELAY = 30 * 1000
+// gameplan-sw.js's cache for the images of downloaded discussions.
+const IMAGE_CACHE_SUFFIX = ':guarded:downloads'
+
+interface Meta {
+  user: string
+  window: number
+  /** Server time the first unfinished or last complete sync started. */
+  since: string | null
+  /** Downloaded discussions, each with where the index said it sat. */
+  places: Record<string, string>
+  /** Where the rotating check of visited discussions resumes. */
+  checkedUpTo?: string
+  lastSyncedAt: number | null
+  incomplete: boolean
+  failures?: number
+  /** No automatic run before this; a manual one goes ahead. */
+  retryAfter?: number
+}
+
+interface Index {
+  /** The account the server answered for. */
+  user: string
+  discussions: string[]
+  reactions: Record<string, Row[]>
+  places: Record<string, string>
+  changed: string[]
+  revoked: string[]
+  synced_at: string
+}
+
+interface Bundle {
+  user: string
+  discussions: Array<Record<string, unknown> & { name: string | number }>
+  /** The same discussions as the feeds list them. */
+  rows: FeedRow[]
+  comments: Record<string, Row[]>
+  activities: Record<string, Row[]>
+  polls: Record<string, Row[]>
+  reactions: Record<string, Row[]>
+}
+
+type Row = Record<string, unknown> & { name: string | number }
+
+type FeedRow = Row & discussionFeeds.DiscussionFeedRow
+
+type Feed = discussionFeeds.DiscussionFeed
+
+export const offlineWindow = useLocalStorage<OfflineWindow>(
+  `gameplan:offline-window:${session.user}`,
+  0,
+)
+
+export const downloads = reactive({
+  syncing: false,
+  done: 0,
+  total: 0,
+  count: 0,
+  lastSyncedAt: null as number | null,
+  imagesSavedAt: null as number | null,
+  error: null as string | null,
+})
+
+let running: AbortController | null = null
+onBeforeClear(() => running?.abort())
+
+/** Read inside the lock every time: another tab may have moved it on. */
+async function readMeta(): Promise<Meta | null> {
+  const stored = (await get(META_KEY).catch(() => null)) as Meta | undefined
+  const meta = stored?.user === session.user && stored.places ? stored : null
+  showMeta(meta)
+  return meta
+}
+
+async function writeMeta(meta: Meta) {
+  showMeta(meta)
+  await set(META_KEY, meta)
+}
+
+function showMeta(meta: Meta | null) {
+  downloads.count = meta ? Object.keys(meta.places).length : 0
+  downloads.lastSyncedAt = meta?.lastSyncedAt ?? null
+}
+
+/** A manual run waits for another tab's run; an automatic one leaves it to that tab. */
+function syncOfflineDownloads({ manual = false } = {}): Promise<boolean> {
+  if (!session.isLoggedIn) return Promise.resolve(false)
+  return withLock(DOWNLOADS_LOCK, (available) => (available ? sync(manual) : false), !manual)
+}
+
+async function sync(manual: boolean): Promise<boolean> {
+  const days = offlineWindow.value
+  const meta = await readMeta()
+  if (!days) {
+    if (meta) await forgetDownloads(meta)
+    return true
+  }
+  if (!isOnline.value) return false
+  if (!manual && !isDue(meta, days)) return true
+
+  running = new AbortController()
+  try {
+    return await download(days, meta, running.signal)
+  } finally {
+    running = null
+  }
+}
+
+function isDue(meta: Meta | null, days: OfflineWindow) {
+  if (document.visibilityState !== 'visible' || saveData.value) return false
+  if (meta?.retryAfter && Date.now() < meta.retryAfter) return false
+  const fresh = meta?.window === days && !meta.incomplete && meta.lastSyncedAt
+  return !fresh || Date.now() - fresh >= SYNC_INTERVAL
+}
+
+/** Whether the download finished; an interrupted one is resumed by the next run. */
+async function download(days: OfflineWindow, previous: Meta | null, signal: AbortSignal) {
+  const owner = session.user!
+  const cache = cacheFor(owner)
+  const generation = await getWorkerCacheGeneration()
+  const cancelled = () => signal.aborted || offlineWindow.value !== days || !isOnline.value
+  downloads.syncing = true
+  downloads.error = null
+  downloads.done = 0
+  downloads.total = 0
+  try {
+    const onDevice = new Set(await cache.docNames('GP Discussion'))
+    // Only what is really on the device counts as downloaded. A new window keeps it.
+    const places: Record<string, string> = {}
+    for (const [name, place] of Object.entries(previous?.places ?? {})) {
+      if (onDevice.has(name)) places[name] = place
+    }
+    // Downloads are checked every time; only the remaining visited discussions rotate.
+    const downloaded = Object.keys(places)
+    const visits = visitsToCheck(
+      [...onDevice].filter((name) => !(name in places)),
+      previous?.checkedUpTo,
+      VISIT_CHECK_LIMIT - downloaded.length,
+    )
+    const index = await askAs<Index>(owner, INDEX, {
+      window_days: days,
+      cached: [...downloaded, ...visits.names],
+      since: previous?.since ?? null,
+    })
+    if (!index || cancelled()) return false
+
+    await storeFeeds(cache, new Map(), new Set(index.revoked))
+    await forgetDiscussions(cache, index.revoked, generation)
+    // Out of the window now: no longer kept up to date, but left like any visited discussion.
+    // A legacy partial sync without a timestamp must refile every page before it can resume.
+    const inIndex = new Set(index.discussions)
+    for (const name of Object.keys(places)) {
+      if (!previous?.since || !inIndex.has(name)) delete places[name]
+    }
+    await setMany(
+      Object.keys(places).map((name) => [
+        discussionKeys(cache, name).reactions,
+        JSON.stringify(index.reactions[name] ?? []),
+      ]),
+    )
+    const base: Meta = {
+      user: owner,
+      window: days,
+      since: previous?.since ?? index.synced_at,
+      places,
+      checkedUpTo: visits.checkedUpTo,
+      lastSyncedAt: previous?.lastSyncedAt ?? null,
+      incomplete: true,
+    }
+    await writeMeta(base)
+
+    // Changed, missing from the device, or moved to another Space or community.
+    const changed = new Set(index.changed)
+    const wanted = index.discussions.filter(
+      (name) => changed.has(name) || places[name] !== index.places[name],
+    )
+    downloads.total = wanted.length
+    for (let i = 0; i < wanted.length; i += PAGE_SIZE) {
+      if (i) await idle(signal)
+      if (cancelled()) return false
+      const bundle = await askAs<Bundle>(owner, BUNDLE, {
+        window_days: days,
+        fields: { comments: COMMENT_FIELDS, activities: ACTIVITY_FIELDS, polls: POLL_FIELDS },
+        names: wanted.slice(i, i + PAGE_SIZE),
+      })
+      if (!bundle) return false
+      // Recorded before checking for a cancel, so a removal waiting on this run finds it.
+      await storeBundle(cache, bundle)
+      await storeFeeds(
+        cache,
+        new Map((bundle.rows ?? []).map((row) => [String(row.name), row])),
+        new Set(),
+      )
+      for (const discussion of bundle.discussions) {
+        const name = String(discussion.name)
+        places[name] = index.places[name]
+      }
+      await writeMeta(base)
+      if (cancelled()) return false
+      downloads.done = Math.min(i + PAGE_SIZE, wanted.length)
+    }
+
+    // Retry media even when no bundle changed, including a previous interrupted download.
+    const imageKeys = Object.keys(places).flatMap((name) => {
+      const { doc, comments } = discussionKeys(cache, name)
+      return [doc, comments]
+    })
+    const images = (await getMany(imageKeys)).flatMap(htmlImages)
+    const emojis = (customEmojis.data ?? []).map((emoji) => emoji.image).filter(Boolean)
+    tellWorker(
+      'CACHE_IMAGES',
+      [...new Set([...emojis, ...images])].slice(0, MAX_IMAGES) as string[],
+      await getWorkerCacheGeneration(),
+    )
+    await writeMeta({
+      ...base,
+      since: index.synced_at,
+      lastSyncedAt: Date.now(),
+      incomplete: false,
+    })
+    return true
+  } catch (error) {
+    downloads.error = error instanceof Error ? error.message : String(error)
+    if (!cancelled()) await standDown(days, error).catch(() => {})
+    throw error
+  } finally {
+    downloads.syncing = false
+  }
+}
+
+/**
+ * Backs automatic runs off after a failure; an unfinished sync is otherwise exempt from the
+ * interval and would query the index on every tab focus. A lost connection is not counted,
+ * so reconnecting still syncs at once.
+ */
+async function standDown(days: OfflineWindow, error: unknown) {
+  if (isNetworkError(error)) return
+  const meta = (await readMeta()) ?? {
+    user: session.user!,
+    window: days,
+    since: null,
+    places: {},
+    lastSyncedAt: null,
+    incomplete: true,
+  }
+  const failures = (meta.failures ?? 0) + 1
+  const delay = Math.min(RETRY_DELAY * 2 ** (failures - 1), SYNC_INTERVAL)
+  await writeMeta({ ...meta, incomplete: true, failures, retryAfter: Date.now() + delay })
+}
+
+/**
+ * The visited discussions this sync checks for lost access. Past the per-request limit they are
+ * walked in name order across syncs, so every one is eventually checked.
+ */
+function visitsToCheck(names: string[], after = '', limit = VISIT_CHECK_LIMIT) {
+  if (names.length <= limit) return { names, checkedUpTo: '' }
+  const sorted = [...names].sort()
+  const found = sorted.findIndex((name) => name > after)
+  const start = found === -1 ? 0 : found
+  const slice = sorted.slice(start, start + limit)
+  return { names: slice, checkedUpTo: slice[slice.length - 1] }
+}
+
+/** Null when the server answered for an account other than `owner`. */
+async function askAs<T extends { user: string }>(owner: string, method: string, args: object) {
+  const answer = await call<T>(method, args)
+  return answer.user === owner ? answer : null
+}
+
+function discussionKeys(cache: Cache, name: string) {
+  return {
+    doc: cache.docKey('GP Discussion', name),
+    comments: cache.listKey(commentsCacheKey('GP Discussion', name)),
+    activities: cache.listKey(activitiesCacheKey('GP Discussion', name)),
+    polls: cache.listKey(pollsCacheKey(name)),
+    reactions: cache.callKey(['Thread Reactions', 'GP Discussion', name]),
+  }
+}
+
+async function storeBundle(cache: Cache, bundle: Bundle) {
+  const entries: [string, string][] = []
+  for (const discussion of bundle.discussions) {
+    const name = String(discussion.name)
+    const key = discussionKeys(cache, name)
+    // Server fetches replace this marker; normally browsed content survives removal.
+    const previous = JSON.parse((await get<string>(key.doc)) ?? 'null')
+    entries.push(
+      [
+        key.doc,
+        JSON.stringify({
+          ...discussion,
+          name,
+          _offlineDownload: previous ? previous._offlineDownload : true,
+        }),
+      ],
+      [key.comments, rowsJson(bundle.comments[name])],
+      [key.activities, rowsJson(bundle.activities[name])],
+      [key.polls, rowsJson(bundle.polls[name])],
+      [key.reactions, JSON.stringify(bundle.reactions[name] ?? [])],
+    )
+  }
+  await setMany(entries)
+}
+
+/**
+ * Files downloaded rows into the Space and community feeds, merging with what they already
+ * hold (a changes-only sync brings back only what changed) and dropping removed discussions.
+ */
+async function storeFeeds(
+  cache: Cache,
+  rows: Map<string, FeedRow>,
+  removed: Set<string>,
+  downloadOnly = false,
+) {
+  if (!rows.size && !removed.size) return
+  const feeds = new Map<string, Feed>()
+  for (const feed of [...downloadedFeeds(cache, rows.values()), ...(await cachedFeeds(cache))]) {
+    feeds.set(feed.key, feed)
+  }
+  if (!feeds.size) return
+
+  const targets = [...feeds.values()]
+  const stored = await getMany(targets.map((feed) => feed.key)).catch(() => [])
+  const entries: [string, string][] = []
+  targets.forEach((feed, index) => {
+    const previous = parseRows(stored[index])
+    const remove = (row: FeedRow) =>
+      removed.has(String(row.name)) && (!downloadOnly || Boolean(row._offlineDownload))
+    if (!feed.space && !feed.community) {
+      const next = previous.filter((row) => !remove(row))
+      if (next.length !== previous.length) entries.push([feed.key, JSON.stringify(next)])
+      return
+    }
+    const candidates = feed.filtered ? [] : rows.values()
+    const merged = new Map<string, FeedRow>()
+    for (const row of previous) {
+      const name = String(row.name)
+      const fresh = rows.get(name)
+      // A discussion that moved leaves the feed it came from.
+      if (remove(row) || (fresh && !belongsTo(fresh, feed))) continue
+      merged.set(name, fresh ? { ...fresh, _offlineDownload: row._offlineDownload } : row)
+    }
+    for (const row of candidates) {
+      if (belongsTo(row, feed) && !merged.has(String(row.name))) {
+        merged.set(String(row.name), { ...row, _offlineDownload: true })
+      }
+    }
+
+    // Never shrink a feed someone paged through online.
+    const limit = feed.pinned ? Infinity : Math.max(discussionFeeds.FEED_LIMIT, previous.length)
+    const order = feed.pinned ? 'pinned_at' : 'last_post_at'
+    const next = [...merged.values()]
+      .sort((a, b) => String(b[order] ?? '').localeCompare(String(a[order] ?? '')))
+      .slice(0, limit)
+      .map((row) => ({ ...row, name: String(row.name) }))
+
+    const value = JSON.stringify(next)
+    if (value !== stored[index]) entries.push([feed.key, value])
+  })
+  if (entries.length) await setMany(entries)
+}
+
+/** The feeds a downloaded row belongs to, opened on this device or not. */
+function downloadedFeeds(cache: Cache, rows: Iterable<FeedRow>): Feed[] {
+  const feeds = new Map<string, Feed>()
+  for (const row of rows) {
+    const scopes = [
+      row.project != null && {
+        space: String(row.project),
+        name: discussionFeeds.spaceFeedKey(row.project),
+      },
+      row.team && { community: row.team, name: discussionFeeds.communityFeedKey(row.team) },
+    ]
+    for (const scope of scopes) {
+      if (!scope) continue
+      const { name, ...where } = scope
+      for (const pinned of row.pinned_at ? [false, true] : [false]) {
+        const key = cache.listKey(
+          discussionFeeds.discussionFeedKey(pinned ? discussionFeeds.pinnedFeedKey(name) : name),
+        )
+        feeds.set(key, { ...where, key, pinned })
+      }
+    }
+  }
+  return [...feeds.values()]
+}
+
+/** Cached discussion lists, including unscoped previews that need revocation cleanup. */
+async function cachedFeeds(cache: Cache): Promise<Feed[]> {
+  return (await cache.listKeys('Discussions')).map((key) => ({
+    pinned: false,
+    ...discussionFeeds.feedScope(key),
+    key: cache.listKey(key),
+  }))
+}
+
+function belongsTo(row: FeedRow, feed: Feed) {
+  const inScope = feed.space ? String(row.project) === feed.space : row.team === feed.community
+  if (!inScope || !feed.pinned) return inScope
+  // A community pin shows in its Space too; a Space pin only there (DiscussionList.vue).
+  if (!row.pinned_at) return false
+  return discussionFeeds.pinScopes(Boolean(feed.space)).includes(row.pin_scope ?? '')
+}
+
+function parseRows(value: unknown): FeedRow[] {
+  if (typeof value !== 'string') return []
+  try {
+    const rows = JSON.parse(value)
+    return Array.isArray(rows) ? rows : []
+  } catch {
+    return []
+  }
+}
+
+async function forgetDiscussions(cache: Cache, names: string[], generation: string | null) {
+  if (!names.length) return
+  const keys = names.map((name) => discussionKeys(cache, name))
+  // Only the document and comments can hold images.
+  const stored = await getMany(keys.flatMap((key) => [key.doc, key.comments])).catch(() => [])
+  await delMany(keys.flatMap(Object.values))
+
+  // Their images go too, unless something still on the device shows them.
+  const images = new Set(stored.flatMap((value) => (value ? htmlImages(value) : [])))
+  if (!images.size) return
+  const inUse = await imagesInUse().catch(() => null)
+  if (!inUse) return
+  tellWorker(
+    'FORGET_IMAGES',
+    [...images].filter((url) => !inUse.has(url)),
+    generation,
+  )
+}
+
+async function imagesInUse() {
+  const inUse = new Set<string>((customEmojis.data ?? []).map((emoji) => emoji.image))
+  for (const value of await values()) {
+    for (const url of htmlImages(value)) inUse.add(url)
+  }
+  return inUse
+}
+
+/** Uploaded images an HTML string (or a stored JSON copy of rows holding HTML) shows. */
+function htmlImages(html: unknown) {
+  if (typeof html !== 'string') return []
+  return [...html.matchAll(/<img[^>]+src=\\?["']([^"'\\]+)/g)].map(([, src]) => src)
+}
+
+function tellWorker(
+  type: 'CACHE_IMAGES' | 'FORGET_IMAGES',
+  urls: string[],
+  generation: string | null,
+) {
+  if (urls.length && generation) {
+    navigator.serviceWorker?.controller?.postMessage({ type, urls, generation })
+  }
+}
+
+/** What the downloads weigh: their own entries and the images saved for them. */
+export async function downloadedBytes(): Promise<number> {
+  const meta = await readMeta()
+  if (!meta) return 0
+  const cache = cacheFor(meta.user)
+  const owned = Object.keys(meta.places).flatMap((name) =>
+    Object.values(discussionKeys(cache, name)),
+  )
+  const encoder = new TextEncoder()
+  const images = new Set<string>()
+  let bytes = 0
+  for (const value of await getMany(owned)) {
+    if (typeof value !== 'string') continue
+    bytes += encoder.encode(value).length
+    for (const url of htmlImages(value)) images.add(url)
+  }
+  return bytes + (await savedImageBytes([...images]))
+}
+
+/** From the headers; reading the bodies back would cost more than the figure is worth. */
+async function savedImageBytes(urls: string[]): Promise<number> {
+  if (!urls.length || typeof caches === 'undefined') return 0
+  const name = (await caches.keys()).find((key) => key.endsWith(IMAGE_CACHE_SUFFIX))
+  if (!name) return 0
+  const cache = await caches.open(name)
+  const responses = await Promise.all(urls.map((url) => cache.match(url).catch(() => null)))
+  return responses.reduce(
+    (bytes, response) => bytes + (Number(response?.headers.get('content-length')) || 0),
+    0,
+  )
+}
+
+function removeOfflineDownloads() {
+  running?.abort()
+  return withLock(DOWNLOADS_LOCK, async () => {
+    const meta = await readMeta()
+    if (meta) await forgetDownloads(meta)
+  })
+}
+
+async function forgetDownloads(meta: Meta) {
+  const generation = await getWorkerCacheGeneration()
+  const cache = cacheFor(meta.user)
+  const names = Object.keys(meta.places)
+  await storeFeeds(cache, new Map(), new Set(names), true)
+  // Older unmarked copies may have been browsed; Clear storage removes those too.
+  const stored = await getMany(names.map((name) => cache.docKey('GP Discussion', name)))
+  await forgetDiscussions(
+    cache,
+    names.filter((_, index) => JSON.parse(stored[index] ?? 'null')?._offlineDownload),
+    generation,
+  )
+  await delMany([META_KEY])
+  showMeta(null)
+}
+
+export function downloadForOffline(days: OfflineWindow) {
+  // A dialog opened before the connection dropped can still confirm.
+  if (days && refuseOffline()) return
+  offlineWindow.value = days
+  if (!days) return removeOfflineDownloads()
+  // Otherwise the browser may evict the downloads (Safari does after a week unused).
+  navigator.storage?.persist?.().catch(() => {})
+  const finished = syncOfflineDownloads({ manual: true }).then((done) => {
+    if (!done) throw new Error('Offline download did not finish')
+  })
+  return toast.promise(finished, {
+    id: 'offline-download',
+    loading: 'Downloading discussions for offline reading…',
+    success: 'Discussions are ready to read offline',
+    error: 'Could not finish the offline download. It will retry later.',
+  })
+}
+
+/** Rows as the server sends them, with string names. Each list runs its transform on them. */
+function rowsJson(rows: Row[] = []) {
+  return JSON.stringify(rows.map((row) => ({ ...row, name: String(row.name) })))
+}
+
+/** Yields to the page between bundle pages, or at once when the sync is cancelled. */
+function idle(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve()
+    signal.addEventListener('abort', () => resolve(), { once: true })
+    if ('requestIdleCallback' in window) requestIdleCallback(() => resolve(), { timeout: 2000 })
+    else setTimeout(resolve, 200)
+  })
+}
+
+/** Syncs shortly after load, then on reconnect and when the tab returns. */
+export function setupOfflineDownloads() {
+  const background = () => syncOfflineDownloads().catch(() => {})
+  navigator.serviceWorker?.addEventListener('message', (event) => {
+    if (event.data?.type === 'IMAGES_SAVED') downloads.imagesSavedAt = Date.now()
+  })
+  readMeta()
+  setTimeout(background, 5000 + Math.random() * MAX_START_DELAY)
+  onReconnect(background)
+  document.addEventListener('visibilitychange', background)
+  // Another tab, or the settings, chose not to download any more.
+  watch(offlineWindow, (days, previous) => {
+    if (!days && previous) removeOfflineDownloads()
+  })
+}

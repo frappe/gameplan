@@ -55,7 +55,7 @@
         class="-mx-3"
         :filters="filters"
         :orderBy="() => discussionOrderBy"
-        :cacheKey="`Discussions-${communityId}-${feedType}`"
+        :cacheKey="communityFeedKey(communityId, feedType)"
         :key="JSON.stringify(filters)"
         :empty-state="feedEmptyStates[feedType]"
       />
@@ -79,6 +79,7 @@ import CommunityMenu from '@/components/CommunityMenu.vue'
 import DiscussionFeedBar from '@/components/DiscussionFeedBar.vue'
 import DiscussionList from '@/components/DiscussionList.vue'
 import LastPostReminder from '@/components/LastPostReminder.vue'
+import { communityFeedKey } from '@/data/discussions'
 import { communityState } from '@/data/communityState'
 import { useCommunity } from '@/data/communities'
 import { feedEmptyStates, feedTitles, type FeedType } from '@/data/discussionFeeds'

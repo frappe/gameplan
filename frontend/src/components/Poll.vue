@@ -308,7 +308,7 @@ const optionGroupProps = computed(() =>
 )
 const canDeletePoll = computed(() => canDeleteContent(_poll.value, props.space, sessionUser))
 const isStopped = computed(
-  () => Boolean(_poll.value.stopped_at) && dayjsLocal().isAfter(_poll.value.stopped_at),
+  () => Boolean(_poll.value.stopped_at) && dayjsLocal().isAfter(dayjsLocal(_poll.value.stopped_at)),
 )
 const canStopPoll = computed(() => !isStopped.value && !props.readOnlyMode && canDeletePoll.value)
 const totalLabel = computed(() => {
@@ -358,7 +358,7 @@ const dropdownOptions = computed(() => [
       !_poll.value.anonymous &&
       !_poll.value.multiple_answers &&
       participated.value &&
-      (!_poll.value.stopped_at || dayjsLocal().isBefore(_poll.value.stopped_at)),
+      (!_poll.value.stopped_at || dayjsLocal().isBefore(dayjsLocal(_poll.value.stopped_at))),
     onClick: () => {
       dialog.confirm({
         title: 'Retract your vote?',

@@ -10,7 +10,7 @@
       <div class="flex items-center gap-2">
         <template v-if="!isBulkDeleteMode">
           <DropdownMoreOptions
-            v-if="drafts.data?.length"
+            v-if="draftRows.length"
             label="Draft actions"
             button-size="md"
             align="end"
@@ -43,7 +43,7 @@
     <div class="flex items-center gap-2">
       <template v-if="!isBulkDeleteMode">
         <DropdownMoreOptions
-          v-if="drafts.data?.length"
+          v-if="draftRows.length"
           label="Draft actions"
           align="end"
           :options="draftActions"
@@ -98,7 +98,7 @@
           class="list-gap-4"
         >
           <ListRow
-            v-for="draft in drafts.data"
+            v-for="draft in draftRows"
             :key="draft.name"
             :route="draftRoute(draft)"
             :value="draft.name"
@@ -184,10 +184,13 @@ import { readOnlyMode } from '@/data/readOnlyMode'
 import { errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import { getCommunity } from '@/data/communities'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
-import { recoverOrphanedDrafts } from '@/data/useDraftSync'
-import { drafts, type DraftRow } from '@/data/drafts'
+import { deleteDraft, recoverOrphanedDrafts } from '@/data/useDraftSync'
+import { drafts, listLocalDrafts, type DraftRow } from '@/data/drafts'
+import { broadcastDraftChange, deleteDraftRecord, onDraftChange } from '@/data/draftStore'
+import { whenOnline, refuseOffline } from '@/data/online'
+import { captureError } from '@/utils/errorReporting'
 
 interface DeleteDraftsResponse {
   deleted: string[]
@@ -201,9 +204,29 @@ const isBulkDeleteMode = ref(false)
 const selectedDrafts = ref<string[]>([])
 const showNewDiscussionDialog = ref(false)
 
-// useList keeps `data` undefined until the first load lands, and after it fails.
+// Drafts started offline are only on this device until they are saved to the server. They
+// keep the same name there, so a row is listed once either way.
+const localDrafts = ref<DraftRow[]>([])
+const draftRows = computed(() => {
+  const saved = drafts.data ?? []
+  const onServer = new Set(saved.map((draft) => draft.name))
+  return [...localDrafts.value.filter((draft) => !onServer.has(draft.name)), ...saved]
+})
+const isLocalOnly = (name: string) =>
+  localDrafts.value.some((draft) => draft.name === name) &&
+  !drafts.data?.some((draft) => draft.name === name)
+
+function loadLocalDrafts() {
+  listLocalDrafts()
+    .then((rows) => (localDrafts.value = rows))
+    .catch((error) => captureError(error, { action: 'list-local-drafts' }))
+}
+onScopeDispose(onDraftChange(loadLocalDrafts))
+
+// useList keeps `data` undefined until the first load lands, and after it fails. Drafts only
+// on this device are rows too.
 const phase = computed(() => {
-  if (drafts.data?.length) return 'rows'
+  if (draftRows.value.length) return 'rows'
   if (drafts.data) return 'empty'
   if (drafts.error && !drafts.loading) return 'failed'
   return 'skeleton'
@@ -268,6 +291,8 @@ let deleteDraftsCall = useCall<DeleteDraftsResponse, { names: string[] }>({
 function confirmDeleteDrafts() {
   const count = selectedDrafts.value.length
   confirmDelete({
+    // Drafts only on this device delete offline. Deleting a saved one is refused below.
+    worksOffline: true,
     title: `Delete ${draftCountLabel(count)}?`,
     message:
       count === 1
@@ -277,46 +302,60 @@ function confirmDeleteDrafts() {
   })
 }
 
-function deleteDrafts() {
-  return deleteDraftsCall.submit({ names: selectedDrafts.value }).then(() => {
-    let response = deleteDraftsCall.data
-    // useCall can resolve with no data instead of rejecting. Throwing keeps the dialog
-    // open with the error in it.
-    if (!response) throw deleteDraftsCall.error ?? new Error('Could not delete the drafts')
-    let deletedCount = response?.success_count || 0
-    let failedCount = response?.failure_count || 0
+async function deleteDrafts() {
+  const local = selectedDrafts.value.filter(isLocalOnly)
+  const saved = selectedDrafts.value.filter((name) => !isLocalOnly(name))
+  // A draft on the server can only be deleted with the connection. The selection stays.
+  if (saved.length && refuseOffline()) return
+  // One a save reached meanwhile is deleted on the server as well, as its only writer.
+  const results = await Promise.allSettled(local.map((name) => deleteDraft(name)))
+  const localFailed = local.filter((_, i) => results[i].status === 'rejected')
+  loadLocalDrafts()
+  if (!saved.length) return reportDelete(local.length - localFailed.length, localFailed)
 
-    // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
-    // drop the rows the list is still holding.
-    response?.deleted.forEach((name) => drafts.removeRow(name))
-
-    if (deletedCount > 0) {
-      toast.success(deletedCount === 1 ? 'Draft deleted' : `${deletedCount} drafts deleted`)
-    }
-
-    if (failedCount > 0) {
-      selectedDrafts.value = response?.failed.map((f) => f.name) || []
-      toast.error(
-        failedCount === 1
-          ? '1 draft could not be deleted'
-          : `${failedCount} drafts could not be deleted`,
-      )
-      return
-    }
-
-    selectedDrafts.value = []
-    isBulkDeleteMode.value = false
-  })
+  return deleteDraftsCall
+    .submit({ names: saved })
+    .then(() => {
+      const response = deleteDraftsCall.data
+      // bulk_delete is a custom method, so the doctype APIs never saw these deletes —
+      // drop the rows the list is still holding, and their copies on this device.
+      response?.deleted.forEach((name) => {
+        drafts.removeRow(name)
+        void deleteDraftRecord(name).then(() => broadcastDraftChange(name))
+      })
+      const failed = [...localFailed, ...(response?.failed.map((f) => f.name) ?? [])]
+      reportDelete((response?.success_count || 0) + local.length - localFailed.length, failed)
+    })
+    .catch(() => reportDelete(local.length - localFailed.length, [...localFailed, ...saved]))
 }
 
-// Drafts whose server row never got created (a push that never landed) live only in
-// IndexedDB and would otherwise never show here. Adopting one inserts it through the list,
-// which is what puts it on screen.
+/** `failed` stay selected, to try again. */
+function reportDelete(deletedCount: number, failed: string[]) {
+  if (deletedCount > 0) {
+    toast.success(deletedCount === 1 ? 'Draft deleted' : `${deletedCount} drafts deleted`)
+  }
+  if (failed.length) {
+    selectedDrafts.value = failed
+    toast.error(
+      failed.length === 1
+        ? '1 draft could not be deleted'
+        : `${failed.length} drafts could not be deleted`,
+    )
+    return
+  }
+  selectedDrafts.value = []
+  isBulkDeleteMode.value = false
+}
+
+// Drafts with edits the server has not seen (started offline, or a push that never landed)
+// are saved under their own names, which puts them on the server's list.
 onMounted(() => {
+  loadLocalDrafts()
   // Rows the composer inserted or edited this session hold the bare GP Draft fields, with no
   // space title, community or kind. Refetch so every row has its place and route.
   if (drafts.isFinished) drafts.reload()
-  recoverOrphanedDrafts()
+  // Offline that can only fail, so it waits for the connection.
+  whenOnline(() => recoverOrphanedDrafts().finally(loadLocalDrafts))
 })
 
 function draftCountLabel(count: number) {

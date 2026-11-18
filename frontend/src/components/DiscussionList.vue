@@ -31,8 +31,14 @@
       />
     </List>
     <div class="px-2 sm:px-0">
+      <OfflineContentFallback
+        v-if="loadFailure"
+        class="mx-auto mt-6 max-w-2xl px-6"
+        v-bind="loadFailure"
+        @retry="retryLoad"
+      />
       <LoadError
-        v-if="discussions.error && !discussions.data?.length"
+        v-else-if="discussions.error && !discussions.data"
         class="mx-3"
         :message="errorText(discussions.error, 'Could not load discussions.')"
         @retry="retryLoad"
@@ -53,13 +59,21 @@
 import { computed, ref, toValue } from 'vue'
 import { toast, type OrderBy } from 'frappe-ui'
 import { List } from 'frappe-ui/list'
-import { type Discussion, UseDiscussionOptions, useDiscussions } from '@/data/discussions'
+import {
+  type Discussion,
+  UseDiscussionOptions,
+  useDiscussions,
+  pinScopes,
+  pinnedFeedKey,
+} from '@/data/discussions'
 import { removeBookmark, restoreBookmark } from '@/data/bookmarks'
 import { errorText } from '@/utils'
 import LoadError from './LoadError.vue'
 import DiscussionRow from './DiscussionRow.vue'
 import ListRowSkeleton from './ListRowSkeleton.vue'
 import EmptyStateBox, { type EmptyState } from './EmptyStateBox.vue'
+import OfflineContentFallback from './OfflineContentFallback.vue'
+import { useLoadFailure } from '@/data/loadFailure'
 import { feedEmptyStates } from '@/data/discussionFeeds'
 
 interface Props {
@@ -100,35 +114,25 @@ const pinnedDiscussions = useDiscussions({
   filters: () => {
     const baseFilters = toValue(props.filters)
 
-    if (baseFilters?.project) {
-      // A community pin is a superset of a space pin — "Show in all <community>
-      // discussions" has to include the discussion's own space, or the pin is
-      // invisible everywhere the author looks for it. This also brings back every
-      // pre-2025-10 pin, which set_default_pin_scope + rename_global_pin_scope_to_category
-      // stamped `Category` without ever asking the user to pick a scope.
-      return {
-        ...baseFilters,
-        pinned_at: ['is', 'set'],
-        pin_scope: ['in', ['Space', 'Category']],
-      }
-    }
-
     return {
       ...baseFilters,
       pinned_at: ['is', 'set'],
-      pin_scope: 'Category',
+      pin_scope: ['in', pinScopes(Boolean(baseFilters?.project))],
     }
   },
   orderBy: 'pinned_at desc' as OrderBy,
   limit: 99999,
-  cacheKey: props.cacheKey ? ['pinned', props.cacheKey] : undefined,
+  cacheKey: props.cacheKey ? pinnedFeedKey(props.cacheKey) : undefined,
   immediate: props.showPinned,
 })
 
 const filters = computed(() => toValue(props.filters))
 const skeletonRowCount = 3
 const isInitialLoading = computed(() => discussions.loading && !discussions.data?.length)
-const showLoadMoreButton = computed(() => discussions.hasNextPage && !isEmpty.value)
+const loadFailure = useLoadFailure(discussions, 'discussions')
+const showLoadMoreButton = computed(
+  () => discussions.hasNextPage && !isEmpty.value && !loadFailure.value,
+)
 const isSortedByCreation = computed(() => toValue(props.orderBy) === 'creation desc')
 
 // Held back until the first page arrives, so they do not sit above the skeleton rows.

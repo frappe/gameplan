@@ -10,8 +10,11 @@ export function confirmDelete(options: {
   title: string
   message: string
   onDelete: () => Promise<unknown>
+  /** Stays openable while offline, for a delete that works on this device. */
+  worksOffline?: boolean
 }) {
   dialog.confirm({
+    ...(options.worksOffline && { worksOffline: true }),
     title: options.title,
     message: options.message,
     actions: [
