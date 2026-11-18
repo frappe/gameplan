@@ -38,7 +38,11 @@
         </Button>
       </template>
     </SpaceHeaderActions>
-    <DiscussionFeedBar v-model="feedType" :counts="{ unread: getSpaceUnreadCount(spaceId) }" />
+    <DiscussionFeedBar
+      v-model="feedType"
+      :counts="{ unread: getSpaceUnreadCount(spaceId) }"
+      @mark-all-as-read="currentSpace && markAllAsRead([spaceId], currentSpace.title)"
+    />
     <DiscussionList
       class="-mx-3"
       ref="discussionListRef"

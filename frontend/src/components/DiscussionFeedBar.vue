@@ -11,17 +11,24 @@
     </TabButtons>
     <DiscussionSortDropdown />
   </div>
+  <!-- Desktop marks a feed read from the community and space menus. A phone has no such
+       menu, so the Unread tab offers it here; the tab row has no room left for it. -->
+  <div v-if="canMarkAllAsRead" class="mb-3 flex justify-end sm:hidden">
+    <Button label="Mark all as read" icon-left="lucide-check-check" @click="onMarkAllAsRead" />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TabButtons } from 'frappe-ui'
+import { Button, TabButtons } from 'frappe-ui'
 import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
 import { feedTabs, isFeedType, type FeedType } from '@/data/discussionFeeds'
 
 const props = defineProps<{
   /** Unread counts shown after a tab's label. A tab with no count, or 0, shows none. */
   counts?: Partial<Record<FeedType, number>>
+  /** Listening to `mark-all-as-read` shows the phone's "Mark all as read" on the Unread tab. */
+  onMarkAllAsRead?: () => void
 }>()
 
 const feed = defineModel<FeedType>({ required: true })
@@ -33,6 +40,10 @@ const currentFeed = computed({
     if (isFeedType(next)) feed.value = next
   },
 })
+
+const canMarkAllAsRead = computed(
+  () => Boolean(props.onMarkAllAsRead) && feed.value === 'unread' && countFor('unread') > 0,
+)
 
 function countFor(value: string | number) {
   const key = String(value)
