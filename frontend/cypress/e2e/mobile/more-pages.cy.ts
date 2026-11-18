@@ -23,8 +23,6 @@ describe('Mobile More-menu pages', () => {
     // That flow is covered separately below.
     const pages = [
       { label: 'Bookmarks', path: '/bookmarks', title: 'Bookmarks' },
-      { label: 'Pages', path: '/pages', title: 'Pages' },
-      { label: 'Tasks', path: '/tasks', title: 'Tasks' },
       { label: 'People', path: '/people', title: 'People' },
       { label: 'Drafts', path: '/drafts', title: 'Drafts' },
     ]
@@ -46,16 +44,16 @@ describe('Mobile More-menu pages', () => {
     // never sees that particular relocated header action.
     cy.loginAs('admin')
 
-    openMore()
-    cy.button('Tasks').click()
+    // My Tasks and My Pages are off the More menu while GP Settings keeps the deprecated
+    // Tasks and Pages switched off, so open them at their own URLs.
+    cy.visit('/g/tasks')
     cy.iconButton('Add task').should('be.visible')
 
     openMore()
     cy.button('People').click()
     cy.iconButton('Invite').should('be.visible')
 
-    openMore()
-    cy.button('Pages').click()
+    cy.visit('/g/pages')
     // Sort control moves into the right slot of the mobile header (default order
     // is "Date Updated").
     cy.get('header').filter(':visible').contains('Date Updated').should('be.visible')

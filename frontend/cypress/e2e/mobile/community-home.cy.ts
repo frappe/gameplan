@@ -62,8 +62,9 @@ describe('Mobile community home', () => {
     cy.contains('View profile').should('be.visible')
     cy.contains('button', 'Bookmarks').should('be.visible')
     cy.contains('button', 'People').should('be.visible')
-    cy.contains('button', 'Pages').should('be.visible')
-    cy.contains('button', 'Tasks').should('be.visible')
+    // Pages and Tasks are deprecated and stay hidden until GP Settings switches them on.
+    cy.contains('button', 'Pages').should('not.exist')
+    cy.contains('button', 'Tasks').should('not.exist')
     cy.contains('button', 'Drafts').should('be.visible')
     // Community management is desktop-only; the mobile More menu has no "Manage".
     cy.contains('button', 'Manage').should('not.exist')
