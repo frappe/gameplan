@@ -9,17 +9,17 @@
         @click="openNewTaskDialog"
       />
     </SpaceHeaderActions>
-    <div class="mb-4 flex items-center justify-between gap-2">
-      <SpaceTabs :spaceId="spaceId" />
-      <!-- SpaceHeaderActions sits in the desktop header, so phones get their own button. -->
+    <SpaceHeaderActions placement="mobile">
       <Button
         v-if="canEditSpace"
-        class="sm:hidden"
         variant="solid"
         icon-left="lucide-plus"
         label="New"
         @click="openNewTaskDialog"
       />
+    </SpaceHeaderActions>
+    <div class="mb-4 flex items-center">
+      <SpaceTabs :spaceId="spaceId" />
     </div>
     <!-- Every task in the space, not TaskList's first page: it has no "load more". -->
     <TaskList

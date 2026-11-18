@@ -10,22 +10,19 @@
         @click="createNewPage"
       />
     </SpaceHeaderActions>
-    <!-- Wraps so the sort menu and the phone New button fit beside the tabs on a narrow phone. -->
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <SpaceHeaderActions placement="mobile">
+      <Button
+        v-if="canEditSpace"
+        variant="solid"
+        icon-left="lucide-plus"
+        label="New"
+        :loading="newPage.loading"
+        @click="createNewPage"
+      />
+    </SpaceHeaderActions>
+    <div class="mb-4 flex items-center justify-between gap-2">
       <SpaceTabs :spaceId="spaceId" />
-      <div class="ml-auto flex shrink-0 items-center gap-2">
-        <Select class="!w-fit" :options="sortOptions" v-model="orderBy" />
-        <!-- SpaceHeaderActions sits in the desktop header, so phones get their own button. -->
-        <Button
-          v-if="canEditSpace"
-          class="sm:hidden"
-          variant="solid"
-          icon-left="lucide-plus"
-          label="New"
-          :loading="newPage.loading"
-          @click="createNewPage"
-        />
-      </div>
+      <Select class="min-w-0 !w-fit" :options="sortOptions" v-model="orderBy" />
     </div>
     <PageGrid
       :key="spaceId"
