@@ -102,15 +102,16 @@ class OfflineDownloadsTestCase(GameplanTestCase):
 			frappe.db.set_value("GP Discussion", name, "last_post_at", when, update_modified=False)
 
 
-class TestOfflineBundle(OfflineDownloadsTestCase):
+class TestBundleRequestFields(OfflineDownloadsTestCase):
 	def test_the_request_fields_do_not_reach_the_discussion_read(self):
 		"""Current Frappe's `read_doc` reads `fields` from the request and wants a list."""
 		bundle = self.bundle(30)
 		self.assertTrue(bundle["discussions"])
 		with self.as_user(self.member):
+			discussions = self.index(30)["discussions"]
 			frappe.form_dict["fields"] = FIELDS
 			try:
-				get_offline_bundle(30, FIELDS, self.index(30)["discussions"])
+				get_offline_bundle(30, FIELDS, discussions)
 				self.assertEqual(frappe.form_dict["fields"], FIELDS, "the request is left as it was")
 			finally:
 				frappe.form_dict.pop("fields", None)
