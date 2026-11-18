@@ -9,20 +9,31 @@
         </span>
       </template>
     </TabButtons>
-    <DiscussionSortDropdown :mark-all-as-read="canMarkAllAsRead ? onMarkAllAsRead : undefined" />
+    <!-- Desktop marks a feed read from the community and space menus, which a phone does not
+         have. Sorting the Unread tab matters less, so on a phone its sort icon becomes this. -->
+    <Button
+      v-if="showMarkAllAsRead"
+      size="md"
+      icon="lucide-check-check text-ink-gray-6"
+      label="Mark all as read"
+      :disabled="!countFor('unread')"
+      @click="onMarkAllAsRead"
+    />
+    <DiscussionSortDropdown v-else />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { TabButtons } from 'frappe-ui'
+import { Button, TabButtons } from 'frappe-ui'
 import DiscussionSortDropdown from '@/components/DiscussionSortDropdown.vue'
 import { feedTabs, isFeedType, type FeedType } from '@/data/discussionFeeds'
+import { useIsMobile } from '@/utils/useIsMobile'
 
 const props = defineProps<{
   /** Unread counts shown after a tab's label. A tab with no count, or 0, shows none. */
   counts?: Partial<Record<FeedType, number>>
-  /** Listening to `mark-all-as-read` adds "Mark all as read…" to the phone's feed menu. */
+  /** Listening to `mark-all-as-read` gives the phone's Unread tab a "Mark all as read" button. */
   onMarkAllAsRead?: () => void
 }>()
 
@@ -36,8 +47,10 @@ const currentFeed = computed({
   },
 })
 
-// Offered while the feed has something unread, whichever tab is open.
-const canMarkAllAsRead = computed(() => countFor('unread') > 0)
+const isMobile = useIsMobile()
+const showMarkAllAsRead = computed(
+  () => isMobile.value && feed.value === 'unread' && Boolean(props.onMarkAllAsRead),
+)
 
 function countFor(value: string | number) {
   const key = String(value)
