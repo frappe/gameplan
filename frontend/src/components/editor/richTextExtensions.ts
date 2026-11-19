@@ -1,7 +1,6 @@
 import { RichTextKit } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
-import { DropOrphanMedia } from './dropOrphanMedia'
 
 /**
  * The rich extension stack (articles, pages, discussion bodies, task descriptions):
@@ -25,6 +24,5 @@ export function richTextExtensions(opts: { suggestions?: boolean } = {}) {
     slashCommandsWithCollapsible(),
     ...collapsibleExtensions(),
     ...richQuoteExtensions(),
-    DropOrphanMedia,
   ]
 }

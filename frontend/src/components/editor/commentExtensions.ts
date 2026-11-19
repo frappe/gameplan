@@ -11,7 +11,6 @@ import {
 } from 'frappe-ui/editor'
 import { gameplanHeadingLevels, suggestionConfig, richQuoteExtensions } from './config'
 import { collapsibleExtensions, slashCommandsWithCollapsible } from './collapsible'
-import { DropOrphanMedia } from './dropOrphanMedia'
 import { CustomEmojiExtension } from './customEmojiExtension'
 import { PollBlockExtension } from '@/components/PollBlock/poll-block-extension'
 import type { RichQuoteController } from '@/components/RichQuoteExtension/useRichQuotes'
@@ -66,6 +65,5 @@ export function commentExtensions(
     ...collapsibleExtensions(),
     slashCommandsWithCollapsible(),
     ...richQuoteExtensions(opts.controller, opts.sourceId),
-    DropOrphanMedia,
   ]
 }
