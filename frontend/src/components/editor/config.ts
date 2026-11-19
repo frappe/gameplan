@@ -1,6 +1,6 @@
 import type { Component } from 'vue'
 import type { AnyExtension } from '@tiptap/core'
-import { useFileUpload, type UploadedFile } from 'frappe-ui'
+import { UploadError, useFileUpload, type UploadedFile } from 'frappe-ui'
 import type { MediaUploadRequestOptions } from 'frappe-ui/editor'
 import RichQuoteNodeExtension from '@/components/RichQuoteExtension/rich-quote-node-extension'
 import QuoteBacklinkDecoration from '@/components/RichQuoteExtension/quote-backlink-decoration'
@@ -84,6 +84,34 @@ export function richQuoteExtensions(controller?: RichQuoteController | null, sou
  * which is what lets other space members read the now-private file. The runtime
  * `{ signal, onProgress }` the editor engine passes is preserved.
  */
-export function uploadFile(file: File, options?: MediaUploadRequestOptions): Promise<UploadedFile> {
-  return useFileUpload().upload(file, { private: true, ...(options ?? {}) })
+export async function uploadFile(
+  file: File,
+  options?: MediaUploadRequestOptions,
+): Promise<UploadedFile> {
+  try {
+    return await useFileUpload().upload(file, { private: true, ...(options ?? {}) })
+  } catch (error) {
+    throw tooLargeError(error, file) ?? error
+  }
+}
+
+/**
+ * A proxy in front of Frappe (nginx, Cloudflare) can refuse a body smaller than
+ * the site's max file size. It answers 413 with an HTML page, which frappe-ui
+ * reports as a bare "Upload failed". Name the cause instead. The proxy's limit is
+ * not known here, so the message gives the file's size.
+ *
+ * Remove once frappe-ui's `useFileUpload` names a 413 itself (upstream fix not yet
+ * opened; see the PR for this change).
+ */
+function tooLargeError(error: unknown, file: File): Error | null {
+  if (!(error instanceof UploadError) || error.status !== 413) return null
+  const kind = file.type.startsWith('video/')
+    ? 'video'
+    : file.type.startsWith('image/')
+      ? 'image'
+      : 'file'
+  const mb = file.size / 1024 / 1024
+  const size = mb >= 1 ? `${Math.round(mb)} MB` : `${Math.ceil(file.size / 1024)} KB`
+  return new Error(`This ${kind} is ${size}, which is more than the server accepts.`)
 }
