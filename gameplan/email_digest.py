@@ -8,7 +8,7 @@ import frappe
 from frappe import _
 from frappe.query_builder import Order
 from frappe.query_builder.functions import Count
-from frappe.utils import add_to_date, get_datetime, get_url, getdate, now_datetime, nowdate
+from frappe.utils import add_to_date, get_datetime, get_email_address, get_url, getdate, now_datetime, nowdate
 from frappe.utils.verified_command import get_signed_params, verify_request
 
 from gameplan.permissions import apply_accessible_project_filter
@@ -107,7 +107,7 @@ def send_digest_for_profile(profile, today: date | None = None):
 
 	if has_digest_items(digest):
 		frappe.sendmail(
-			recipients=[profile.user],
+			recipients=[get_email_address(profile.user)],
 			subject=get_digest_subject(),
 			template="email_digest",
 			args=get_digest_email_context(profile, digest),

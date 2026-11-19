@@ -82,8 +82,9 @@ class GPInvitation(Document):
 		if self.status != "Pending":
 			frappe.throw("Invalid or expired key")
 
-		created_account = not frappe.db.exists("User", self.email)
-		user = self.create_user() if created_account else frappe.get_doc("User", self.email)
+		existing_user = frappe.db.get_value("User", {"email": self.email})
+		created_account = not existing_user
+		user = self.create_user() if created_account else frappe.get_doc("User", existing_user)
 		user.append_roles(self.role)
 		user.save(ignore_permissions=True)
 		self.create_guest_access(user)
@@ -98,10 +99,10 @@ class GPInvitation(Document):
 		"""Whether accepting this invitation created its account, and no password has been set on it yet."""
 		if not self.created_account:
 			return False
-		return not frappe.db.get_value("User", self.email, "last_password_reset_date")
+		return not frappe.db.get_value("User", {"email": self.email}, "last_password_reset_date")
 
 	def get_password_link(self):
-		return password_link(frappe.get_doc("User", self.email))
+		return password_link(frappe.get_doc("User", {"email": self.email}))
 
 	def create_guest_access(self, user):
 		if self.role == "Gameplan Guest":
