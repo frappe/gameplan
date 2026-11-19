@@ -98,7 +98,7 @@ def clear(force: bool = False) -> bool:
 	for doctype in _gameplan_doctypes():
 		frappe.db.delete(doctype)
 
-	for user in _demo_user_emails():
+	for user in _demo_users():
 		frappe.delete_doc("User", user, ignore_permissions=True, force=True, delete_permanently=True)
 
 	_delete_demo_files()
@@ -125,15 +125,15 @@ def demo_data_enabled() -> bool:
 
 
 def get_random_users(limit: int | None = None) -> list[str]:
-	"""Return demo user emails, always with Maya first (she is the demo viewer)."""
-	emails = frappe.get_all(
+	"""Return demo user IDs, always with Maya first (she is the demo viewer)."""
+	users = frappe.get_all(
 		"User",
 		filters={"enabled": 1, "email": ["like", f"%{DEMO_EMAIL_DOMAIN}"]},
-		pluck="email",
+		fields=["name", "email"],
 		order_by="creation asc",
 	)
-	ordered = [MAYA_EMAIL] if MAYA_EMAIL in emails else []
-	ordered += [email for email in emails if email != MAYA_EMAIL]
+	ordered = [user.name for user in users if user.email == MAYA_EMAIL]
+	ordered += [user.name for user in users if user.email != MAYA_EMAIL]
 	return ordered[:limit] if limit else ordered
 
 
@@ -151,8 +151,8 @@ def _gameplan_doctypes() -> list[str]:
 	return frappe.get_all("DocType", filters={"module": "Gameplan", "issingle": 0}, pluck="name")
 
 
-def _demo_user_emails() -> list[str]:
-	return frappe.get_all("User", filters={"email": ["like", f"%{DEMO_EMAIL_DOMAIN}"]}, pluck="email")
+def _demo_users() -> list[str]:
+	return frappe.get_all("User", filters={"email": ["like", f"%{DEMO_EMAIL_DOMAIN}"]}, pluck="name")
 
 
 # GP User Profile is created by the User `after_insert` hook, so it is always
@@ -171,9 +171,9 @@ def _has_real_data() -> bool:
 	of sync with what gets deleted. A row is "real" when its owner is neither a
 	demo user nor (for the framework-created profile rows) Administrator.
 	"""
-	demo_owner = f"%{DEMO_EMAIL_DOMAIN}"
+	demo_users = _demo_users()
 	for doctype in _gameplan_doctypes():
-		filters = [["owner", "not like", demo_owner]]
+		filters = [["owner", "not in", demo_users]]
 		if doctype in _ADMIN_OWNED_FRAMEWORK_DOCTYPES:
 			filters.append(["owner", "!=", "Administrator"])
 		if frappe.get_all(doctype, filters=filters, limit=1):

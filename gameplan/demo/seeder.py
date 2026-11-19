@@ -69,12 +69,13 @@ class Seeder:
 		self.anchor = getdate() if now_datetime().hour >= 10 else add_days(getdate(), -1)
 		# Symbolic id -> (doctype, name) for cross-referencing events.
 		self.refs: dict[str, tuple[str, str]] = {}
-		self.users: dict[str, str] = {}  # slug -> email
+		self.users: dict[str, str] = {}  # slug -> user ID
 		self.files: dict[str, str] = {}  # file name -> file_url
 		self.emojis: dict[str, str] = {}  # emoji slug -> image file_url
+		self.maya: str | None = None
 		self.maya_last_visit: datetime | None = None
 		self.counts: dict[str, int] = {}
-		self._deferred_closes: dict[str, str] = {}  # discussion name -> closer email
+		self._deferred_closes: dict[str, str] = {}  # discussion name -> closer user ID
 
 	# ---- public entry point -------------------------------------------------
 
@@ -271,7 +272,7 @@ class Seeder:
 		first, _, last = full_name.partition(" ")
 		avatar = self._file_url(event["avatar"]) if event.get("avatar") else None
 
-		frappe.get_doc(
+		user = frappe.get_doc(
 			{
 				"doctype": "User",
 				"email": email,
@@ -285,17 +286,19 @@ class Seeder:
 				"roles": [{"role": event["role"]}],
 			}
 		).insert(ignore_permissions=True)
-		self.users[event["slug"]] = email
-		self.refs[event["id"]] = ("User", email)
+		self.users[event["slug"]] = user.name
+		self.refs[event["id"]] = ("User", user.name)
+		if email == MAYA_EMAIL:
+			self.maya = user.name
 
 		# The User after_insert hook auto-creates the profile; enrich it.
-		profile = frappe.get_doc("GP User Profile", {"user": email})
+		profile = frappe.get_doc("GP User Profile", {"user": user.name})
 		profile.bio = event.get("bio")
 		profile.image = avatar
 		if event.get("cover"):
 			profile.cover_image = self._file_url(event["cover"])
 		profile.save(ignore_permissions=True)
-		self._backdate("User", email, ts)
+		self._backdate("User", user.name, ts)
 
 	def _event_community(self, event, actor, ts):
 		members = [{"user": self.users[s], "status": "Accepted"} for s in event.get("members", [])]
@@ -528,7 +531,7 @@ class Seeder:
 				{"last_visit": ts, "creation": ts, "modified": ts},
 				update_modified=False,
 			)
-		if actor == MAYA_EMAIL:
+		if actor == self.maya:
 			if self.maya_last_visit is None or ts > self.maya_last_visit:
 				self.maya_last_visit = ts
 
@@ -572,13 +575,13 @@ class Seeder:
 		(
 			frappe.qb.update(Notification)
 			.set(Notification.read, 1)
-			.where((Notification.to_user == MAYA_EMAIL) & (Notification.creation < str(self.maya_last_visit)))
+			.where((Notification.to_user == self.maya) & (Notification.creation < str(self.maya_last_visit)))
 		).run()
 		# Flip the newest few back to unread AFTER the read-marking and the visit
 		# replay (track_visit clears notifications per discussion as a side effect).
 		newest = frappe.get_all(
 			"GP Notification",
-			filters={"to_user": MAYA_EMAIL},
+			filters={"to_user": self.maya},
 			order_by="creation desc",
 			limit=4,
 			pluck="name",
