@@ -90,9 +90,12 @@ class GPDraft(Document):
 		target.check_permission("write")
 		self.move_attachments_to(target)
 
-		cleaned = remove_query_params_from_images(target.content or "")
-		if cleaned != target.content:
-			target.content = cleaned
+		# a task keeps its text in description, the other targets in content
+		field = "description" if reference_doctype == "GP Task" else "content"
+		text = target.get(field) or ""
+		cleaned = remove_query_params_from_images(text)
+		if cleaned != text:
+			target.set(field, cleaned)
 			target.save()
 
 		self.delete()
