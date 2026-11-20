@@ -65,7 +65,7 @@ export function contentHasPoll(html?: string | null) {
 }
 
 export function pollDraftInContent(html?: string | null): PollDraft | null {
-  if (!contentHasPoll(html) || !html?.includes('data-poll-draft')) return null
+  if (!html?.includes('data-poll-draft')) return null
   const block = new DOMParser()
     .parseFromString(html, 'text/html')
     .querySelector('div[data-type="poll"][data-poll-draft]')
@@ -73,7 +73,7 @@ export function pollDraftInContent(html?: string | null): PollDraft | null {
 }
 
 export function postedPollInContent(html?: string | null): string | null {
-  if (!contentHasPoll(html) || !html?.includes('data-poll=')) return null
+  if (!html?.includes('data-poll=')) return null
   const block = new DOMParser()
     .parseFromString(html, 'text/html')
     .querySelector('div[data-type="poll"][data-poll]')
