@@ -420,6 +420,7 @@ import type { GPPoll } from '@/types/doctypes'
 import {
   POLL_FIELDS,
   isPollDraftReady,
+  contentHasPoll,
   pollDraftInContent,
   postedPollInContent,
   threadPollsKey,
@@ -550,9 +551,6 @@ const pinDialog = reactive<{
 })
 const showRevisionsDialog = ref(false)
 
-// While the post is being edited, its title/body live in an auto-saved draft instead of
-// being mutated on discussion.doc directly. The draft survives reloads and navigation, and
-// silently restores if the edit is reopened. Dormant until editingPost flips true.
 // The poll written into the opening post. The thread's polls come from CommentsArea; this
 // one renders inside the post, so the post's own editor needs it provided here.
 const openingPolls = useList<GPPoll>({
@@ -568,6 +566,9 @@ provide(threadPollsKey, {
   readOnlyMode: () => props.readOnlyMode,
 })
 
+// While the post is being edited, its title/body live in an auto-saved draft instead of
+// being mutated on discussion.doc directly. The draft survives reloads and navigation, and
+// silently restores if the edit is reopened. Dormant until editingPost flips true.
 const postDraft = useDraftSync({
   identity: () => ({
     type: 'Discussion',
@@ -757,7 +758,7 @@ const canSavePost = computed(
 const canAddPostPoll = computed(
   () =>
     discussion.doc?.owner === useSessionUser().name &&
-    !postDraftData.value?.content?.includes('data-type="poll"'),
+    !contentHasPoll(postDraftData.value?.content),
 )
 
 // The header button takes focus off the text, so the poll goes at the end of the post.

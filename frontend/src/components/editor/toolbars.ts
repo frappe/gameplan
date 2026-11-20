@@ -103,8 +103,9 @@ export const gameplanFloatingToolbar: MenuItem[] = [
 
 // The new-discussion composer also writes a poll into the opening post. Kept off
 // gameplanToolbar, which the comment editors share: the reply box has its own Poll button.
+const pollAnchor = gameplanToolbar.indexOf(InsertTable) + 1
 export const discussionToolbar: MenuItem[] = [
-  ...gameplanToolbar.slice(0, -3),
+  ...gameplanToolbar.slice(0, pollAnchor),
   InsertPoll,
-  ...gameplanToolbar.slice(-3),
+  ...gameplanToolbar.slice(pollAnchor),
 ]
