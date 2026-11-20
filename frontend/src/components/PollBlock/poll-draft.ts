@@ -19,6 +19,23 @@ export interface ThreadPolls {
 
 export const threadPollsKey: InjectionKey<ThreadPolls> = Symbol('threadPolls')
 
+type Fields<T extends { name: string }> = NonNullable<Parameters<typeof useList<T>>[0]['fields']>
+
+/** What a poll card needs. Shared by the thread's polls and the opening post's poll. */
+export const POLL_FIELDS: Fields<GPPoll> = [
+  'name',
+  'title',
+  'anonymous',
+  'multiple_answers',
+  'creation',
+  'owner',
+  'stopped_at',
+  'comment',
+  'opening_post',
+  { options: ['name', 'title', 'idx', 'percentage'] },
+  { votes: ['user', 'option'] },
+]
+
 export function emptyPollDraft(): PollDraft {
   return {
     title: '',

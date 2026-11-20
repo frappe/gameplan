@@ -25,6 +25,7 @@ import {
   type MenuItem,
 } from 'frappe-ui/editor'
 import { CollapsibleSection } from './collapsible'
+import { InsertPoll } from '@/components/PollBlock/poll-menu'
 
 // The predefined items ship their own default icons from frappe-ui, so this is
 // just composition — no per-item icon plumbing.
@@ -81,6 +82,7 @@ export const mobileDiscussionToolbar: MenuItem[] = [
   Separator,
   InsertLink,
   InsertImage,
+  InsertPoll,
   Separator,
   Undo,
   Redo,
@@ -97,4 +99,12 @@ export const gameplanFloatingToolbar: MenuItem[] = [
   InlineCode,
   HorizontalRule,
   CollapsibleSection,
+]
+
+// The new-discussion composer also writes a poll into the opening post. Kept off
+// gameplanToolbar, which the comment editors share: the reply box has its own Poll button.
+export const discussionToolbar: MenuItem[] = [
+  ...gameplanToolbar.slice(0, -3),
+  InsertPoll,
+  ...gameplanToolbar.slice(-3),
 ]

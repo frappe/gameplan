@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr
 
@@ -14,9 +15,13 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions, get_reactions_on
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import content_has_permission, discussion_query_conditions
+from gameplan.poll_blocks import insert_poll, sync_poll_block
 from gameplan.search_sqlite import enqueue_comment_reindex_on_move
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs, url_safe_slug
 from gameplan.utils.document import with_stored_document
+
+# A poll posted on its own in the thread, not one inside a reply or the opening post.
+THREAD_POLLS = {"comment": ("is", "not set"), "opening_post": 0}
 
 
 class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -60,7 +65,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 
 		polls = frappe.db.get_all(
 			"GP Poll",
-			filters={"discussion": self.name, "creation": (">", last_visit)},
+			filters={"discussion": self.name, "opening_post": 0, "creation": (">", last_visit)},
 			order_by="creation asc",
 			limit=1,
 			pluck="name",
@@ -96,6 +101,21 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		self.attach_files_in_content()
 		self.sync_unread_records_on_move()
 		enqueue_comment_reindex_on_move(self)
+		self.sync_poll()
+
+	def sync_poll(self):
+		"""Create, keep or remove the poll written into the opening post."""
+		if not self.has_value_changed("content"):
+			return
+		sync_poll_block(
+			self,
+			self.opening_post_poll(),
+			lambda draft: insert_poll(draft, discussion=self.name, opening_post=1),
+			_("A discussion's opening post can only have one poll"),
+		)
+
+	def opening_post_poll(self):
+		return frappe.db.get_value("GP Poll", {"discussion": self.name, "opening_post": 1})
 
 	def sync_unread_records_on_move(self):
 		# When a discussion moves to another space, realign its unread records so the count
@@ -309,7 +329,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		last_comment = get_last_post(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		last_poll = get_last_post("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
+		last_poll = get_last_post("GP Poll", THREAD_POLLS | {"discussion": self.name})
 
 		if last_comment and last_poll:
 			latest = last_comment if last_comment.creation > last_poll.creation else last_poll
@@ -332,7 +352,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		comments_count = frappe.db.count(
 			"GP Comment", {"reference_doctype": self.doctype, "reference_name": self.name}
 		)
-		polls_count = frappe.db.count("GP Poll", {"discussion": self.name, "comment": ("is", "not set")})
+		polls_count = frappe.db.count("GP Poll", THREAD_POLLS | {"discussion": self.name})
 		self.comments_count = comments_count + polls_count
 
 	def update_discussions_count(self):
