@@ -25,6 +25,7 @@ import {
   type MenuItem,
 } from 'frappe-ui/editor'
 import { CollapsibleSection } from './collapsible'
+import { InsertFootnote } from './footnotes'
 
 // The predefined items ship their own default icons from frappe-ui, so this is
 // just composition — no per-item icon plumbing.
@@ -58,6 +59,7 @@ export const gameplanToolbar: MenuItem[] = [
   InlineCode,
   HorizontalRule,
   CollapsibleSection,
+  InsertFootnote,
   Separator,
   InsertTable,
   Separator,

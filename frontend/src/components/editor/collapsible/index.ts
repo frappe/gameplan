@@ -4,4 +4,4 @@ export {
   CollapsibleContent,
   collapsibleExtensions,
 } from './collapsible-extension'
-export { CollapsibleSection, slashCommandsWithCollapsible } from './collapsible-menu'
+export { CollapsibleSection, collapsibleSlashItem } from './collapsible-menu'
