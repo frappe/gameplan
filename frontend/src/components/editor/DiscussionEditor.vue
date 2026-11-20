@@ -3,6 +3,7 @@ import { computed, useTemplateRef } from 'vue'
 import GPEditor from './GPEditor.vue'
 import { richTextExtensions } from './richTextExtensions'
 import { typewriterScroll } from './typewriterScroll'
+import { PollBlockExtension } from '@/components/PollBlock/poll-block-extension'
 
 // gameplan's discussion-compose editor (GP Discussion bodies): the rich stack with
 // @-mentions / #-tags enabled. The composing page (NewDiscussion) supplies its own
@@ -25,8 +26,8 @@ const emit = defineEmits<{
 }>()
 
 // Discussion compose is a full-page editor — keep space below the caret while
-// typing near the viewport bottom.
-const extensions = [...richTextExtensions(), typewriterScroll()]
+// typing near the viewport bottom. The poll block lets the opening post carry a poll.
+const extensions = [...richTextExtensions(), PollBlockExtension, typewriterScroll()]
 
 const gp = useTemplateRef<InstanceType<typeof GPEditor>>('gp')
 const editor = computed(() => gp.value?.editor ?? null)

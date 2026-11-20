@@ -344,6 +344,8 @@ export interface GPPoll extends DocType {
   stopped_at?: string
   /** Comment: Link (GP Comment) */
   comment?: string
+  /** In Opening Post: Check */
+  opening_post?: 0 | 1
 }
 
 // Last updated: 2026-10-19 12:00:00.000000

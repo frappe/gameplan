@@ -15,7 +15,8 @@
   "total_votes",
   "stopped_at",
   "discussion",
-  "comment"
+  "comment",
+  "opening_post"
  ],
  "fields": [
   {
@@ -71,11 +72,19 @@
    "fieldtype": "Link",
    "label": "Comment",
    "options": "GP Comment"
+  },
+  {
+   "default": "0",
+   "description": "The poll is in the discussion's opening post, not in the thread.",
+   "fieldname": "opening_post",
+   "fieldtype": "Check",
+   "label": "In Opening Post",
+   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-17 12:00:00.000000",
+ "modified": "2026-11-20 16:00:00.000000",
  "modified_by": "Administrator",
  "module": "Gameplan",
  "name": "GP Poll",

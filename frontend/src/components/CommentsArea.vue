@@ -256,6 +256,7 @@ import type { Space } from '@/data/spaces'
 import { useIsMobile } from '@/utils/useIsMobile'
 import { errorText } from '@/utils'
 import {
+  POLL_FIELDS,
   isPollDraftReady,
   pollDraftInContent,
   threadPollsKey,
@@ -424,20 +425,11 @@ watch(
 
 const polls = useList<GPPoll>({
   doctype: 'GP Poll',
-  fields: [
-    'name',
-    'title',
-    'anonymous',
-    'multiple_answers',
-    'creation',
-    'owner',
-    'stopped_at',
-    'comment',
-    { options: ['name', 'title', 'idx', 'percentage'] },
-    { votes: ['user', 'option'] },
-  ],
+  fields: POLL_FIELDS,
+  // The opening post's poll renders inside the post (DiscussionView), not in the thread.
   filters: {
     discussion: props.name,
+    opening_post: 0,
   },
   orderBy: 'creation asc',
   limit: 99999,

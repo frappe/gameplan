@@ -113,6 +113,13 @@
             </div>
             <div class="ml-auto flex items-center gap-2 print:hidden">
               <template v-if="editingPost">
+                <Button
+                  v-if="canAddPostPoll"
+                  icon-left="lucide-bar-chart-2"
+                  label="Poll"
+                  variant="ghost"
+                  @click="addPostPoll"
+                />
                 <Button label="Discard" @click="cancelEdit" />
                 <Button
                   variant="solid"
@@ -352,6 +359,7 @@ import {
   nextTick,
   onMounted,
   onBeforeUnmount,
+  provide,
   reactive,
   watch,
   useTemplateRef,
@@ -369,6 +377,7 @@ import {
   Switch,
   dialog,
   toast,
+  useList,
 } from 'frappe-ui'
 import { until, useEventListener } from '@vueuse/core'
 import type { Editor } from '@tiptap/vue-3'
@@ -407,6 +416,15 @@ import { refreshUnreadCountForProjects } from '@/data/unreadCount'
 import { useSessionUser } from '@/data/users'
 import { canDeleteContent, canEditContent, canMoveOrPinContent } from '@/utils/permissions'
 import { captureError } from '@/utils/errorReporting'
+import type { GPPoll } from '@/types/doctypes'
+import {
+  POLL_FIELDS,
+  isPollDraftReady,
+  contentHasPoll,
+  pollDraftInContent,
+  postedPollInContent,
+  threadPollsKey,
+} from '@/components/PollBlock/poll-draft'
 import { useCommandPaletteCommands } from './CommandPalette/registry'
 import { useOwnedRouteWrites } from '@/composables/useOwnedRouteWrites'
 
@@ -532,6 +550,21 @@ const pinDialog = reactive<{
   pinToCategory: false,
 })
 const showRevisionsDialog = ref(false)
+
+// The poll written into the opening post. The thread's polls come from CommentsArea; this
+// one renders inside the post, so the post's own editor needs it provided here.
+const openingPolls = useList<GPPoll>({
+  doctype: 'GP Poll',
+  fields: POLL_FIELDS,
+  filters: { discussion: props.postId, opening_post: 1 },
+  limit: 1,
+  transform: (data) => data.map((d) => ({ ...d, doctype: 'GP Poll' })),
+})
+provide(threadPollsKey, {
+  polls: openingPolls,
+  space: () => space.value,
+  readOnlyMode: () => props.readOnlyMode,
+})
 
 // While the post is being edited, its title/body live in an auto-saved draft instead of
 // being mutated on discussion.doc directly. The draft survives reloads and navigation, and
@@ -714,11 +747,24 @@ function moveToSpace() {
 
 // A post needs both halves: saving an empty body over a real one leaves a post that renders
 // as a blank page for everyone, with no way back except the revision history.
+const postPollDraft = computed(() => pollDraftInContent(postDraftData.value?.content))
 const canSavePost = computed(
   () =>
     Boolean(postDraftData.value?.title?.trim()) &&
-    !isEditorContentEmpty(postDraftData.value?.content),
+    !isEditorContentEmpty(postDraftData.value?.content) &&
+    (!postPollDraft.value || isPollDraftReady(postPollDraft.value)),
 )
+// Only the author adds a poll to their post, as in a reply, and a post holds one.
+const canAddPostPoll = computed(
+  () =>
+    discussion.doc?.owner === useSessionUser().name &&
+    !contentHasPoll(postDraftData.value?.content),
+)
+
+// The header button takes focus off the text, so the poll goes at the end of the post.
+function addPostPoll() {
+  postEditor.value?.editor?.chain().focus('end').insertPollBlock().run()
+}
 
 // Read content from the editor's own serializer rather than discussion.doc.content:
 // the editor re-normalizes HTML on load and writes it back, so the stored value
@@ -775,6 +821,22 @@ function cancelEdit() {
 
 function updatePost() {
   if (!editingPost.value || !canSavePost.value) return
+  // Saving without the poll block deletes the poll and its votes, and a stray Backspace is
+  // enough to remove the block, so ask first, as editing a reply does.
+  const poll = postedPollInContent(discussion.doc?.content)
+  if (poll && postedPollInContent(postDraftData.value?.content) !== poll) {
+    dialog.danger({
+      title: 'Remove poll',
+      message: 'Saving this post deletes its poll and all its votes. This cannot be undone.',
+      confirmLabel: 'Remove poll',
+      onConfirm: savePost,
+    })
+    return
+  }
+  savePost()
+}
+
+function savePost() {
   // Show the new title at once instead of the old one until the server answers.
   const title = postDraftData.value?.title
   const previousTitle = discussion.doc?.title
@@ -789,6 +851,8 @@ function updatePost() {
         // Content is saved onto the post; migrate the draft's attachments and delete it.
         await postDraft.commit()
         tags.reload()
+        // No poll reload here: a new poll's block mounts with an id the list lacks, and
+        // PollBlockView reloads it then, as it does for a poll in a comment.
       },
       () => {
         // The save failed: put the old title back, unless something newer replaced it.

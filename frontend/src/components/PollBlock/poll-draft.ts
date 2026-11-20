@@ -19,6 +19,23 @@ export interface ThreadPolls {
 
 export const threadPollsKey: InjectionKey<ThreadPolls> = Symbol('threadPolls')
 
+type Fields<T extends { name: string }> = NonNullable<Parameters<typeof useList<T>>[0]['fields']>
+
+/** What a poll card needs. Shared by the thread's polls and the opening post's poll. */
+export const POLL_FIELDS: Fields<GPPoll> = [
+  'name',
+  'title',
+  'anonymous',
+  'multiple_answers',
+  'creation',
+  'owner',
+  'stopped_at',
+  'comment',
+  'opening_post',
+  { options: ['name', 'title', 'idx', 'percentage'] },
+  { votes: ['user', 'option'] },
+]
+
 export function emptyPollDraft(): PollDraft {
   return {
     title: '',
@@ -41,6 +58,10 @@ export function hasPollBlock(editor: Editor) {
     return !found
   })
   return found
+}
+
+export function contentHasPoll(html?: string | null) {
+  return Boolean(html?.includes('data-type="poll"'))
 }
 
 export function pollDraftInContent(html?: string | null): PollDraft | null {
