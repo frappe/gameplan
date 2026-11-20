@@ -63,6 +63,7 @@ class GPDiscussion(HasActivity, HasAttachments, HasMentions, HasReactions, HasTa
 		else:
 			d.last_unread_comment = "first_post"
 
+		# Not THREAD_POLLS: unread polls also include comment polls.
 		polls = frappe.db.get_all(
 			"GP Poll",
 			filters={"discussion": self.name, "opening_post": 0, "creation": (">", last_visit)},
