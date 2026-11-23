@@ -71,7 +71,11 @@ const poll = computed(() =>
 )
 
 onMounted(() => {
-  if (draft.value && !draft.value.title) nextTick(() => questionInput.value?.focus())
+  // A frame later: the toolbar that inserted the block hands focus back to the editor
+  // after its click, which would take it straight off the question.
+  if (draft.value && !draft.value.title) {
+    nextTick(() => requestAnimationFrame(() => questionInput.value?.focus()))
+  }
   if (props.node.attrs.poll && thread && !poll.value && !thread.polls.loading) {
     thread.polls.reload()
   }

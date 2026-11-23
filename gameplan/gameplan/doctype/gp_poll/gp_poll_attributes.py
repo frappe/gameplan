@@ -11,6 +11,7 @@ class GPPollAttributes:
 	multiple_answers: bool
 	discussion: str
 	comment: str
+	opening_post: bool
 	votes: list
 	total_votes: int
 	stopped_at: datetime.datetime

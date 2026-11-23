@@ -1,11 +1,8 @@
 # Copyright (c) 2022, Frappe Technologies Pvt Ltd and contributors
 # For license information, please see license.txt
 
-import json
-import re
 
 import frappe
-from bs4 import BeautifulSoup
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cstr
@@ -17,10 +14,9 @@ from gameplan.mixins.mentions import HasMentions
 from gameplan.mixins.reactions import HasReactions
 from gameplan.mixins.tags import HasTags
 from gameplan.permissions import comment_query_conditions, content_has_permission
+from gameplan.poll_blocks import has_a_poll_that_stays, insert_poll, sync_poll_block
 from gameplan.utils import get_document_revisions, remove_empty_trailing_paragraphs
 from gameplan.utils.document import with_stored_document
-
-POLL_BLOCK = re.compile(r'<div\b[^>]*\bdata-type="poll"[^>]*>\s*</div>')
 
 
 class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
@@ -110,16 +106,8 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 		return missing
 
 	def has_a_poll_that_stays(self):
-		# A block pointing at another comment's poll (one pasted from elsewhere) is dropped
-		# on save, so it does not count as content.
-		block = POLL_BLOCK.search(self.content or "")
-		if not block:
-			return False
-		attrs = BeautifulSoup(block.group(), "html.parser").div.attrs
-		if "data-poll-draft" in attrs:
-			return True
 		poll = not self.is_new() and frappe.db.get_value("GP Poll", {"comment": self.name})
-		return bool(poll) and attrs.get("data-poll") == str(poll)
+		return has_a_poll_that_stays(self.content, poll)
 
 	def sanitize_content(self):
 		from gameplan.utils.sanitizer import sanitize_content
@@ -142,45 +130,11 @@ class GPComment(HasAttachments, HasMentions, HasReactions, HasTags, Document):
 	def sync_poll(self):
 		if self.reference_doctype != "GP Discussion" or not self.has_value_changed("content"):
 			return
-		blocks = POLL_BLOCK.findall(self.content or "")
-		if len(blocks) > 1:
-			frappe.throw(_("A comment can only have one poll"))
-		attrs = BeautifulSoup(blocks[0], "html.parser").div.attrs if blocks else {}
-
-		poll = frappe.db.get_value("GP Poll", {"comment": self.name})
-		if poll and attrs.get("data-poll") != str(poll):
-			if not frappe.has_permission("GP Poll", "delete", poll):
-				frappe.throw(_("Only the poll's owner can remove it"), frappe.PermissionError)
-			frappe.delete_doc("GP Poll", poll)
-			poll = None
-		if not poll and "data-poll-draft" in attrs:
-			poll = self.create_poll(attrs["data-poll-draft"])
-
-		block = f'<div data-type="poll" data-poll="{poll}"></div>' if poll else ""
-		content = POLL_BLOCK.sub(block, self.content or "")
-		if content != self.content:
-			self.db_set("content", content, update_modified=False)
-
-	def create_poll(self, draft):
-		try:
-			draft = json.loads(draft)
-		except ValueError:
-			frappe.throw(_("Invalid poll"))
-		options = draft.get("options") if isinstance(draft, dict) else None
-		if not isinstance(options, list) or not all(isinstance(option, dict) for option in options):
-			frappe.throw(_("Invalid poll"))
-		return (
-			frappe.get_doc(
-				doctype="GP Poll",
-				discussion=self.reference_name,
-				comment=self.name,
-				title=draft.get("title"),
-				anonymous=draft.get("anonymous"),
-				multiple_answers=draft.get("multiple_answers"),
-				options=[{"title": option.get("title")} for option in options if option.get("title")],
-			)
-			.insert()
-			.name
+		sync_poll_block(
+			self,
+			frappe.db.get_value("GP Poll", {"comment": self.name}),
+			lambda draft: insert_poll(draft, discussion=self.reference_name, comment=self.name),
+			_("A comment can only have one poll"),
 		)
 
 	@frappe.whitelist()

@@ -1199,3 +1199,129 @@ class TestPollInComment(PollTestCase):
 				comment=comment.name,
 				options=[{"title": "Yes"}, {"title": "No"}],
 			).insert()
+
+
+class TestPollInOpeningPost(PollTestCase):
+	"""A poll written into a discussion's opening post, the same way as one in a comment."""
+
+	def post(self, content, user=None):
+		with self.as_user(user or self.member):
+			return frappe.get_doc(
+				doctype="GP Discussion", title="Lunch plans", project=self.space.name, content=content
+			).insert()
+
+	def edit(self, discussion, content, user=None):
+		with self.as_user(user or self.member):
+			discussion = frappe.get_doc("GP Discussion", discussion.name)
+			discussion.content = content
+			discussion.save()
+		return discussion
+
+	def poll_of(self, discussion):
+		return frappe.db.get_value("GP Poll", {"discussion": discussion.name, "opening_post": 1})
+
+	def test_a_poll_block_creates_the_poll_and_stamps_the_post(self):
+		discussion = self.post(f"<p>Before</p>{poll_block()}<p>After</p>")
+
+		poll = frappe.get_doc("GP Poll", self.poll_of(discussion))
+		self.assertEqual((poll.owner, poll.comment), (self.member.name, None))
+		self.assertEqual([option.title for option in poll.options], ["Pizza", "Salad"])
+		block = f'<div data-type="poll" data-poll="{poll.name}"></div>'
+		saved = frappe.db.get_value("GP Discussion", discussion.name, "content")
+		self.assertEqual(saved, f"<p>Before</p>{block}<p>After</p>")
+
+	def test_the_poll_is_not_a_post_in_the_thread(self):
+		discussion = self.post(poll_block())
+		discussion.reload()
+		self.assertEqual(discussion.comments_count, 0)
+		self.assertFalse(discussion.last_post_type)
+		with self.as_user(self.second_member):
+			self.assertIsNone(frappe.get_doc("GP Discussion", discussion.name).as_dict().last_unread_poll)
+
+	def test_people_can_vote_on_it(self):
+		poll = frappe.get_doc("GP Poll", self.poll_of(self.post(poll_block())))
+		poll = self.vote(poll, self.second_member, "Salad")
+		self.assertEqual(self.option(poll, "Salad").votes, 1)
+
+	def test_editing_the_text_keeps_the_poll(self):
+		discussion = self.post(f"<p>Hi</p>{poll_block()}")
+		poll = self.poll_of(discussion)
+		self.edit(discussion, f'<p>Hello</p><div data-type="poll" data-poll="{poll}"></div>')
+		self.assertEqual(self.poll_of(discussion), poll)
+
+	def test_removing_the_block_deletes_the_poll(self):
+		discussion = self.post(f"<p>Hi</p>{poll_block()}")
+		poll = self.poll_of(discussion)
+		self.edit(discussion, "<p>Hi</p>")
+		self.assertFalse(frappe.db.exists("GP Poll", poll))
+
+	def test_the_author_can_add_a_poll_when_editing(self):
+		discussion = self.post("<p>Hi</p>")
+		self.edit(discussion, f"<p>Hi</p>{poll_block()}")
+		self.assertTrue(self.poll_of(discussion))
+
+	def test_another_member_cannot_add_a_poll(self):
+		discussion = self.post("<p>Hi</p>")
+		with self.assertRaises(frappe.PermissionError):
+			self.edit(discussion, f"<p>Hi</p>{poll_block()}", user=self.second_member)
+
+	def test_another_member_cannot_remove_the_poll(self):
+		discussion = self.post(f"<p>Hi</p>{poll_block()}")
+		poll = self.poll_of(discussion)
+		with self.assertRaises(frappe.PermissionError) as raised:
+			self.edit(discussion, "<p>Hi</p>", user=self.second_member)
+		self.assertIn("Only the poll's owner can remove it", str(raised.exception))
+		self.assertTrue(frappe.db.exists("GP Poll", poll))
+
+	def test_another_member_can_edit_the_text_around_the_poll(self):
+		discussion = self.post(poll_block())
+		poll = self.poll_of(discussion)
+		block = f'<div data-type="poll" data-poll="{poll}"></div>'
+		self.edit(discussion, f"<p>Fixed a typo</p>{block}", user=self.second_member)
+		self.assertEqual(self.poll_of(discussion), poll)
+
+	def test_an_opening_post_holds_one_poll(self):
+		with self.assertRaises(frappe.ValidationError) as raised:
+			self.post(poll_block() + poll_block(title="Dinner?"))
+		self.assertIn("only have one poll", str(raised.exception))
+
+	def test_moving_the_discussion_keeps_its_poll(self):
+		discussion = self.post(poll_block())
+		poll = self.poll_of(discussion)
+		other = create_space("Other Poll Space", self.community)
+		with self.as_user(self.member):
+			frappe.get_doc("GP Discussion", discussion.name).move_to_project(other.name)
+		self.assertEqual(self.poll_of(discussion), poll)
+
+	def test_the_poll_stays_in_its_opening_post(self):
+		poll = frappe.get_doc("GP Poll", self.poll_of(self.post(poll_block())))
+		for field, value in (("discussion", self.discussion.name), ("opening_post", 0)):
+			with self.subTest(field=field), self.assertRaises(frappe.ValidationError):
+				with self.as_user(self.member):
+					doc = frappe.get_doc("GP Poll", poll.name)
+					doc.set(field, value)
+					doc.save()
+
+	def test_a_scheduled_post_gets_its_poll_when_it_publishes(self):
+		from gameplan.gameplan.doctype.gp_draft.gp_draft import publish_due_drafts
+
+		with self.as_user(self.member):
+			draft = frappe.get_doc(
+				doctype="GP Draft",
+				type="Discussion",
+				title="Lunch plans",
+				project=self.space.name,
+				content=poll_block(),
+			).insert()
+		frappe.db.set_value("GP Draft", draft.name, "scheduled_at", add_days(now_datetime(), -1))
+		with patch("frappe.db.commit"):
+			publish_due_drafts()
+		poll = frappe.get_doc("GP Poll", {"opening_post": 1, "title": "Lunch?"})
+		self.assertEqual(poll.owner, self.member.name)
+
+	def test_deleting_the_discussion_deletes_its_poll(self):
+		discussion = self.post(poll_block())
+		poll = self.poll_of(discussion)
+		with self.as_user(self.member):
+			frappe.delete_doc("GP Discussion", discussion.name)
+		self.assertFalse(frappe.db.exists("GP Poll", poll))

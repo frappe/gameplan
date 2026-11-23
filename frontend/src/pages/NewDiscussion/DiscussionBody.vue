@@ -98,13 +98,15 @@ const {
   handleTitleInput,
   handleTitleBlur,
   scheduledAt,
+  pollReady,
 } = useNewDiscussionContext()
 
-const scheduleWarning = computed(() =>
-  scheduledAt.value && !draftData.value?.title?.trim()
-    ? 'Add a title to publish on scheduled time'
-    : '',
-)
+const scheduleWarning = computed(() => {
+  if (!scheduledAt.value) return ''
+  if (!draftData.value?.title?.trim()) return 'Add a title to publish on scheduled time'
+  if (!pollReady.value) return 'Complete the poll to publish on scheduled time'
+  return ''
+})
 
 watch(
   () => draftData.value?.title,

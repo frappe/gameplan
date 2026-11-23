@@ -64,6 +64,7 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 	def before_insert(self):
 		self.check_if_discussion_is_closed()
 		self.check_comment()
+		self.check_opening_post()
 		if self.anonymous and self.multiple_answers:
 			frappe.throw(_("Anonymous polls cannot allow multiple answers"))
 		self.options = [d for d in self.options if d.title]
@@ -100,6 +101,16 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		if frappe.db.exists("GP Poll", {"comment": self.comment}):
 			frappe.throw(_("A comment can only have one poll"))
 
+	def check_opening_post(self):
+		if not self.opening_post:
+			return
+		if self.comment:
+			frappe.throw(_("A poll is either in a comment or in the opening post"))
+		if frappe.db.get_value("GP Discussion", self.discussion, "owner") != frappe.session.user:
+			frappe.throw(_("You can only add a poll to your own discussion"), frappe.PermissionError)
+		if frappe.db.exists("GP Poll", {"discussion": self.discussion, "opening_post": 1}):
+			frappe.throw(_("A discussion's opening post can only have one poll"))
+
 	def validate(self):
 		self.check_comment_unchanged()
 		self.check_results_unchanged()
@@ -113,6 +124,10 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 			frappe.throw(_("A poll cannot be moved to another comment"))
 		if self.comment and cstr(before.discussion) != cstr(self.discussion):
 			frappe.throw(_("A poll in a comment cannot be moved to another discussion"))
+		if cint(before.opening_post) != cint(self.opening_post):
+			frappe.throw(_("A poll cannot be moved in or out of the opening post"))
+		if self.opening_post and cstr(before.discussion) != cstr(self.discussion):
+			frappe.throw(_("A poll in an opening post cannot be moved to another discussion"))
 
 	def check_results_unchanged(self):
 		"""Refuse a plain save that changes the vote rows or an option's counts.
@@ -150,7 +165,8 @@ class GPPoll(HasReactions, Document, GPPollAttributes):
 		self.update_discussion_meta()
 
 	def update_discussion_meta(self):
-		if not self.discussion or self.comment:
+		# Only a poll posted on its own is a post in the thread.
+		if not self.discussion or self.comment or self.opening_post:
 			return
 		discussion = frappe.get_doc("GP Discussion", self.discussion)
 		discussion.update_last_post()

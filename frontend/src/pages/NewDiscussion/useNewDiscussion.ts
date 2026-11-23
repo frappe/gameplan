@@ -9,6 +9,7 @@ import { canPostInSpace, getSpace } from '@/data/spaces'
 import { useSessionUser, useUser } from '@/data/users'
 import { tags } from '@/data/tags'
 import { errorText, isEditorContentEmpty } from '@/utils'
+import { isPollDraftReady, pollDraftInContent } from '@/components/PollBlock/poll-draft'
 import { captureError } from '@/utils/errorReporting'
 import { confirmDelete } from '@/utils/confirmDelete'
 import type { GPDiscussion } from '@/types/doctypes'
@@ -135,8 +136,11 @@ export function useNewDiscussion() {
     },
   })
 
+  // A poll written into the post needs a question and two options, as in a reply.
+  const pollDraft = computed(() => pollDraftInContent(draftData.value?.content))
+  const pollReady = computed(() => !pollDraft.value || isPollDraftReady(pollDraft.value))
   const canPublish = computed(() =>
-    Boolean(draftData.value?.project && draftData.value?.title?.trim()),
+    Boolean(draftData.value?.project && draftData.value?.title?.trim() && pollReady.value),
   )
 
   // Keep fast IndexedDB/server restores visually quiet, but expose a real status when a
@@ -453,6 +457,7 @@ export function useNewDiscussion() {
     draftData,
     selectedSpace,
     canPublish,
+    pollReady,
     isPersisted,
     submitError,
     errorMessage,

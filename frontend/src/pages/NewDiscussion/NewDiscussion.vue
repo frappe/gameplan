@@ -23,7 +23,7 @@
           :inert="toolbarInert"
           :aria-disabled="toolbarInert"
         >
-          <EditorFixedMenu :editor="editor" :items="gameplanToolbar" />
+          <EditorFixedMenu :editor="editor" :items="discussionToolbar" />
         </ScrollArea>
       </PageHeaderBase>
 
@@ -68,7 +68,7 @@
 import { computed } from 'vue'
 import { Badge, PageHeaderBase, ScrollArea } from 'frappe-ui'
 import { EditorFixedMenu } from 'frappe-ui/editor'
-import { gameplanToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
+import { discussionToolbar, mobileDiscussionToolbar } from '@/components/editor/toolbars'
 import DiscussionEditor from '@/components/editor/DiscussionEditor.vue'
 import NoSpaceToPostIn from '@/components/NoSpaceToPostIn.vue'
 import DiscussionHeader from './DiscussionHeader.vue'
