@@ -160,6 +160,34 @@ describe('New discussion drafts', () => {
     cy.contains('Late edit.').should('exist')
   })
 
+  it('does not auto-save an emptied body over a stored draft', () => {
+    createStoredDraft()
+    cy.url().then((composerUrl) => {
+      // Reopen it so the body comes back from storage, as a draft does on a later visit.
+      cy.visit(composerUrl)
+      cy.contains('Stored draft body.').should('exist')
+
+      // One stray undo or select-all + delete empties the body; the title stays.
+      cy.get('[contenteditable=true]').click().clear()
+      cy.get('textarea[placeholder="Title"]').type(' edited')
+      // Longer than the autosave debounce, so a save that should not happen would have.
+      cy.wait(1500)
+
+      cy.visit(composerUrl)
+      cy.contains('Stored draft body.').should('exist')
+    })
+  })
+
+  it('publishes a title-only discussion when the body is cleared on purpose', () => {
+    createStoredDraft()
+    cy.get('[contenteditable=true]').click().clear()
+    cy.button('Publish').click()
+
+    cy.url().should('include', `/community/${community}/space/${space}/discussion/`)
+    cy.contains('Stored Draft Title').should('exist')
+    cy.contains('Stored draft body.').should('not.exist')
+  })
+
   it('reports a failed publish to the server', () => {
     createStoredDraft()
     cy.intercept(
