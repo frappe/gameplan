@@ -29,7 +29,17 @@
           :placeholder="`Option ${i + 1}`"
           :model-value="option.title"
           @update:model-value="updateOption(i, $event)"
-        />
+        >
+          <template v-if="option.title" #suffix>
+            <Button
+              variant="ghost"
+              size="xs"
+              icon="lucide-x"
+              :label="`Remove option ${i + 1}`"
+              @click="removeOption(i)"
+            />
+          </template>
+        </TextInput>
       </div>
       <div class="flex items-center gap-2">
         <FormControl
@@ -84,6 +94,16 @@ onMounted(() => {
 function update(patch: Partial<PollDraft>) {
   if (!draft.value) return
   props.updateAttributes({ draft: { ...draft.value, ...patch } })
+}
+
+function removeOption(index: number) {
+  if (!draft.value) return
+  const options = draft.value.options.filter((_, i) => i !== index)
+  // Keep one empty row at the end to type the next option into, and at least two rows.
+  while (options.length > 1 && !options.at(-1)!.title && !options.at(-2)!.title) options.pop()
+  if (!options.length || options.at(-1)!.title) options.push({ title: '' })
+  while (options.length < 2) options.push({ title: '' })
+  update({ options })
 }
 
 function updateOption(index: number, title: string) {
