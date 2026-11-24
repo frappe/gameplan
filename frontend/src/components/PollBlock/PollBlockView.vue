@@ -21,7 +21,7 @@
         :model-value="draft.title"
         @update:model-value="update({ title: $event })"
       />
-      <div class="space-y-2">
+      <div ref="optionsList" class="space-y-2">
         <div class="text-sm leading-4 text-ink-gray-6">Options</div>
         <TextInput
           v-for="(option, i) in draft.options"
@@ -74,6 +74,7 @@ const props = defineProps(nodeViewProps)
 
 const thread = inject(threadPollsKey, null)
 const questionInput = useTemplateRef<InputRef>('questionInput')
+const optionsList = useTemplateRef<HTMLElement>('optionsList')
 
 const draft = computed<PollDraft | null>(() => props.node.attrs.draft)
 const poll = computed(() =>
@@ -96,7 +97,7 @@ function update(patch: Partial<PollDraft>) {
   props.updateAttributes({ draft: { ...draft.value, ...patch } })
 }
 
-function removeOption(index: number) {
+async function removeOption(index: number) {
   if (!draft.value) return
   const options = draft.value.options.filter((_, i) => i !== index)
   // Keep one empty row at the end to type the next option into, and at least two rows.
@@ -104,6 +105,11 @@ function removeOption(index: number) {
   options.push({ title: '' })
   while (options.length < 2) options.push({ title: '' })
   update({ options })
+  // The cross unmounts or changes meaning (rows are keyed by index), so focus would be lost
+  // or silently point at the next option.
+  await nextTick()
+  const inputs = optionsList.value?.querySelectorAll('input')
+  inputs?.[Math.min(index, inputs.length - 1)]?.focus()
 }
 
 function updateOption(index: number, title: string) {
