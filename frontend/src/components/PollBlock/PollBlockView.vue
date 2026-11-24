@@ -100,8 +100,8 @@ function removeOption(index: number) {
   if (!draft.value) return
   const options = draft.value.options.filter((_, i) => i !== index)
   // Keep one empty row at the end to type the next option into, and at least two rows.
-  while (options.length > 1 && !options.at(-1)!.title && !options.at(-2)!.title) options.pop()
-  if (!options.length || options.at(-1)!.title) options.push({ title: '' })
+  while (options.at(-1)?.title === '') options.pop()
+  options.push({ title: '' })
   while (options.length < 2) options.push({ title: '' })
   update({ options })
 }
