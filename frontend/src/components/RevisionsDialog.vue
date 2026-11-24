@@ -22,7 +22,7 @@
             <div class="text-sm-medium">
               {{ dayjsLocal(revision.creation).format('LLL') }}
             </div>
-            <div class="mt-0.5 text-sm text-ink-gray-5">{{ revision.owner }}</div>
+            <div class="mt-0.5 text-sm text-ink-gray-5">{{ useUser(revision.owner).full_name }}</div>
           </button>
         </div>
       </ScrollArea>

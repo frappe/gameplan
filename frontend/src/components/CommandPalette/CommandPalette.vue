@@ -535,7 +535,7 @@ const searchList = computed(() => {
         name: `${user.name}:${tab.route}`,
         title: `${user.full_name} / ${tab.label}`,
         search: `${user.full_name} ${user.email} ${tab.keywords}`,
-        icon: () => h(UserAvatar, { user: user.email, size: 'sm' }),
+        icon: () => h(UserAvatar, { user: user.name, size: 'sm' }),
         route: {
           name: tab.route,
           params: { personId: user.user_profile },
