@@ -21,7 +21,7 @@
         :model-value="draft.title"
         @update:model-value="update({ title: $event })"
       />
-      <div class="space-y-2">
+      <div ref="optionsList" class="space-y-2">
         <div class="text-sm leading-4 text-ink-gray-6">Options</div>
         <TextInput
           v-for="(option, i) in draft.options"
@@ -29,7 +29,17 @@
           :placeholder="`Option ${i + 1}`"
           :model-value="option.title"
           @update:model-value="updateOption(i, $event)"
-        />
+        >
+          <template v-if="option.title" #suffix>
+            <Button
+              variant="ghost"
+              size="xs"
+              icon="lucide-x"
+              :label="`Remove option ${i + 1}`"
+              @click="removeOption(i)"
+            />
+          </template>
+        </TextInput>
       </div>
       <div class="flex items-center gap-2">
         <FormControl
@@ -64,6 +74,7 @@ const props = defineProps(nodeViewProps)
 
 const thread = inject(threadPollsKey, null)
 const questionInput = useTemplateRef<InputRef>('questionInput')
+const optionsList = useTemplateRef<HTMLElement>('optionsList')
 
 const draft = computed<PollDraft | null>(() => props.node.attrs.draft)
 const poll = computed(() =>
@@ -84,6 +95,21 @@ onMounted(() => {
 function update(patch: Partial<PollDraft>) {
   if (!draft.value) return
   props.updateAttributes({ draft: { ...draft.value, ...patch } })
+}
+
+async function removeOption(index: number) {
+  if (!draft.value) return
+  const options = draft.value.options.filter((_, i) => i !== index)
+  // Keep one empty row at the end to type the next option into, and at least two rows.
+  while (options.at(-1)?.title === '') options.pop()
+  options.push({ title: '' })
+  while (options.length < 2) options.push({ title: '' })
+  update({ options })
+  // The cross unmounts or changes meaning (rows are keyed by index), so focus would be lost
+  // or silently point at the next option.
+  await nextTick()
+  const inputs = optionsList.value?.querySelectorAll('input')
+  inputs?.[Math.min(index, inputs.length - 1)]?.focus()
 }
 
 function updateOption(index: number, title: string) {
