@@ -168,38 +168,42 @@
     <div v-if="!embedded" class="mt-3">
       <Reactions doctype="GP Poll" :name="poll.name" :read-only-mode="readOnlyMode" />
     </div>
-    <Dialog title="Poll results" v-model:open="showDialog">
-      <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
-      <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
-      <div class="mt-6 space-y-6">
-        <div v-for="option in pollResults" :key="option.title">
-          <div class="flex items-center mb-2">
-            <h3 class="text-base-medium text-ink-gray-8">{{ option.title }}</h3>
-            <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
-            <div class="text-base text-ink-gray-5">
-              {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
+    <!-- A long voter list needs its own scroll area on a phone, which the bottom sheet has. -->
+    <component :is="isMobile ? BottomSheet : Dialog" title="Poll results" v-model:open="showDialog">
+      <div :class="{ 'px-4 pb-6': isMobile }">
+        <h2 class="text-lg-medium text-ink-gray-8">{{ _poll.title }}</h2>
+        <div v-if="!pollResults" class="text-base text-ink-gray-6 mt-2">No votes yet</div>
+        <div class="mt-6 space-y-6">
+          <div v-for="option in pollResults" :key="option.title">
+            <div class="flex items-center mb-2">
+              <h3 class="text-base-medium text-ink-gray-8">{{ option.title }}</h3>
+              <div class="mx-2 flex-1 border-b border-outline-gray-2"></div>
+              <div class="text-base text-ink-gray-5">
+                {{ option.votes }} {{ option.votes === 1 ? 'vote' : 'votes' }}
+              </div>
+              <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
             </div>
-            <div class="ml-1 text-base text-ink-gray-5">({{ option.percentage }}%)</div>
-          </div>
-          <div class="space-y-2">
-            <div class="flex" v-for="voter in option.voters" :key="voter.name">
-              <UserProfileLink :user="voter.name">
-                <div class="flex items-center space-x-2">
-                  <UserAvatar size="sm" :user="voter.name" />
-                  <span class="text-base text-ink-gray-8">{{ voter.full_name }}</span>
-                </div>
-              </UserProfileLink>
+            <div class="space-y-2">
+              <div class="flex" v-for="voter in option.voters" :key="voter.name">
+                <UserProfileLink :user="voter.name">
+                  <div class="flex items-center space-x-2">
+                    <UserAvatar size="sm" :user="voter.name" />
+                    <span class="text-base text-ink-gray-8">{{ voter.full_name }}</span>
+                  </div>
+                </UserProfileLink>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </Dialog>
+    </component>
   </div>
 </template>
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { createReusableTemplate } from '@vueuse/core'
 import {
+  BottomSheet,
   Checkbox,
   Dropdown,
   Dialog,
@@ -218,6 +222,7 @@ import UserProfileLink from './UserProfileLink.vue'
 import { copyToClipboard, errorText, fullTimestamp, relativeTimestamp } from '@/utils'
 import { confirmDelete } from '@/utils/confirmDelete'
 import Reactions from './Reactions.vue'
+import { useIsMobile } from '@/utils/useIsMobile'
 import StickyRowFade from './StickyRowFade.vue'
 import { useUser, useSessionUser } from '@/data/users'
 import { canDeleteContent } from '@/utils/permissions'
@@ -250,6 +255,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const [DefinePollActions, ReusePollActions] = createReusableTemplate()
 const showDialog = ref(false)
+const isMobile = useIsMobile()
 const sessionUser = useSessionUser()
 const selectedAnswers = reactive<Record<string, boolean>>({})
 // An anonymous vote records the voter but not their choice, so the server can never tell
