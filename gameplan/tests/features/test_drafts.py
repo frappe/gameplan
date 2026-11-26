@@ -25,6 +25,7 @@ from gameplan.tests.fixtures import (
 	create_discussion,
 	create_member,
 	create_space,
+	create_task,
 	grant_guest_access,
 	set_owner,
 )
@@ -271,6 +272,24 @@ class TestDraftCommit(GameplanTestCase):
 		content = frappe.db.get_value("GP Comment", comment.name, "content")
 		self.assertIn('src="/files/pic.png"', content)
 		self.assertNotIn("fid=", content)
+
+	def test_a_reply_draft_commits_onto_a_task(self):
+		task = create_task("Draft Commit Task", self.space, owner=self.member)
+		image = '<p><img src="/files/pic.png?fid=abc123"></p>'
+		frappe.db.set_value("GP Task", task.name, "description", image)
+
+		with self.as_user(self.member):
+			draft = _insert_draft(
+				type="Comment",
+				mode="New",
+				reference_doctype="GP Task",
+				reference_name=str(task.name),
+				content="<p>a reply on the task</p>",
+			)
+			commit_draft(draft.name, "GP Task", str(task.name))
+
+		self.assertFalse(frappe.db.exists("GP Draft", draft.name))
+		self.assertNotIn("fid=", frappe.db.get_value("GP Task", task.name, "description"))
 
 	def test_only_the_owner_can_commit_a_draft(self):
 		comment, draft = self._target_and_draft("<p>the final wording</p>")
