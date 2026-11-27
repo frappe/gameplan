@@ -1,0 +1,176 @@
+name: Bench vs Pilot server tests
+on:
+  push:
+    branches: [ci/pilot-benchmark]
+permissions:
+  contents: read
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'frappe' }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+
+    name: Bench
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: 123
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Check for valid Python & Merge Conflicts
+        run: |
+          python -m compileall -q -f "${GITHUB_WORKSPACE}"
+          if grep -lr --exclude-dir=node_modules "^<<<<<<< " "${GITHUB_WORKSPACE}"
+              then echo "Found merge conflicts"
+              exit 1
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Add to Hosts
+        run: |
+          echo "127.0.0.1 gameplan.test" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: |
+          bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
+          bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
+
+      # Neither is in a fresh bench env: frappe.coverage imports `coverage` (without it
+      # the --coverage run dies before a single test), and unittest-xml-reporting is
+      # only in frappe's optional `test` extra. Missing xmlrunner is not fatal — frappe
+      # falls back to the plain runner — but the report would then lose the list of
+      # which tests failed, which is the point of collecting it.
+      - name: Install coverage and JUnit reporting
+        run: ~/frappe-bench/env/bin/pip install coverage unittest-xml-reporting
+
+      # The JUnit XML is what lets the PR comment name the tests that failed instead
+      # of just linking to the log.
+      - name: Run Tests
+        working-directory: /home/runner/frappe-bench
+        run: |
+          bench --site gameplan.test run-tests --app gameplan --coverage \
+            --junit-xml-output "${RUNNER_TEMP}/backend-junit.xml"
+
+  pilot:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'frappe' }}
+    timeout-minutes: 60
+
+    strategy:
+      fail-fast: false
+
+    name: Pilot
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MARIADB_ROOT_PASSWORD: 123
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=5s --health-timeout=2s --health-retries=3
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Check for valid Python & Merge Conflicts
+        run: |
+          python -m compileall -q -f "${GITHUB_WORKSPACE}"
+          if grep -lr --exclude-dir=node_modules "^<<<<<<< " "${GITHUB_WORKSPACE}"
+              then echo "Found merge conflicts"
+              exit 1
+          fi
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          check-latest: true
+
+      - name: Add to Hosts
+        run: |
+          echo "127.0.0.1 gameplan.test" | sudo tee -a /etc/hosts
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/*requirements.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install
+        run: |
+          bash "$GITHUB_WORKSPACE/.github/helper/install_dependencies.sh"
+          curl -fsSL https://raw.githubusercontent.com/frappe/pilot/develop/install.sh | sh -s -- --ci
+          export PATH="$HOME/pilot/bin:$HOME/.local/bin:$PATH"
+          printf '%s\n' "$HOME/pilot/bin" "$HOME/.local/bin" >> "$GITHUB_PATH"
+          pilot new frappe-bench --frappe-branch develop
+          pilot -b frappe-bench set-bench-config python 3.14
+          pilot -b frappe-bench set-bench-config watch_apps_js false
+          pilot -b frappe-bench set-bench-config admin_allow_site_to_pilot_communication false
+          pilot -b frappe-bench set-bench-config mariadb_existing true
+          pilot -b frappe-bench set-bench-config mariadb_host 127.0.0.1
+          pilot -b frappe-bench set-bench-config mariadb_port 3306
+          pilot -b frappe-bench set-bench-config mariadb_admin_user root
+          pilot -b frappe-bench set-bench-config mariadb_password 123
+          pilot -b frappe-bench init
+          cd "$HOME/pilot/benches/frappe-bench"
+          printf '[client]\nskip-ssl\n' > "$HOME/.my.cnf"
+          mariadb -h 127.0.0.1 -u root -p123 -e "SET GLOBAL character_set_server = 'utf8mb4', GLOBAL collation_server = 'utf8mb4_unicode_ci'"
+          pilot get-app "$GITHUB_WORKSPACE" --branch "$GITHUB_SHA" --skip-assets
+          uv pip install --python env/bin/python coverage unittest-xml-reporting
+          printf 'loadmodule %s/.github/helper/redisearch.so\n' "$GITHUB_WORKSPACE" >> config/redis_cache.conf
+          chmod +x "$GITHUB_WORKSPACE/.github/helper/redisearch.so"
+          pilot start > "$RUNNER_TEMP/pilot.log" 2>&1 &
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 \
+            http://127.0.0.1:7000/api/v1/health
+          pilot new-site gameplan.test --admin-password admin --apps gameplan --skip-assets
+          jq -n --slurpfile settings "$GITHUB_WORKSPACE/.github/helper/site_config.json" \
+            '$settings[0] | del(.db_host, .db_port, .db_name, .db_password, .db_type) + input' \
+            sites/gameplan.test/site_config.json > sites/gameplan.test/pilot-ci-config.json
+          mv sites/gameplan.test/pilot-ci-config.json sites/gameplan.test/site_config.json
+          pilot build --apps frappe
+          pilot build --apps gameplan --force
+          pilot frappe --site gameplan.test execute gameplan.search_sqlite.rebuild_index
+
+      - name: Run Tests
+        run: |
+          pilot -b frappe-bench frappe --site gameplan.test run-tests --app gameplan --coverage \
+            --junit-xml-output "${RUNNER_TEMP}/backend-junit.xml"
+
