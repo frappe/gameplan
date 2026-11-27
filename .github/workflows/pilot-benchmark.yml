@@ -62,6 +62,7 @@ jobs:
       - name: Install Dependencies
         run: |
           bash ${GITHUB_WORKSPACE}/.github/helper/install_dependencies.sh
+          printf '[client]\nskip-ssl\n' > "$HOME/.my.cnf"
           bash ${GITHUB_WORKSPACE}/.github/helper/install.sh
 
       # Neither is in a fresh bench env: frappe.coverage imports `coverage` (without it
