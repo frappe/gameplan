@@ -74,7 +74,7 @@ jobs:
           command -v uv >/dev/null || curl -fsSL https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/pilot/bin:$HOME/.local/bin:$PATH"
           printf '%s\n' "$HOME/pilot/bin" "$HOME/.local/bin" >> "$GITHUB_PATH"
-          pilot new frappe-bench --frappe-branch develop --database "$DB"
+          pilot new frappe-bench --frappe-branch fix/integer-permission-label --database "$DB"
           pilot -b frappe-bench set-bench-config python 3.14
           pilot -b frappe-bench set-bench-config watch_apps_js false
           pilot -b frappe-bench set-bench-config admin_allow_site_to_pilot_communication false
@@ -85,7 +85,7 @@ jobs:
             pilot -b frappe-bench set-bench-config mariadb_admin_user root
             pilot -b frappe-bench set-bench-config mariadb_password 123
           fi
-          pilot -b frappe-bench init --skip-frontend
+          pilot -b frappe-bench init --skip-frontend --commit 6274ba6ad7b69cf96e4eea6d2cf51203bb2f1549
           cd "$HOME/pilot/benches/frappe-bench"
           if [ "$DB" = mariadb ]; then
             printf '[client]\nskip-ssl\n' > "$HOME/.my.cnf"
