@@ -65,7 +65,10 @@ jobs:
         env:
           DB: ${{ matrix.database }}
         run: |
-          bash "$GITHUB_WORKSPACE/.github/helper/install_dependencies.sh"
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq redis-server mariadb-client libmariadb-dev libcups2-dev
+          curl -fsSL https://raw.githubusercontent.com/frappe/wkhtmltopdf/master/wkhtmltox-0.12.3_linux-generic-amd64.tar.xz | tar -xJ -C "$RUNNER_TEMP"
+          sudo install -m 0755 "$RUNNER_TEMP/wkhtmltox/bin/wkhtmltopdf" /usr/local/bin/wkhtmltopdf
           mkdir -p "$HOME/pilot"
           curl -fsSL https://github.com/frappe/pilot/releases/download/v1.0.0-rc.5/pilot.tar.gz | tar -xz -C "$HOME/pilot"
           command -v uv >/dev/null || curl -fsSL https://astral.sh/uv/install.sh | sh
