@@ -66,7 +66,11 @@ jobs:
           DB: ${{ matrix.database }}
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq redis-server mariadb-client libmariadb-dev libcups2-dev
+          packages=(redis-server libmariadb-dev libcups2-dev)
+          if [ "$DB" = mariadb ]; then
+            packages+=(mariadb-client)
+          fi
+          sudo apt-get install -y -qq "${packages[@]}"
           curl -fsSL https://raw.githubusercontent.com/frappe/wkhtmltopdf/master/wkhtmltox-0.12.3_linux-generic-amd64.tar.xz | tar -xJ -C "$RUNNER_TEMP"
           sudo install -m 0755 "$RUNNER_TEMP/wkhtmltox/bin/wkhtmltopdf" /usr/local/bin/wkhtmltopdf
           mkdir -p "$HOME/pilot"
